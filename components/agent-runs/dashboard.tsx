@@ -6,9 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RunTable } from "./run-table"
 import { MOCK_AGENT_RUNS, getPersonaLabel } from "./mock-data"
 import { MOCK_FEATURES, MOCK_REPORTS, METRIC_CATEGORIES, getReportsByFeature, formatReportDate } from "@/components/reports/mock-data"
+import { useWebsite } from "@/components/providers/website-provider"
 
 export function AgentRunsDashboard() {
   const searchParams = useSearchParams()
+  const { selectedWebsite } = useWebsite()
 
   // Initialize filters from URL query parameters or defaults
   const [featureFilter, setFeatureFilter] = useState<string>("all")
@@ -64,6 +66,9 @@ export function AgentRunsDashboard() {
   // Filter runs based on all criteria
   const filteredRuns = useMemo(() => {
     return MOCK_AGENT_RUNS.filter((run) => {
+      // Website filter
+      if (run.website !== selectedWebsite) return false
+
       // Feature filter (via reportId)
       if (featureFilter !== "all") {
         const report = MOCK_REPORTS.find((r) => r.id === run.reportId)
@@ -81,7 +86,7 @@ export function AgentRunsDashboard() {
 
       return true
     })
-  }, [featureFilter, reportFilter, variantFilter, personaFilter])
+  }, [selectedWebsite, featureFilter, reportFilter, variantFilter, personaFilter])
 
   return (
     <div className="space-y-6">

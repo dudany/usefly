@@ -2,8 +2,16 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, BarChart3, ScrollText, Zap } from "lucide-react"
+import { Activity, BarChart3, ScrollText, Zap, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useWebsite } from "@/components/providers/website-provider"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const navItems = [
   { href: "/reports", label: "Reports", icon: ScrollText },
@@ -14,17 +22,36 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { selectedWebsite, setSelectedWebsite } = useWebsite()
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 border-r border-border bg-sidebar pt-6 flex flex-col">
       {/* Logo */}
-      <div className="px-6 pb-8">
+      <div className="px-6 pb-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl text-sidebar-foreground">
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
             <Zap className="w-4 h-4 text-primary-foreground" />
           </div>
           Blast.ai
         </Link>
+      </div>
+
+      {/* Website Filter */}
+      <div className="px-6 pb-6">
+        <label className="text-xs font-medium text-sidebar-foreground/70 mb-2 block">
+          Website
+        </label>
+        <Select value={selectedWebsite} onValueChange={setSelectedWebsite}>
+          <SelectTrigger className="w-full">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              <SelectValue />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="www.test.com">www.test.com</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Navigation */}
