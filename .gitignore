@@ -1,4 +1,41 @@
+# Next.js
 node_modules
 .next
 .claude
+
+# Environment variables
 *.env*
+!.env.example
+
+# Agent session data
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# uv
+.uv/
+
+# Playwright
+.playwright/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+browsing_agent/data/*
+*.gif*

@@ -128,3 +128,4 @@ lib/
 - All data is currently mocked (no backend/API integration yet)
 - TypeScript strict mode is enabled
 - HTML has `suppressHydrationWarning` for next-themes hydration
+- Don't do any .md or documentation files unless i asked for it
