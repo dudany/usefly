@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/select"
 
 const navItems = [
-  { href: "/reports", label: "Reports", icon: FileText },
   { href: "/new-report", label: "New Report", icon: Sparkles },
+  { href: "/reports", label: "Reports", icon: FileText },
+  { href: "/metrics", label: "Metrics", icon: BarChart3 },
   { href: "/agent-runs", label: "Agent Runs", icon: Zap },
 ]
 
