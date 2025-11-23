@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RunTable } from "./run-table"
 import { MOCK_AGENT_RUNS, getPersonaLabel } from "./mock-data"
-import { MOCK_FEATURES, MOCK_REPORTS, METRIC_CATEGORIES, getReportsByFeature, formatReportDate } from "@/components/reports/mock-data"
+import { MOCK_FEATURES, MOCK_REPORTS, METRIC_CATEGORIES, getReportsByFeature, formatReportDate } from "@/components/archived/reports/mock-data"
 import { useWebsite } from "@/components/providers/website-provider"
 
 export function AgentRunsDashboard() {
