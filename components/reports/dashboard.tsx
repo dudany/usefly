@@ -6,32 +6,18 @@ import { Card } from "@/components/ui/card"
 import { MOCK_AGENT_RUNS } from "@/components/agent-runs/mock-data"
 import { MOCK_REPORTS, MOCK_FEATURES, formatReportDate } from "@/components/archived/reports/mock-data"
 import { useWebsite } from "@/components/providers/website-provider"
+import { useSegments } from "@/components/providers/segments-provider"
+import { SegmentsFilter } from "@/components/filters/segments-filter"
 import { JourneySankey } from "./journey-sankey"
 import { JourneyTable } from "./journey-table"
 
 export function ReportsDashboard() {
   const { selectedWebsite } = useWebsite()
+  const { selectedSegments } = useSegments()
 
   // Filters
   const [selectedReportId, setSelectedReportId] = useState<string>("")
-  const [segmentType, setSegmentType] = useState<string>("location")
-  const [segmentFilter, setSegmentFilter] = useState<string>("all")
   const [personaFilter, setPersonaFilter] = useState<string>("all")
-
-  // Get available segment values based on segment type
-  const availableSegments = useMemo(() => {
-    if (segmentType === "location") {
-      const locations = new Set(MOCK_AGENT_RUNS.map((run) => run.location))
-      return Array.from(locations).sort()
-    } else if (segmentType === "platform") {
-      const platforms = new Set(MOCK_AGENT_RUNS.map((run) => run.platform))
-      return Array.from(platforms).sort()
-    } else if (segmentType === "status") {
-      const statuses = new Set(MOCK_AGENT_RUNS.map((run) => run.status))
-      return Array.from(statuses).sort()
-    }
-    return []
-  }, [segmentType])
 
   // Get unique personas
   const availablePersonas = useMemo(() => {
@@ -39,13 +25,7 @@ export function ReportsDashboard() {
     return Array.from(personas).sort()
   }, [])
 
-  // Reset segment filter when segment type changes
-  const handleSegmentTypeChange = (value: string) => {
-    setSegmentType(value)
-    setSegmentFilter("all")
-  }
-
-  // Filter runs for selected report and additional filters
+  // Filter runs for selected report and additional filters (AND logic)
   const filteredRuns = useMemo(() => {
     if (!selectedReportId) return []
 
@@ -56,11 +36,13 @@ export function ReportsDashboard() {
       // Report filter
       if (run.reportId !== selectedReportId) return false
 
-      // Segment filter (dynamic based on segment type)
-      if (segmentFilter !== "all") {
-        if (segmentType === "location" && run.location !== segmentFilter) return false
-        if (segmentType === "platform" && run.platform !== segmentFilter) return false
-        if (segmentType === "status" && run.status !== segmentFilter) return false
+      // Segment filters - AND logic (must match all selected segments)
+      if (selectedSegments.length > 0) {
+        for (const segment of selectedSegments) {
+          if (segment.type === "location" && run.location !== segment.value) return false
+          if (segment.type === "platform" && run.platform !== segment.value) return false
+          if (segment.type === "status" && run.status !== segment.value) return false
+        }
       }
 
       // Persona filter
@@ -68,7 +50,7 @@ export function ReportsDashboard() {
 
       return true
     })
-  }, [selectedReportId, selectedWebsite, segmentType, segmentFilter, personaFilter])
+  }, [selectedReportId, selectedWebsite, selectedSegments, personaFilter])
 
   // Get feature name for selected report
   const selectedReport = MOCK_REPORTS.find((r) => r.id === selectedReportId)
@@ -81,7 +63,7 @@ export function ReportsDashboard() {
       {/* Filters Section */}
       <Card className="p-6">
         <h2 className="text-lg font-semibold text-foreground mb-4">Filters</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Report ID Filter */}
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">Report</label>
@@ -102,38 +84,8 @@ export function ReportsDashboard() {
             </Select>
           </div>
 
-          {/* Segment Type Filter */}
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Segment Type</label>
-            <Select value={segmentType} onValueChange={handleSegmentTypeChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="location">Location</SelectItem>
-                <SelectItem value="platform">Platform</SelectItem>
-                <SelectItem value="status">Status</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Segment Value Filter */}
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Segment</label>
-            <Select value={segmentFilter} onValueChange={setSegmentFilter}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={`All ${segmentType.charAt(0).toUpperCase() + segmentType.slice(1)}s`} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All {segmentType.charAt(0).toUpperCase() + segmentType.slice(1)}s</SelectItem>
-                {availableSegments.map((segment) => (
-                  <SelectItem key={segment} value={segment}>
-                    {segment.charAt(0).toUpperCase() + segment.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Unified Segment Multi-Select */}
+          <SegmentsFilter />
 
           {/* Persona Filter */}
           <div>
@@ -166,7 +118,7 @@ export function ReportsDashboard() {
       ) : (
         <>
           {/* Report Header */}
-          {selectedFeature && (
+          {selectedFeature && selectedReport && (
             <div className="mb-4">
               <h2 className="text-2xl font-bold text-foreground">{selectedFeature.name}</h2>
               <p className="text-sm text-muted-foreground mt-1">
@@ -186,7 +138,7 @@ export function ReportsDashboard() {
             <h3 className="text-lg font-semibold text-foreground mb-4">Journey Metrics</h3>
             <JourneyTable
               runs={filteredRuns}
-              groupByLocation={segmentType === "location" && segmentFilter === "all"}
+              groupByLocation={!selectedSegments.some((s) => s.type === "location")}
               groupByPersona={personaFilter === "all"}
             />
           </Card>

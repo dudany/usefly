@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -34,7 +35,13 @@ const METRIC_OPTIONS = [
   "Success Rate",
 ]
 
-export function NewReportForm() {
+interface NewReportFormProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function NewReportForm({ open, onOpenChange }: NewReportFormProps = {}) {
+  const isModal = open !== undefined && onOpenChange !== undefined
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -69,9 +76,12 @@ export function NewReportForm() {
         description: "We'll send the analysis to your email once it's ready.",
       })
 
-      // Reset form
+      // Reset form and close modal if in modal mode
       reset()
       setSelectedMetrics([])
+      if (onOpenChange) {
+        onOpenChange(false)
+      }
     } catch (error) {
       toast.error("Failed to submit report request. Please try again.")
     } finally {
@@ -79,23 +89,9 @@ export function NewReportForm() {
     }
   }
 
-  return (
-    <div className="max-w-3xl mx-auto">
-      <Card className="border-2 shadow-lg">
-        <CardHeader className="space-y-3 pb-6">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Sparkles className="w-5 h-5 text-primary" />
-            </div>
-            <CardTitle className="text-2xl">Request New Report</CardTitle>
-          </div>
-          <CardDescription className="text-base">
-            Submit your website or feature URL to get detailed analytics on user journeys and AI agent behavior.
-            We'll analyze the data and send you comprehensive insights.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+  const formContent = (
+    <div className={isModal ? "mt-4" : ""}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* URL Field */}
             <div className="space-y-2">
               <Label htmlFor="url" className="text-sm font-semibold">
@@ -204,35 +200,63 @@ export function NewReportForm() {
               </Button>
             </div>
           </form>
+
+          {/* Info Card */}
+          <Card className="bg-muted/30 border-muted mt-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold">What You'll Get</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-1">
+              <p>• Detailed user journey analysis</p>
+              <p>• AI agent behavior insights</p>
+              <p>• Friction point identification</p>
+              <p>• Actionable recommendations</p>
+            </CardContent>
+          </Card>
+        </div>
+  )
+
+  if (isModal) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <DialogTitle className="text-2xl">Request New Report</DialogTitle>
+            </div>
+            <DialogDescription className="text-base">
+              Submit your website or feature URL to get detailed analytics on user journeys and AI agent behavior.
+              We'll analyze the data and send you comprehensive insights.
+            </DialogDescription>
+          </DialogHeader>
+          {formContent}
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <Card className="border-2 shadow-lg">
+        <CardHeader className="space-y-3 pb-6">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Request New Report</CardTitle>
+          </div>
+          <CardDescription className="text-base">
+            Submit your website or feature URL to get detailed analytics on user journeys and AI agent behavior.
+            We'll analyze the data and send you comprehensive insights.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {formContent}
         </CardContent>
       </Card>
-
-      {/* Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-        <Card className="bg-muted/30 border-muted">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold">What You'll Get</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-1">
-            <p>• Detailed user journey analysis</p>
-            <p>• AI agent behavior insights</p>
-            <p>• Friction point identification</p>
-            <p>• Actionable recommendations</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-muted/30 border-muted">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold">Processing Time</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-1">
-            <p>Reports are typically ready within:</p>
-            <p>• Simple sites: 1-2 hours</p>
-            <p>• Complex features: 2-4 hours</p>
-            <p>• Enterprise apps: 4-8 hours</p>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 }
