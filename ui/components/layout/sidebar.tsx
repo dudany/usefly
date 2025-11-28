@@ -38,7 +38,7 @@ export function Sidebar() {
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
             <Zap className="w-4 h-4 text-primary-foreground" />
           </div>
-          Griplyre.ai
+          Griply
         </Link>
       </div>
 
