@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is **Blast.ai** - an Agentic UX Analytics dashboard built with Next.js 16 (App Router), React 19, TypeScript, and Tailwind CSS 4. The application visualizes how AI agents interact with applications, tracking their behavior, success rates, and failure points. Currently uses mock data for demonstration purposes.
+This is **Griply.ai** - an Agentic UX Analytics dashboard built with Next.js 16 (App Router), React 19, TypeScript, and Tailwind CSS 4. The application visualizes how AI agents interact with applications, tracking their behavior, success rates, and failure points. Currently uses mock data for demonstration purposes.
 
 ## Development Commands
 

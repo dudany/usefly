@@ -4,13 +4,14 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { WebsiteProvider } from "@/components/providers/website-provider"
+import { SegmentsProvider } from "@/components/providers/segments-provider"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Blast.ai - Agentic UX Analytics",
+  title: "Griply.ai - Agentic UX Analytics",
   description: "Visualize how agentic users explore your app. Identify bottlenecks and discover insights.",
   generator: "v0.app",
   icons: {
@@ -47,7 +48,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <WebsiteProvider>
-            {children}
+            <SegmentsProvider>
+              {children}
+            </SegmentsProvider>
           </WebsiteProvider>
         </ThemeProvider>
         <Analytics />

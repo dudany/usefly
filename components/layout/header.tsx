@@ -16,7 +16,7 @@ export function Header() {
           <div className="flex-1">
             <p className="text-sm font-medium text-foreground">Demo Mode Active</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              All data is simulated for demonstration purposes. This showcases how Blast.ai analyzes agentic user
+              All data is simulated for demonstration purposes. This showcases how Griply.ai analyzes agentic user
               behavior across your SaaS or e-commerce app.
             </p>
           </div>

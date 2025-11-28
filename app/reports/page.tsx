@@ -1,5 +1,6 @@
+import { Suspense } from "react"
 import { AppLayout } from "@/components/layout/app-layout"
-import { ReportsDashboard } from "@/components/reports/reports-dashboard"
+import { ReportsDashboard } from "@/components/reports/dashboard"
 
 export default function ReportsPage() {
   return (
@@ -8,10 +9,12 @@ export default function ReportsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Reports</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Compare A/B test results and analyze feature impact on key metrics
+            View and analyze your completed reports
           </p>
         </div>
-        <ReportsDashboard />
+        <Suspense fallback={<div className="text-muted-foreground">Loading...</div>}>
+          <ReportsDashboard />
+        </Suspense>
       </div>
     </AppLayout>
   )
