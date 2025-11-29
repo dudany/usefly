@@ -2,9 +2,23 @@
 
 import { ResponsiveSankey } from "@nivo/sankey"
 import { useSankeyData } from "./use-sankey-data"
+import type { SankeyData } from "@/types/api"
 
-export function JourneySankey() {
-  const sankeyData = useSankeyData()
+interface JourneySankeyProps {
+  data?: SankeyData
+}
+
+export function JourneySankey({ data }: JourneySankeyProps) {
+  // Use provided data or fall back to mock data
+  const sankeyData = data || useSankeyData()
+
+  if (!sankeyData || !sankeyData.nodes || sankeyData.nodes.length === 0) {
+    return (
+      <div className="h-[500px] w-full flex items-center justify-center text-muted-foreground">
+        <p>No journey data available</p>
+      </div>
+    )
+  }
 
   return (
     <div className="h-[500px] w-full">

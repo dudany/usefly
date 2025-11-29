@@ -1,62 +1,109 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from "@/components/ui/card"
-import { MOCK_AGENT_RUNS } from "@/components/agent-runs/mock-data"
-import { MOCK_REPORTS, MOCK_FEATURES, formatReportDate } from "@/components/archived/reports/mock-data"
-import { useWebsite } from "@/components/providers/website-provider"
+import { Loader } from "lucide-react"
+import { reportApi, agentRunApi } from "@/lib/api-client"
+import { Report, AgentRun } from "@/types/api"
 import { useSegments } from "@/components/providers/segments-provider"
 import { SegmentsFilter } from "@/components/filters/segments-filter"
 import { JourneySankey } from "./journey-sankey"
 import { JourneyTable } from "./journey-table"
+import { getPersonaLabel } from "@/components/runs/mock-data"
 
 export function ReportsDashboard() {
-  const { selectedWebsite } = useWebsite()
   const { selectedSegments } = useSegments()
+
+  // State for data fetching
+  const [reports, setReports] = useState<Report[]>([])
+  const [agentRuns, setAgentRuns] = useState<AgentRun[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Filters
   const [selectedReportId, setSelectedReportId] = useState<string>("")
   const [personaFilter, setPersonaFilter] = useState<string>("all")
 
-  // Get unique personas
-  const availablePersonas = useMemo(() => {
-    const personas = new Set(MOCK_AGENT_RUNS.map((run) => run.personaType))
-    return Array.from(personas).sort()
+  // Fetch data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const [reportsData, runsData] = await Promise.all([
+          reportApi.list({ limit: 100 }),
+          agentRunApi.list({ limit: 100 }),
+        ])
+        setReports(reportsData)
+        setAgentRuns(runsData)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch data")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
   }, [])
+
+  // Get unique personas from agent runs
+  const availablePersonas = useMemo(() => {
+    const personas = new Set(agentRuns.map((run) => run.persona_type))
+    return Array.from(personas).sort()
+  }, [agentRuns])
 
   // Filter runs for selected report and additional filters (AND logic)
   const filteredRuns = useMemo(() => {
     if (!selectedReportId) return []
 
-    return MOCK_AGENT_RUNS.filter((run) => {
-      // Website filter
-      if (run.website !== selectedWebsite) return false
+    const selectedReport = reports.find((r) => r.id === selectedReportId)
+    if (!selectedReport) return []
 
-      // Report filter
-      if (run.reportId !== selectedReportId) return false
+    // Get run IDs associated with this report
+    const reportRunIds = new Set(
+      agentRuns
+        .filter((run) => run.config_id === selectedReport.config_id)
+        .map((run) => run.id)
+    )
+
+    return agentRuns.filter((run) => {
+      // Report filter (runs associated with selected report's config)
+      if (!reportRunIds.has(run.id)) return false
 
       // Segment filters - AND logic (must match all selected segments)
       if (selectedSegments.length > 0) {
         for (const segment of selectedSegments) {
-          if (segment.type === "location" && run.location !== segment.value) return false
           if (segment.type === "platform" && run.platform !== segment.value) return false
           if (segment.type === "status" && run.status !== segment.value) return false
         }
       }
 
       // Persona filter
-      if (personaFilter !== "all" && run.personaType !== personaFilter) return false
+      if (personaFilter !== "all" && run.persona_type !== personaFilter) return false
 
       return true
     })
-  }, [selectedReportId, selectedWebsite, selectedSegments, personaFilter])
+  }, [selectedReportId, reports, agentRuns, selectedSegments, personaFilter])
 
-  // Get feature name for selected report
-  const selectedReport = MOCK_REPORTS.find((r) => r.id === selectedReportId)
-  const selectedFeature = selectedReport
-    ? MOCK_FEATURES.find((f) => f.id === selectedReport.featureId)
-    : null
+  // Get selected report
+  const selectedReport = reports.find((r) => r.id === selectedReportId)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader className="w-6 h-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Loading reports...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <p className="text-red-800 dark:text-red-200">Error: {error}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -72,14 +119,11 @@ export function ReportsDashboard() {
                 <SelectValue placeholder="Select a report" />
               </SelectTrigger>
               <SelectContent>
-                {MOCK_REPORTS.map((report) => {
-                  const feature = MOCK_FEATURES.find((f) => f.id === report.featureId)
-                  return (
-                    <SelectItem key={report.id} value={report.id}>
-                      {feature?.name} - {formatReportDate(report.createdAt)}
-                    </SelectItem>
-                  )
-                })}
+                {reports.map((report) => (
+                  <SelectItem key={report.id} value={report.id}>
+                    {report.name} - {new Date(report.created_at).toLocaleDateString()}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -98,7 +142,7 @@ export function ReportsDashboard() {
                 <SelectItem value="all">All Personas</SelectItem>
                 {availablePersonas.map((persona) => (
                   <SelectItem key={persona} value={persona}>
-                    {persona.split("-").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}
+                    {getPersonaLabel(persona)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -118,11 +162,11 @@ export function ReportsDashboard() {
       ) : (
         <>
           {/* Report Header */}
-          {selectedFeature && selectedReport && (
+          {selectedReport && (
             <div className="mb-4">
-              <h2 className="text-2xl font-bold text-foreground">{selectedFeature.name}</h2>
+              <h2 className="text-2xl font-bold text-foreground">{selectedReport.name}</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Report from {formatReportDate(selectedReport.createdAt)} • {filteredRuns.length} runs
+                Report from {new Date(selectedReport.created_at).toLocaleDateString()} • {filteredRuns.length} runs
               </p>
             </div>
           )}
@@ -130,7 +174,7 @@ export function ReportsDashboard() {
           {/* Journey Sankey Diagram */}
           <Card className="p-6">
             <h3 className="text-lg font-semibold text-foreground mb-4">Journey Flow</h3>
-            <JourneySankey />
+            <JourneySankey data={selectedReport?.journey_sankey} />
           </Card>
 
           {/* Journey Table */}
@@ -138,7 +182,7 @@ export function ReportsDashboard() {
             <h3 className="text-lg font-semibold text-foreground mb-4">Journey Metrics</h3>
             <JourneyTable
               runs={filteredRuns}
-              groupByLocation={!selectedSegments.some((s) => s.type === "location")}
+              groupByPlatform={!selectedSegments.some((s) => s.type === "platform")}
               groupByPersona={personaFilter === "all"}
             />
           </Card>

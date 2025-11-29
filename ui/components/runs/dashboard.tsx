@@ -3,38 +3,66 @@
 import { useState, useMemo, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Loader } from "lucide-react"
 import { RunTable } from "./run-table"
-import { MOCK_AGENT_RUNS, getPersonaLabel } from "./mock-data"
-import { MOCK_FEATURES, MOCK_REPORTS, METRIC_CATEGORIES, getReportsByFeature, formatReportDate } from "@/components/archived/reports/mock-data"
-import { useWebsite } from "@/components/providers/website-provider"
+import { agentRunApi, reportApi, configApi } from "@/lib/api-client"
+import { TestConfig, AgentRun, Report } from "@/types/api"
+import { getPersonaLabel } from "./mock-data"
+
+const METRIC_CATEGORIES = ["Conversion", "Friction", "Activation", "Engagement"]
+const PERSONAS = ["new-shopper", "returning-user", "admin-user", "premium-user", "guest"]
 
 export function AgentRunsDashboard() {
   const searchParams = useSearchParams()
-  const { selectedWebsite } = useWebsite()
+
+  // State for data fetching
+  const [configs, setConfigs] = useState<TestConfig[]>([])
+  const [agentRuns, setAgentRuns] = useState<AgentRun[]>([])
+  const [reports, setReports] = useState<Report[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Initialize filters from URL query parameters or defaults
-  const [featureFilter, setFeatureFilter] = useState<string>("all")
+  const [configFilter, setConfigFilter] = useState<string>("all")
   const [reportFilter, setReportFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
-  const [variantFilter, setVariantFilter] = useState<string>("all")
   const [personaFilter, setPersonaFilter] = useState<string>("all")
+
+  // Fetch data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const [configsData, runsData, reportsData] = await Promise.all([
+          configApi.list(),
+          agentRunApi.list({ limit: 100 }),
+          reportApi.list({ limit: 100 }),
+        ])
+        setConfigs(configsData)
+        setAgentRuns(runsData)
+        setReports(reportsData)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch data")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   // Apply URL query parameters on mount
   useEffect(() => {
     const reportId = searchParams.get("reportId")
-    const variant = searchParams.get("variant")
     const persona = searchParams.get("persona")
     const category = searchParams.get("category")
 
     if (reportId) {
-      const report = MOCK_REPORTS.find((r) => r.id === reportId)
+      const report = reports.find((r) => r.id === reportId)
       if (report) {
-        setFeatureFilter(report.featureId)
+        setConfigFilter(report.config_id)
         setReportFilter(reportId)
       }
-    }
-    if (variant) {
-      setVariantFilter(variant)
     }
     if (persona) {
       setPersonaFilter(persona)
@@ -42,21 +70,21 @@ export function AgentRunsDashboard() {
     if (category) {
       setCategoryFilter(category)
     }
-  }, [searchParams])
+  }, [searchParams, reports])
 
-  // Get available reports for selected feature
+  // Get available reports for selected config
   const availableReports = useMemo(() => {
-    if (featureFilter === "all") return MOCK_REPORTS
-    return getReportsByFeature(featureFilter)
-  }, [featureFilter])
+    if (configFilter === "all") return reports
+    return reports.filter((r) => r.config_id === configFilter)
+  }, [configFilter, reports])
 
-  // Update report filter when feature changes
-  const handleFeatureChange = (featureId: string) => {
-    setFeatureFilter(featureId)
-    if (featureId !== "all") {
-      const reports = getReportsByFeature(featureId)
-      if (reports.length > 0) {
-        setReportFilter(reports[0].id)
+  // Update report filter when config changes
+  const handleConfigChange = (configId: string) => {
+    setConfigFilter(configId)
+    if (configId !== "all") {
+      const configReports = reports.filter((r) => r.config_id === configId)
+      if (configReports.length > 0) {
+        setReportFilter(configReports[0].id)
       }
     } else {
       setReportFilter("all")
@@ -65,28 +93,33 @@ export function AgentRunsDashboard() {
 
   // Filter runs based on all criteria
   const filteredRuns = useMemo(() => {
-    return MOCK_AGENT_RUNS.filter((run) => {
-      // Website filter
-      if (run.website !== selectedWebsite) return false
-
-      // Feature filter (via reportId)
-      if (featureFilter !== "all") {
-        const report = MOCK_REPORTS.find((r) => r.id === run.reportId)
-        if (!report || report.featureId !== featureFilter) return false
-      }
-
-      // Report filter
-      if (reportFilter !== "all" && run.reportId !== reportFilter) return false
-
-      // Variant filter
-      if (variantFilter !== "all" && run.variant !== variantFilter) return false
+    return agentRuns.filter((run) => {
+      // Config filter
+      if (configFilter !== "all" && run.config_id !== configFilter) return false
 
       // Persona filter
-      if (personaFilter !== "all" && run.personaType !== personaFilter) return false
+      if (personaFilter !== "all" && run.persona_type !== personaFilter) return false
 
       return true
     })
-  }, [selectedWebsite, featureFilter, reportFilter, variantFilter, personaFilter])
+  }, [configFilter, personaFilter, agentRuns])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader className="w-6 h-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Loading agent runs...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <p className="text-red-800 dark:text-red-200">Error: {error}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -94,16 +127,16 @@ export function AgentRunsDashboard() {
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Feature</label>
-            <Select value={featureFilter} onValueChange={handleFeatureChange}>
+            <label className="text-sm font-medium text-foreground mb-2 block">Test Config</label>
+            <Select value={configFilter} onValueChange={handleConfigChange}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select feature" />
+                <SelectValue placeholder="Select config" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Features</SelectItem>
-                {MOCK_FEATURES.map((feature) => (
-                  <SelectItem key={feature.id} value={feature.id}>
-                    {feature.name}
+                <SelectItem value="all">All Configs</SelectItem>
+                {configs.map((config) => (
+                  <SelectItem key={config.id} value={config.id}>
+                    {config.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -111,16 +144,16 @@ export function AgentRunsDashboard() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Report Date</label>
+            <label className="text-sm font-medium text-foreground mb-2 block">Report</label>
             <Select value={reportFilter} onValueChange={setReportFilter}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select report date" />
+                <SelectValue placeholder="Select report" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Reports</SelectItem>
                 {availableReports.map((report) => (
                   <SelectItem key={report.id} value={report.id}>
-                    {formatReportDate(report.createdAt)}
+                    {report.name} ({new Date(report.created_at).toLocaleDateString()})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -145,47 +178,37 @@ export function AgentRunsDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Variant</label>
-            <Select value={variantFilter} onValueChange={setVariantFilter}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select variant" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Variants</SelectItem>
-                <SelectItem value="baseline">Baseline</SelectItem>
-                <SelectItem value="test">Test</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Persona</label>
-            <Select value={personaFilter} onValueChange={setPersonaFilter}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Filter by persona" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Personas</SelectItem>
-                <SelectItem value="new-shopper">{getPersonaLabel("new-shopper")}</SelectItem>
-                <SelectItem value="returning-user">{getPersonaLabel("returning-user")}</SelectItem>
-                <SelectItem value="admin-user">{getPersonaLabel("admin-user")}</SelectItem>
-                <SelectItem value="premium-user">{getPersonaLabel("premium-user")}</SelectItem>
-                <SelectItem value="guest">{getPersonaLabel("guest")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div>
+          <label className="text-sm font-medium text-foreground mb-2 block">Persona</label>
+          <Select value={personaFilter} onValueChange={setPersonaFilter}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Filter by persona" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Personas</SelectItem>
+              {PERSONAS.map((persona) => (
+                <SelectItem key={persona} value={persona}>
+                  {getPersonaLabel(persona)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       {/* Results */}
       <div className="text-sm text-muted-foreground">
-        Showing {filteredRuns.length} of {MOCK_AGENT_RUNS.length} runs
+        Showing {filteredRuns.length} of {agentRuns.length} runs
       </div>
 
       {/* Table */}
-      <RunTable runs={filteredRuns} />
+      {filteredRuns.length > 0 ? (
+        <RunTable runs={filteredRuns} />
+      ) : (
+        <div className="text-center py-8 text-muted-foreground">
+          No agent runs found. Try adjusting your filters.
+        </div>
+      )}
     </div>
   )
 }

@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { Sparkles, X } from "lucide-react"
+import { configApi } from "@/lib/api-client"
 
 const formSchema = z.object({
   url: z.string().url({ message: "Please enter a valid URL" }),
@@ -69,11 +70,19 @@ export function NewReportForm({ open, onOpenChange }: NewReportFormProps = {}) {
     setIsSubmitting(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      // Extract a test name from the URL
+      const urlObj = new URL(data.url)
+      const testName = `Test - ${urlObj.hostname || data.url}`
 
-      toast.success("Report request submitted successfully!", {
-        description: "We'll send the analysis to your email once it's ready.",
+      // Create test config on the backend
+      const config = await configApi.create({
+        name: testName,
+        website_url: data.url,
+        personas: ["default"],
+      })
+
+      toast.success("Test configuration created successfully!", {
+        description: `Test "${config.name}" is ready for analysis.`,
       })
 
       // Reset form and close modal if in modal mode
@@ -83,7 +92,8 @@ export function NewReportForm({ open, onOpenChange }: NewReportFormProps = {}) {
         onOpenChange(false)
       }
     } catch (error) {
-      toast.error("Failed to submit report request. Please try again.")
+      const errorMessage = error instanceof Error ? error.message : "Failed to submit report request"
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }

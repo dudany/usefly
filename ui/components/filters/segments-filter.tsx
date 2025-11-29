@@ -7,8 +7,25 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Check, ChevronsUpDown, X } from "lucide-react"
-import { MOCK_AGENT_RUNS } from "@/components/agent-runs/mock-data"
 import { useSegments, type SegmentOption } from "@/components/providers/segments-provider"
+
+// Predefined segment options
+const AVAILABLE_SEGMENT_OPTIONS: SegmentOption[] = [
+  // Locations
+  { type: "location", value: "US", label: "US" },
+  { type: "location", value: "UK", label: "UK" },
+  { type: "location", value: "CA", label: "CA" },
+  { type: "location", value: "DE", label: "DE" },
+  { type: "location", value: "FR", label: "FR" },
+  // Platforms
+  { type: "platform", value: "web", label: "Web" },
+  { type: "platform", value: "mobile", label: "Mobile" },
+  // Statuses
+  { type: "status", value: "success", label: "Success" },
+  { type: "status", value: "error", label: "Error" },
+  { type: "status", value: "anomaly", label: "Anomaly" },
+  { type: "status", value: "in-progress", label: "In Progress" },
+]
 
 export function SegmentsFilter() {
   const {
@@ -21,43 +38,6 @@ export function SegmentsFilter() {
 
   const [segmentPopoverOpen, setSegmentPopoverOpen] = useState(false)
 
-  // Get all available segment options
-  const availableSegmentOptions = useMemo(() => {
-    const options: SegmentOption[] = []
-
-    // Location options
-    const locations = new Set(MOCK_AGENT_RUNS.map((run) => run.location))
-    Array.from(locations).sort().forEach((loc) => {
-      options.push({
-        type: "location",
-        value: loc,
-        label: loc.charAt(0).toUpperCase() + loc.slice(1)
-      })
-    })
-
-    // Platform options
-    const platforms = new Set(MOCK_AGENT_RUNS.map((run) => run.platform))
-    Array.from(platforms).sort().forEach((plat) => {
-      options.push({
-        type: "platform",
-        value: plat,
-        label: plat.charAt(0).toUpperCase() + plat.slice(1)
-      })
-    })
-
-    // Status options
-    const statuses = new Set(MOCK_AGENT_RUNS.map((run) => run.status))
-    Array.from(statuses).sort().forEach((stat) => {
-      options.push({
-        type: "status",
-        value: stat,
-        label: stat.charAt(0).toUpperCase() + stat.slice(1)
-      })
-    })
-
-    return options
-  }, [])
-
   // Group options by type for display
   const groupedOptions = useMemo(() => {
     const groups: Record<string, SegmentOption[]> = {
@@ -66,12 +46,12 @@ export function SegmentsFilter() {
       status: []
     }
 
-    availableSegmentOptions.forEach((option) => {
+    AVAILABLE_SEGMENT_OPTIONS.forEach((option) => {
       groups[option.type].push(option)
     })
 
     return groups
-  }, [availableSegmentOptions])
+  }, [])
 
   return (
     <div>

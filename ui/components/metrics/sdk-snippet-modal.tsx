@@ -26,15 +26,15 @@ export function SdkSnippetModal({ open, onOpenChange, selectedChartIds }: SdkSni
     return `<!-- Add this snippet to your HTML -->
 <script>
   (function() {
-    window.griply = window.griply || [];
-    griply.push(['init', {
+    window.usefly = window.usefly || [];
+    usefly.push(['init', {
       apiKey: 'YOUR_API_KEY',
       trackPageViews: true,
       metrics: ${JSON.stringify(selectedChartIds, null, 6)}
     }]);
 
     var script = document.createElement('script');
-    script.src = 'https://cdn.griply.ai/v1/griply.js';
+    script.src = 'https://cdn.usefly.ai/v1/usefly.js';
     script.async = true;
     document.head.appendChild(script);
   })();

@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, AlertCircle } from "lucide-react"
-import type { AgentRun } from "./mock-data"
+import type { AgentRun } from "@/types/api"
 import { getPersonaLabel } from "./mock-data"
 
 const mockSteps = [
@@ -44,7 +44,7 @@ export function RunDetailsModal({ run, onClose }: RunDetailsModalProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Persona</p>
-                <p className="font-medium">{getPersonaLabel(run.persona)}</p>
+                <p className="font-medium">{getPersonaLabel(run.persona_type)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Status</p>
@@ -73,13 +73,13 @@ export function RunDetailsModal({ run, onClose }: RunDetailsModalProps) {
           </Card>
 
           {/* Error Info */}
-          {run.errorType && (
+          {run.status === "error" && (
             <Card className="p-4 bg-red-500/10 border-red-500/20">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-red-500">Error Encountered</p>
-                  <p className="text-sm text-foreground/80 mt-1">{run.errorType}</p>
+                  <p className="text-sm text-foreground/80 mt-1">The agent encountered an error during execution</p>
                 </div>
               </div>
             </Card>

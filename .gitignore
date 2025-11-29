@@ -39,6 +39,6 @@ env/
 # IDE
 .vscode/
 .idea/
-griply/data/*
-griply/static/
+usefly/data/*
+usefly/static/
 *.gif*

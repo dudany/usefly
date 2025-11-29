@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is **Griply** - an Agentic UX Analytics tool built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, and Python (FastAPI). The application visualizes how AI agents interact with applications, tracking their behavior, success rates, and failure points.
+This is **Usefly** - an Agentic UX Analytics tool built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, and Python (FastAPI). The application visualizes how AI agents interact with applications, tracking their behavior, success rates, and failure points.
 
 The project consists of:
 - **UI** (ui/): Next.js 16 frontend with static export
-- **Backend** (griply/): Python package with FastAPI server and browser automation agents
+- **Backend** (usefly/): Python package with FastAPI server and browser automation agents
 - **CLI**: Command-line interface for easy installation and deployment
 
 Currently uses mock data for demonstration purposes - real agent integration coming soon.
@@ -20,11 +20,11 @@ Currently uses mock data for demonstration purposes - real agent integration com
 ```bash
 # Build and run (production mode)
 ./scripts/build.sh          # Build UI and prepare static files
-python -m griply.cli        # Start Griply server
+python -m usefly.cli        # Start Usefly server
 
 # Or install as package
 pip install -e .
-griply                      # Run the CLI
+usefly                      # Run the CLI
 ```
 
 ### Development Mode
@@ -35,7 +35,7 @@ cd ui
 pnpm dev                    # Start at localhost:3000
 
 # Backend Development (FastAPI with reload)
-python -m uvicorn griply.server:app --reload --port 8080
+python -m uvicorn usefly.server:app --reload --port 8080
 
 # Or use the dev script (macOS only)
 ./scripts/dev.sh            # Opens both servers in new terminals
@@ -47,7 +47,7 @@ python -m uvicorn griply.server:app --reload --port 8080
 # Build UI only
 cd ui
 pnpm install
-pnpm build                  # Outputs to griply/static/
+pnpm build                  # Outputs to usefly/static/
 
 # Build Python package
 pip install -e .            # Install in editable mode
@@ -76,7 +76,7 @@ pip install -e .            # Install in editable mode
 ### Project Structure
 
 ```
-griply/                      # Root directory
+usefly/                      # Root directory
 ├── ui/                      # Next.js frontend
 │   ├── app/
 │   │   ├── agent-runs/      # Agent runs table view
@@ -102,7 +102,7 @@ griply/                      # Root directory
 │   ├── package.json         # Node.js dependencies
 │   ├── next.config.mjs      # Next.js config (static export)
 │   └── tsconfig.json        # TypeScript config
-├── griply/                  # Python package
+├── usefly/                  # Python package
 │   ├── __init__.py          # Package version
 │   ├── cli.py               # CLI entry point
 │   ├── server.py            # FastAPI server
@@ -148,7 +148,7 @@ griply/                      # Root directory
    - `@/` → `./*` (ui/ root)
 
 5. **Deployment**:
-   - Next.js static export outputs to `griply/static/`
+   - Next.js static export outputs to `usefly/static/`
    - FastAPI serves static files and provides API endpoints
    - CLI wraps FastAPI server with user-friendly interface
    - Package can be installed via pip for easy distribution
@@ -202,7 +202,7 @@ griply/                      # Root directory
 
 ### Python Agent System
 
-The `griply/` directory contains Python code for browser automation:
+The `usefly/` directory contains Python code for browser automation:
 
 - **crawler_agent.py**: Website structure crawler using browser-use
 - **task_generator_agent.py**: Generates realistic user journey tasks
@@ -220,4 +220,4 @@ Agent sessions save structured data:
 - **TypeScript**: Strict mode enabled
 - **Static export**: Next.js configured for static HTML export
 - **Package structure**: Can be installed via `pip install -e .` for development
-- **CLI**: Run with `griply` command after installation
+- **CLI**: Run with `usefly` command after installation

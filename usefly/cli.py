@@ -1,12 +1,12 @@
 """
-Griply CLI
+Usefly CLI
 
-Command-line interface for Griply - Agentic UX Analytics.
+Command-line interface for Usefly - Agentic UX Analytics.
 
 Usage:
-    griply <url> [options]
-    griply --version
-    griply --help
+    usefly <url> [options]
+    usefly --version
+    usefly --help
 """
 
 import click
@@ -21,22 +21,22 @@ from . import __version__
 @click.option('--port', default=8080, help='Port to run server on (default: 8080)')
 @click.option('--no-browser', is_flag=True, help="Don't open browser automatically")
 @click.option('--host', default='0.0.0.0', help='Host to bind to (default: 0.0.0.0)')
-@click.version_option(version=__version__, prog_name='griply')
+@click.version_option(version=__version__, prog_name='usefly')
 def main(url, port, no_browser, host):
     """
-    Griply - Agentic UX Analytics
+    Usefly - Agentic UX Analytics
 
     Test your app with AI agents and visualize how they interact with your application.
 
     Examples:
-        griply                              # Start Griply on default port 8080
-        griply https://localhost:3000       # Pre-fill URL in the interface
-        griply --port 3000                  # Start on custom port
-        griply --no-browser                 # Don't open browser automatically
+        usefly                              # Start Usefly on default port 8080
+        usefly https://localhost:3000       # Pre-fill URL in the interface
+        usefly --port 3000                  # Start on custom port
+        usefly --no-browser                 # Don't open browser automatically
     """
 
     # Display startup message
-    click.echo(f"🚀 Starting Griply v{__version__}")
+    click.echo(f"🚀 Starting Usefly v{__version__}")
     click.echo(f"📍 Server running at http://localhost:{port}")
 
     if url:
@@ -67,14 +67,14 @@ def main(url, port, no_browser, host):
     # Start FastAPI server
     try:
         uvicorn.run(
-            "griply.server:app",
+            "usefly.server:app",
             host=host,
             port=port,
             reload=False,
             log_level="info"
         )
     except KeyboardInterrupt:
-        click.echo("\n\n👋 Griply stopped. Goodbye!")
+        click.echo("\n\n👋 Usefly stopped. Goodbye!")
 
 
 if __name__ == '__main__':

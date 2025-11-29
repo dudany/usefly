@@ -1,5 +1,5 @@
 """
-Griply FastAPI Server
+Usefly FastAPI Server
 
 Serves the static Next.js export and provides API endpoints for agent runs and reports.
 """
@@ -8,19 +8,38 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 
-app = FastAPI(title="Griply", description="Agentic UX Analytics")
+from usefly.database import init_db
+from usefly.routes import router as api_router
+
+# Initialize database
+init_db()
+
+app = FastAPI(title="Usefly", description="Agentic UX Analytics")
+
+# Add CORS middleware for frontend requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Get the static directory path
 static_dir = Path(__file__).parent / "static"
 
+# Include API routes
+app.include_router(api_router)
 
-# API Routes (placeholder - to be implemented later)
+
+# API Routes
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "ok", "service": "griply"}
+    return {"status": "ok", "service": "usefly"}
 
 
 # Serve static files
@@ -41,6 +60,10 @@ if static_dir.exists():
         - Next.js pages (e.g., /reports, /agent-runs)
         - Assets from public directory
         """
+        # Don't handle _next paths - those are handled by the StaticFiles mount
+        if full_path.startswith("_next"):
+            raise HTTPException(status_code=404, detail="File not found")
+
         # Handle root path
         if not full_path or full_path == "/":
             index_path = static_dir / "index.html"
@@ -79,12 +102,12 @@ else:
         return HTMLResponse(
             content="""
             <html>
-                <head><title>Griply - Build Required</title></head>
+                <head><title>Usefly - Build Required</title></head>
                 <body style="font-family: sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto;">
                     <h1>⚠️ Build Required</h1>
                     <p>The UI has not been built yet. Please run:</p>
                     <pre style="background: #f5f5f5; padding: 1rem; border-radius: 4px;">cd ui && pnpm install && pnpm build</pre>
-                    <p>This will generate the static files in <code>griply/static/</code></p>
+                    <p>This will generate the static files in <code>usefly/static/</code></p>
                 </body>
             </html>
             """,

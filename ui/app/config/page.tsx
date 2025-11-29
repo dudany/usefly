@@ -4,7 +4,7 @@ import { NewReportForm } from "@/components/reports/new-report-form"
 import { Card, CardContent } from "@/components/ui/card"
 import { Zap, Target, LineChart } from "lucide-react"
 
-export default function NewReportPage() {
+export default function ConfigPage() {
   return (
     <AppLayout>
       <div className="p-6">

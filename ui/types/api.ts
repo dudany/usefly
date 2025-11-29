@@ -1,0 +1,174 @@
+/**
+ * TypeScript types for Usefly API responses
+ * These mirror the Python Pydantic models for type safety
+ */
+
+/**
+ * Test Configuration
+ * Defines test setup and personas
+ */
+export interface TestConfig {
+  id: string;
+  name: string;
+  website_url: string;
+  personas: string[];
+  created_at: string; // ISO datetime
+  updated_at: string; // ISO datetime
+}
+
+export interface CreateTestConfigRequest {
+  name: string;
+  website_url: string;
+  personas?: string[];
+}
+
+/**
+ * Friction Point
+ * Represents a point where the user encountered friction
+ */
+export interface FrictionPoint {
+  step: string;
+  type: string;
+  duration: number;
+}
+
+/**
+ * Metrics Data
+ * Contains performance metrics for an agent run
+ */
+export interface MetricsData {
+  time_to_value?: {
+    minutes: number;
+    steps: number;
+  };
+  onboarding?: {
+    completed: boolean;
+  };
+  feature_adoption?: {
+    adopted: boolean;
+  };
+}
+
+/**
+ * Agent Run
+ * Represents a single agent execution
+ */
+export interface AgentRun {
+  id: string;
+  config_id: string;
+  report_id?: string;
+  persona_type: string;
+  status: "success" | "error" | "anomaly" | "in-progress";
+  timestamp: string; // ISO datetime
+  duration?: number; // seconds
+  platform: string;
+  location?: string; // Geographic location (US, UK, CA, etc.)
+  error_type?: string; // Error type for failed runs
+  steps_completed: number;
+  total_steps: number;
+  journey_path: string[];
+  goals_achieved: string[];
+  friction_points: FrictionPoint[];
+  metrics: MetricsData;
+  created_at: string; // ISO datetime
+  updated_at: string; // ISO datetime
+}
+
+export interface CreateAgentRunRequest {
+  config_id: string;
+  report_id?: string;
+  persona_type: string;
+  status: string;
+  timestamp: string;
+  duration?: number;
+  platform?: string;
+  location?: string;
+  error_type?: string;
+  steps_completed?: number;
+  total_steps?: number;
+  journey_path?: string[];
+  goals_achieved?: string[];
+  friction_points?: FrictionPoint[];
+  metrics?: MetricsData;
+}
+
+/**
+ * Sankey Node
+ * Represents a page in the journey
+ */
+export interface SankeyNode {
+  name: string;
+  visits: number;
+  errors: number;
+}
+
+/**
+ * Sankey Link
+ * Represents a transition between pages
+ */
+export interface SankeyLink {
+  source: number;
+  target: number;
+  value: number;
+}
+
+/**
+ * Sankey Data
+ * Complete sankey diagram data for journey visualization
+ */
+export interface SankeyData {
+  nodes: SankeyNode[];
+  links: SankeyLink[];
+}
+
+/**
+ * Metrics Summary
+ * Aggregated metrics across multiple agent runs
+ */
+export interface MetricsSummary {
+  total_runs: number;
+  success_count: number;
+  error_count: number;
+  anomaly_count: number;
+  success_rate: number;
+  avg_duration: number;
+  avg_completion: number;
+}
+
+/**
+ * Report
+ * Aggregated results from multiple agent runs
+ */
+export interface Report {
+  id: string;
+  config_id: string;
+  name: string;
+  description?: string;
+  is_baseline: boolean;
+  metrics_summary: MetricsSummary;
+  journey_sankey: SankeyData;
+  created_at: string; // ISO datetime
+  updated_at: string; // ISO datetime
+}
+
+export interface CreateReportRequest {
+  config_id: string;
+  name: string;
+  description?: string;
+  is_baseline?: boolean;
+}
+
+/**
+ * API Response Types
+ */
+export interface ApiResponse<T> {
+  data: T;
+  error?: string;
+}
+
+export interface ApiListResponse<T> {
+  items: T[];
+  total: number;
+  offset: number;
+  limit: number;
+}

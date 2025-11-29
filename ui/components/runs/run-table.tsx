@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { RunDetailsModal } from "./run-details-modal"
-import type { AgentRun } from "./mock-data"
+import type { AgentRun } from "@/types/api"
 import { getPersonaLabel } from "./mock-data"
 
 interface RunTableProps {
@@ -70,7 +70,6 @@ export function RunTable({ runs }: RunTableProps) {
             <thead>
               <tr className="border-b border-border bg-card/50">
                 <th className="px-6 py-4 text-left font-medium text-muted-foreground">Persona</th>
-                <th className="px-6 py-4 text-left font-medium text-muted-foreground">Variant</th>
                 <th className="px-6 py-4 text-left font-medium text-muted-foreground">Platform</th>
                 <th className="px-6 py-4 text-left font-medium text-muted-foreground">Status</th>
                 <th className="px-6 py-4 text-left font-medium text-muted-foreground">Progress</th>
@@ -86,12 +85,7 @@ export function RunTable({ runs }: RunTableProps) {
                   className="hover:bg-muted/50 transition-colors cursor-pointer"
                   onClick={() => setSelectedRun(run)}
                 >
-                  <td className="px-6 py-4 font-medium">{getPersonaLabel(run.persona)}</td>
-                  <td className="px-6 py-4">
-                    <Badge variant={run.variant === "test" ? "default" : "outline"} className="capitalize">
-                      {run.variant || "N/A"}
-                    </Badge>
-                  </td>
+                  <td className="px-6 py-4 font-medium">{getPersonaLabel(run.persona_type)}</td>
                   <td className="px-6 py-4">
                     <Badge variant="outline" className="capitalize">
                       {run.platform}
@@ -108,11 +102,11 @@ export function RunTable({ runs }: RunTableProps) {
                       <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full transition-all"
-                          style={{ width: `${(run.stepsCompleted / run.totalSteps) * 100}%` }}
+                          style={{ width: `${run.total_steps > 0 ? (run.steps_completed / run.total_steps) * 100 : 0}%` }}
                         ></div>
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {run.stepsCompleted}/{run.totalSteps}
+                        {run.steps_completed}/{run.total_steps}
                       </span>
                     </div>
                   </td>

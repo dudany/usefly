@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',           // Enable static export
-  distDir: '../griply/static', // Output to griply/static/
+  distDir: '../usefly/static', // Output to usefly/static/
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -9,6 +9,7 @@ const nextConfig = {
     unoptimized: true,        // Required for static export
   },
   trailingSlash: true,        // Better for static hosting
+  reactStrictMode: false,
 }
 
 export default nextConfig

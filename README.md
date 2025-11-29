@@ -1,4 +1,4 @@
-# Griply
+# Usefly
 
 Agentic UX Analytics - Test your app with AI agents and visualize how they interact with your application.
 
@@ -20,7 +20,7 @@ cd ..
 pip install -e .
 
 # 3. Run
-python -m uvicorn griply.server:app --port 8080
+python -m uvicorn usefly.server:app --port 8080
 ```
 
 Visit http://localhost:8080
@@ -32,7 +32,7 @@ Visit http://localhost:8080
 cd ui && pnpm dev
 
 # Python server
-python -m uvicorn griply.server:app --reload --port 8080
+python -m uvicorn usefly.server:app --reload --port 8080
 ```
 
 ## License

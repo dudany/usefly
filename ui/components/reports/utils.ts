@@ -1,8 +1,8 @@
-import type { AgentRun } from "@/components/agent-runs/mock-data"
+import type { AgentRun } from "@/types/api"
 
 export interface JourneyAggregation {
   segment: string
-  location?: string
+  platform?: string
   persona?: string
   totalRuns: number
   goalsAchievedPercent: number
@@ -11,11 +11,11 @@ export interface JourneyAggregation {
 }
 
 /**
- * Aggregate runs by segment (location and/or persona) for journey table
+ * Aggregate runs by segment (platform and/or persona) for journey table
  */
 export function aggregateBySegment(
   runs: AgentRun[],
-  groupByLocation: boolean,
+  groupByPlatform: boolean,
   groupByPersona: boolean
 ): JourneyAggregation[] {
   if (runs.length === 0) {
@@ -27,19 +27,19 @@ export function aggregateBySegment(
 
   runs.forEach((run) => {
     let key = ""
-    let location: string | undefined
+    let platform: string | undefined
     let persona: string | undefined
 
-    if (groupByLocation && groupByPersona) {
-      key = `${run.location}-${run.personaType}`
-      location = run.location
-      persona = run.personaType
-    } else if (groupByLocation) {
-      key = run.location
-      location = run.location
+    if (groupByPlatform && groupByPersona) {
+      key = `${run.platform}-${run.persona_type}`
+      platform = run.platform
+      persona = run.persona_type
+    } else if (groupByPlatform) {
+      key = run.platform
+      platform = run.platform
     } else if (groupByPersona) {
-      key = run.personaType
-      persona = run.personaType
+      key = run.persona_type
+      persona = run.persona_type
     } else {
       // No grouping, treat all as one segment
       key = "all"
@@ -57,7 +57,7 @@ export function aggregateBySegment(
 
     // Calculate goals achieved percentage
     // A run achieves goals if it has at least one goal achieved
-    const runsWithGoals = segmentRuns.filter((r) => r.goalsAchieved.length > 0).length
+    const runsWithGoals = segmentRuns.filter((r) => r.goals_achieved.length > 0).length
     const goalsAchievedPercent = (runsWithGoals / totalRuns) * 100
 
     // Calculate errors percentage
@@ -65,18 +65,18 @@ export function aggregateBySegment(
     const errorsPercent = (runsWithErrors / totalRuns) * 100
 
     // Calculate friction percentage
-    const runsWithFriction = segmentRuns.filter((r) => r.frictionPoints.length > 0).length
+    const runsWithFriction = segmentRuns.filter((r) => r.friction_points.length > 0).length
     const frictionPercent = (runsWithFriction / totalRuns) * 100
 
     // Build segment label
     let segment = ""
-    const location = groupByLocation ? segmentRuns[0].location : undefined
-    const persona = groupByPersona ? segmentRuns[0].personaType : undefined
+    const platform = groupByPlatform ? segmentRuns[0].platform : undefined
+    const persona = groupByPersona ? segmentRuns[0].persona_type : undefined
 
-    if (location && persona) {
-      segment = `${location} - ${formatPersona(persona)}`
-    } else if (location) {
-      segment = location
+    if (platform && persona) {
+      segment = `${platform} - ${formatPersona(persona)}`
+    } else if (platform) {
+      segment = platform
     } else if (persona) {
       segment = formatPersona(persona)
     } else {
@@ -85,7 +85,7 @@ export function aggregateBySegment(
 
     return {
       segment,
-      location,
+      platform,
       persona,
       totalRuns,
       goalsAchievedPercent: Number(goalsAchievedPercent.toFixed(1)),

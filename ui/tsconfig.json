@@ -34,8 +34,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "../griply/static/types/**/*.ts",
-    "../griply/static/dev/types/**/*.ts"
+    "../usefly/static/types/**/*.ts",
+    "../usefly/static/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

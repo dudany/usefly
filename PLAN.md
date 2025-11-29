@@ -1,10 +1,10 @@
-# Griply MVP Development Plan
+# Usefly MVP Development Plan
 
 ## Project Rules
 - No .md files except README.md and this PLAN.md
 - Keep code concise, no excessive comments
 - No demo/mock data messaging in UI
-- Single entry point: `griply <url>` CLI command
+- Single entry point: `usefly <url>` CLI command
 - All API endpoints prefixed with `/api/`
 - Use existing shadcn/ui components, don't add new ones unless necessary
 
@@ -13,22 +13,22 @@
 ## Phase 1: Project Restructure & Rename
 
 ### 1.1 Rename & Cleanup
-- [x] Rename project from `blast-ai-demo` to `griply`
-- [x] Update `package.json` name to `griply-ui`
-- [x] Update all "Blast" / "Griply.ai" references in UI to "Griply"
+- [x] Rename project from `blast-ai-demo` to `usefly`
+- [x] Update `package.json` name to `usefly-ui`
+- [x] Update all "Blast" / "Usefly" references in UI to "Usefly"
 - [x] Update `CLAUDE.md` with new project name and structure
-- [ ] Remove archived components (`components/archived/`)
+- [x] Remove archived components (`components/archived/`)
 - [ ] Remove unused mock data files after API integration
 
 ### 1.2 New Project Structure
 ```
-griply/
+usefly/
 ├── ui/                     # React frontend
 │   ├── app/
 │   ├── components/
 │   ├── package.json
 │   └── ...
-├── griply/                  # Python package
+├── usefly/                  # Python package
 │   ├── __init__.py
 │   ├── cli.py              # CLI entry point
 │   ├── server.py           # FastAPI server
@@ -48,8 +48,8 @@ griply/
 ```
 
 - [x] Create new directory structure
-- [x] Move `browsing_agent/` → `griply/`
-- [x] Move `browsing_agent/prompts/` → `griply/prompts/`
+- [x] Move `browsing_agent/` → `usefly/`
+- [x] Move `browsing_agent/prompts/` → `usefly/prompts/`
 - [x] Move React app to `ui/` subdirectory
 - [x] Update import paths
 
@@ -128,7 +128,7 @@ Individual agent session details.
   - Reports (/reports)
   - Runs (/runs)
 - [ ] Remove unused nav items (metrics, analytics, replay)
-- [ ] Update header/branding to "Griply"
+- [ ] Update header/branding to "Usefly"
 
 ### 2.6 API Integration
 - [ ] Create `lib/api.ts` with typed fetch functions:
@@ -146,7 +146,7 @@ Individual agent session details.
 
 ## Phase 3: Python Server
 
-### 3.1 FastAPI Server (`griply/server.py`)
+### 3.1 FastAPI Server (`usefly/server.py`)
 - [x] **Static file serving**: Serve built React from `/static`
 - [ ] **API Routes**:
   ```
@@ -158,8 +158,8 @@ Individual agent session details.
   GET  /api/status/:jobId - Get job status (running/complete/failed)
   DELETE /api/reports/:id - Delete report and its runs
   ```
-- [ ] **Data storage**: SQLite database at `~/.griply/griply.db`
-- [ ] **File storage**: Screenshots/artifacts at `~/.griply/runs/<run_id>/`
+- [ ] **Data storage**: SQLite database at `~/.usefly/usefly.db`
+- [ ] **File storage**: Screenshots/artifacts at `~/.usefly/runs/<run_id>/`
 
 ### 3.2 Database Schema
 - [ ] **reports** table:
@@ -167,7 +167,7 @@ Individual agent session details.
 - [ ] **runs** table:
   - id, report_id, persona, status, journey_path, friction_points, duration, screenshots_path, thoughts_json, error, created_at
 
-### 3.3 Agent Integration (`griply/agent/`)
+### 3.3 Agent Integration (`usefly/agent/`)
 - [ ] **Refactor crawler.py**:
   - Accept URL as parameter
   - Return structured JSON (not save to file)
@@ -195,16 +195,16 @@ Individual agent session details.
 
 ## Phase 4: CLI & Packaging
 
-### 4.1 CLI (`griply/cli.py`)
-- [x] **Entry point**: `griply <url> [options]`
+### 4.1 CLI (`usefly/cli.py`)
+- [x] **Entry point**: `usefly <url> [options]`
 - [x] **Options**:
   ```
-  griply https://localhost:3000
-  griply https://localhost:3000 --mode quick
-  griply https://localhost:3000 --mode full --personas 20
-  griply https://localhost:3000 --port 8080
-  griply --version
-  griply --help
+  usefly https://localhost:3000
+  usefly https://localhost:3000 --mode quick
+  usefly https://localhost:3000 --mode full --personas 20
+  usefly https://localhost:3000 --port 8080
+  usefly --version
+  usefly --help
   ```
 - [x] **Behavior**:
   1. Start FastAPI server on specified port (default 8080)
@@ -221,18 +221,18 @@ Individual agent session details.
   - langchain-openai
   - pydantic
   - click (for CLI)
-- [x] Entry point: `griply = griply.cli:main`
+- [x] Entry point: `usefly = usefly.cli:main`
 - [ ] Include built React in package data
 
 ### 4.3 Build Process
 - [x] **Build script** (`scripts/build.sh`):
   1. `cd ui && pnpm install && pnpm build`
-  2. Copy `ui/dist/` → `griply/static/`
+  2. Copy `ui/dist/` → `usefly/static/`
 - [x] **Dev script** for dev workflow
-- [x] **.gitignore**: Ignore `griply/static/` (built artifact)
+- [x] **.gitignore**: Ignore `usefly/static/` (built artifact)
 
 ### 4.4 PyPI Deployment
-- [ ] Create `__version__` in `griply/__init__.py`
+- [ ] Create `__version__` in `usefly/__init__.py`
 - [ ] Configure GitHub Action for:
   1. Build React UI
   2. Build Python package
@@ -247,7 +247,7 @@ Individual agent session details.
 - [ ] **README.md** with:
   - One-liner description
   - Demo GIF/screenshot
-  - Quick start (`pip install griply && griply https://localhost:3000`)
+  - Quick start (`pip install usefly && usefly https://localhost:3000`)
   - Features list
   - Configuration options
   - Development setup

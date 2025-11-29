@@ -9,19 +9,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { AgentRun } from "@/components/agent-runs/mock-data"
+import type { AgentRun } from "@/types/api"
 import { aggregateBySegment, getPercentageColor } from "./utils"
 
 interface JourneyTableProps {
   runs: AgentRun[]
-  groupByLocation: boolean
+  groupByPlatform: boolean
   groupByPersona: boolean
 }
 
-export function JourneyTable({ runs, groupByLocation, groupByPersona }: JourneyTableProps) {
+export function JourneyTable({ runs, groupByPlatform, groupByPersona }: JourneyTableProps) {
   const aggregations = useMemo(
-    () => aggregateBySegment(runs, groupByLocation, groupByPersona),
-    [runs, groupByLocation, groupByPersona]
+    () => aggregateBySegment(runs, groupByPlatform, groupByPersona),
+    [runs, groupByPlatform, groupByPersona]
   )
 
   if (runs.length === 0) {

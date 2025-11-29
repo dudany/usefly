@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 import { AppLayout } from "@/components/layout/app-layout"
-import { AgentRunsDashboard } from "@/components/agent-runs/dashboard"
+import { AgentRunsDashboard } from "@/components/runs/dashboard"
 
 export default function AgentRunsPage() {
   return (
