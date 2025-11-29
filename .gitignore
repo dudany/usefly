@@ -2,6 +2,8 @@
 node_modules
 .next
 .claude
+ui/.next/
+ui/out/
 
 # Environment variables
 *.env*
@@ -37,5 +39,6 @@ env/
 # IDE
 .vscode/
 .idea/
-browsing_agent/data/*
+usefly/data/*
+usefly/static/
 *.gif*

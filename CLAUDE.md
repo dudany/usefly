@@ -4,59 +4,122 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is **Griply.ai** - an Agentic UX Analytics dashboard built with Next.js 16 (App Router), React 19, TypeScript, and Tailwind CSS 4. The application visualizes how AI agents interact with applications, tracking their behavior, success rates, and failure points. Currently uses mock data for demonstration purposes.
+This is **Usefly** - an Agentic UX Analytics tool built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, and Python (FastAPI). The application visualizes how AI agents interact with applications, tracking their behavior, success rates, and failure points.
+
+The project consists of:
+- **UI** (ui/): Next.js 16 frontend with static export
+- **Backend** (usefly/): Python package with FastAPI server and browser automation agents
+- **CLI**: Command-line interface for easy installation and deployment
+
+Currently uses mock data for demonstration purposes - real agent integration coming soon.
 
 ## Development Commands
 
-**Note:** This project uses **pnpm** as the package manager for better performance.
+### Quick Start
 
 ```bash
-# Development
-pnpm dev             # Start development server (localhost:3000)
+# Build and run (production mode)
+./scripts/build.sh          # Build UI and prepare static files
+python -m usefly.cli        # Start Usefly server
 
-# Building
-pnpm build           # Build for production
+# Or install as package
+pip install -e .
+usefly                      # Run the CLI
+```
 
-# Production
-pnpm start           # Start production server
+### Development Mode
 
-# Linting
-pnpm lint            # Run ESLint
+```bash
+# UI Development (Next.js dev server)
+cd ui
+pnpm dev                    # Start at localhost:3000
+
+# Backend Development (FastAPI with reload)
+python -m uvicorn usefly.server:app --reload --port 8080
+
+# Or use the dev script (macOS only)
+./scripts/dev.sh            # Opens both servers in new terminals
+```
+
+### Building
+
+```bash
+# Build UI only
+cd ui
+pnpm install
+pnpm build                  # Outputs to usefly/static/
+
+# Build Python package
+pip install -e .            # Install in editable mode
 ```
 
 ## Architecture
 
 ### Tech Stack
-- **Framework**: Next.js 16 with App Router (React 19.2.0)
+
+**Frontend:**
+- **Framework**: Next.js 16 with App Router (React 19.2.0) + Static Export
 - **Styling**: Tailwind CSS 4 with CSS Variables in OKLch color space
 - **UI Components**: Radix UI primitives + shadcn/ui ("new-york" style)
 - **Theming**: next-themes (light/dark/system modes)
 - **Icons**: lucide-react
-- **Charts**: recharts
+- **Charts**: recharts, @nivo/sankey
 - **Forms**: react-hook-form + zod
 - **Notifications**: sonner (toast notifications)
+
+**Backend:**
+- **Server**: FastAPI (Python 3.12+)
+- **CLI**: Click
+- **Agent**: browser-use, langchain-openai
+- **Package Manager**: uv (Python), pnpm (Node.js)
 
 ### Project Structure
 
 ```
-app/
-  ├── agent-runs/         # Main dashboard - table view of agent runs
-  ├── analytics/          # Analytics dashboard with charts
-  ├── replay/             # Replay viewer for individual agent sessions
-  ├── layout.tsx          # Root layout with ThemeProvider
-  └── globals.css         # Global styles with CSS variables
-
-components/
-  ├── agent-runs/         # Agent runs table, filters, modals, mock data
-  ├── analytics/          # Analytics charts and mock data
-  ├── replay/             # Replay player, timeline, event log
-  ├── layout/             # AppLayout, Sidebar (no Header currently)
-  ├── ui/                 # 60+ shadcn/ui components
-  ├── theme-provider.tsx  # next-themes wrapper
-  └── theme-toggle.tsx    # Light/Dark/System theme switcher
-
-lib/
-  └── utils.ts            # cn() utility (clsx + tailwind-merge)
+usefly/                      # Root directory
+├── ui/                      # Next.js frontend
+│   ├── app/
+│   │   ├── agent-runs/      # Agent runs table view
+│   │   ├── metrics/         # Metrics dashboard
+│   │   ├── reports/         # Reports dashboard with journey viz
+│   │   ├── new-report/      # New report form
+│   │   ├── archived/        # Archived pages
+│   │   ├── layout.tsx       # Root layout with ThemeProvider
+│   │   └── globals.css      # Global styles with CSS variables
+│   ├── components/
+│   │   ├── agent-runs/      # Agent runs components
+│   │   ├── metrics/         # Metrics charts and components
+│   │   ├── reports/         # Reports, journey sankey, tables
+│   │   ├── layout/          # AppLayout, Sidebar
+│   │   ├── providers/       # Website, Segments providers
+│   │   ├── ui/              # 56+ shadcn/ui components
+│   │   └── theme-provider.tsx
+│   ├── lib/
+│   │   └── utils.ts         # cn() utility
+│   ├── hooks/
+│   │   ├── use-mobile.ts
+│   │   └── use-toast.ts
+│   ├── package.json         # Node.js dependencies
+│   ├── next.config.mjs      # Next.js config (static export)
+│   └── tsconfig.json        # TypeScript config
+├── usefly/                  # Python package
+│   ├── __init__.py          # Package version
+│   ├── cli.py               # CLI entry point
+│   ├── server.py            # FastAPI server
+│   ├── crawler_agent.py     # Website crawler agent
+│   ├── task_generator_agent.py  # Task generation
+│   ├── prompts/             # Agent prompts
+│   │   ├── crawler_v1.txt
+│   │   └── task_generator.txt
+│   ├── static/              # Built Next.js files (gitignored)
+│   └── data/                # Agent session data (gitignored)
+├── scripts/
+│   ├── build.sh             # Build UI and package
+│   └── dev.sh               # Development mode helper
+├── pyproject.toml           # Python package config
+├── CLAUDE.md                # This file
+├── PLAN.md                  # Development roadmap
+└── README.md                # Project documentation
 ```
 
 ### Key Architectural Patterns
@@ -78,32 +141,47 @@ lib/
    - Client components use `"use client"` directive
    - Mock data lives alongside dashboard components
 
-4. **Path Aliases** (from tsconfig.json):
+4. **Path Aliases** (from ui/tsconfig.json):
    - `@/components` → `./components`
    - `@/lib` → `./lib`
    - `@/app` → `./app`
-   - `@/` → `./*` (root)
+   - `@/` → `./*` (ui/ root)
+
+5. **Deployment**:
+   - Next.js static export outputs to `usefly/static/`
+   - FastAPI serves static files and provides API endpoints
+   - CLI wraps FastAPI server with user-friendly interface
+   - Package can be installed via pip for easy distribution
 
 ### Pages & Features
 
-1. **Agent Runs** (`/agent-runs`):
-   - Table view of agent execution sessions
+1. **New Report** (`/new-report`):
+   - Form to create new agent test runs
+   - Configure personas, test parameters
+   - Mock data: TBD
+
+2. **Reports** (`/reports`):
+   - Dashboard of completed test runs
+   - Journey Sankey diagram visualization
+   - Journey table with detailed metrics
+   - Mock data: `ui/components/reports/sankey-data.json`
+
+3. **Metrics** (`/metrics`):
+   - Metrics overview with chart cards
+   - SDK snippets and integration guides
+   - Starter pack catalog
+   - Mock data: `ui/components/metrics/starter-pack-data.ts`
+
+4. **Agent Runs** (`/agent-runs`):
+   - Table view of individual agent execution sessions
    - Filters by persona and status
    - Modal for detailed run information
-   - Mock data: `components/agent-runs/mock-data.ts`
+   - Mock data: `ui/components/agent-runs/mock-data.ts`
 
-2. **Analytics** (`/analytics`):
-   - Metrics overview cards (completion rate, avg duration, total runs, error rate)
-   - Drop-off analysis funnel chart
-   - Conversion funnel visualization
-   - Error types distribution (pie chart)
-   - Persona success comparison (bar chart)
-   - Mock data: `components/analytics/mock-data.ts`
-
-3. **Replay** (`/replay`):
-   - Replay player for individual agent sessions
-   - Timeline visualization
-   - Event log with timestamps
+**Archived Pages:**
+- Analytics (`/analytics`) - Old analytics dashboard
+- Replay (`/replay`) - Replay viewer for sessions
+- Archived Reports (`/archived/reports`) - Old reports implementation
 
 ### Styling Guidelines
 
@@ -120,12 +198,26 @@ lib/
 - Base color: neutral
 - CSS Variables: true
 - Icon library: lucide-react
-- Components config: `components.json`
+- Components config: `ui/components.json`
+
+### Python Agent System
+
+The `usefly/` directory contains Python code for browser automation:
+
+- **crawler_agent.py**: Website structure crawler using browser-use
+- **task_generator_agent.py**: Generates realistic user journey tasks
+- **prompts/**: Text files with agent prompt templates
+- **data/**: Session data (gitignored) - crawler runs and generated tasks
+
+Agent sessions save structured data:
+- Screenshots, URLs, actions, errors, content, models, metadata
 
 ### Important Notes
 
-- No demo/demo mode messaging should be shown in the UI
-- All data is currently mocked (no backend/API integration yet)
-- TypeScript strict mode is enabled
-- HTML has `suppressHydrationWarning` for next-themes hydration
-- Don't do any .md or documentation files unless i asked for it
+- **No .md files**: Don't create documentation files unless explicitly requested
+- **Mock data**: All UI data is currently mocked (no backend integration yet)
+- **No demo messaging**: Don't show demo/demo mode messages in the UI
+- **TypeScript**: Strict mode enabled
+- **Static export**: Next.js configured for static HTML export
+- **Package structure**: Can be installed via `pip install -e .` for development
+- **CLI**: Run with `usefly` command after installation
