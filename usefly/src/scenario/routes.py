@@ -4,8 +4,8 @@ API routes for scenario management and crawler operations.
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, field_validator
+from typing import Optional, List, Dict
 from urllib.parse import urlparse
 import uuid
 from pathlib import Path
@@ -18,6 +18,7 @@ from usefly.models import (
 )
 from usefly.src.scenario.crawler_agent import save_session
 from usefly.src.scenario.utils import process_urls
+from usefly.src.scenario.task_generator import generate_tasks_from_crawler_result
 
 
 router = APIRouter(prefix="/api/scenario", tags=["Scenario"])
@@ -30,16 +31,36 @@ class CrawlerAnalysisRequest(BaseModel):
     scenario_id: Optional[str] = None
     website_url: str
     description: str = ""
+    name: str = ""  # Scenario name
+    metrics: List[str] = []  # Selected metrics
+    email: str = ""  # User email
 
 
 class CrawlerAnalysisResponse(BaseModel):
     """Response from crawler analysis."""
-    run_id: str 
-    scenario_id: str 
+    run_id: str
+    scenario_id: str
     status: str
     duration: Optional[float] = None
     steps: Optional[int] = None
     error: Optional[str] = None
+    crawler_summary: Optional[str] = None  # Crawler final_result
+    crawler_extracted_content: str = ""  # Crawler extracted_content (always a string)
+    tasks: List[Dict] = []  # Generated UserJourneyTask objects
+    tasks_metadata: Optional[Dict] = None  # Task generation metadata
+
+    @field_validator('crawler_extracted_content', mode='before')
+    @classmethod
+    def ensure_string(cls, v):
+        """Ensure crawler_extracted_content is always a string, never a dict"""
+        if isinstance(v, str):
+            return v
+        elif isinstance(v, (dict, list)):
+            return str(v) if v else ""
+        elif v is None:
+            return ""
+        else:
+            return str(v)
 
 
 # ==================== Endpoints ====================
@@ -129,10 +150,12 @@ async def analyze_website(
     hostname = urlparse(request.website_url).netloc or request.website_url
     scenario = Scenario(
         id=str(uuid.uuid4()),
-        name=f"Crawler - {hostname}",
+        name=request.name or f"Crawler - {hostname}",
         website_url=request.website_url,
         personas=["crawler"],
-        description=request.description
+        description=request.description,
+        metrics=request.metrics,
+        email=request.email
     )
     with open(f'usefly/prompts/website_crawler_prompt.txt', 'r') as f:
         task = f.read().format(website=scenario.website_url, description=scenario.description)
@@ -156,6 +179,34 @@ async def analyze_website(
     scenario.crawler_final_result = final_result
     scenario.crawler_extracted_content = extracted_content
 
+    # Generate tasks from crawler results
+    tasks_list = []
+    tasks_metadata = {}
+    task_list = generate_tasks_from_crawler_result(
+        crawler_final_result=final_result,
+        website_url=request.website_url,
+        model_name=sys_config.model_name,
+        api_key=sys_config.api_key
+    )
+
+    # Calculate persona distribution
+    persona_counts = {}
+    for task in task_list.tasks:
+        persona_counts[task.persona] = persona_counts.get(task.persona, 0) + 1
+
+    tasks_metadata = {
+        "total_tasks": task_list.total_tasks,
+        "persona_distribution": persona_counts,
+        "generated_at": datetime.now().isoformat()
+    }
+
+    # Store tasks in scenario (not saved to DB yet)
+    scenario.tasks = [task.dict() for task in task_list.tasks]
+    scenario.tasks_metadata = tasks_metadata
+    tasks_list = [task.dict() for task in task_list.tasks]
+
+
+
     crawler_run = CrawlerRun(
         id=str(uuid.uuid4()),
         scenario_id=None,  # No scenario in DB yet
@@ -164,19 +215,32 @@ async def analyze_website(
         duration=history.total_duration_seconds(),
         steps_completed=history.number_of_steps(),
         total_steps=30,  # max_steps from agent config
-        visited_urls=processed_urls,
-        final_result=history.final_result(),
-        extracted_content=history.extracted_content(),
-        action_history=str(history.action_history()),
-        model_actions=str(history.model_actions()),
-        model_outputs=str(history.model_outputs()),
-        model_thoughts=str(history.model_thoughts()),
-        errors=[str(e) for e in history.errors() if e]
+        final_result=str(history.final_result()),
+        extracted_content=str(history.extracted_content()) if isinstance(history.extracted_content(), list) else history.extracted_content()
     )
 
     db.add(crawler_run)
     db.commit()
     db.refresh(crawler_run)
+
+    extracted_content = history.extracted_content()
+    extracted_content_str = ""
+
+    # Convert to string, handling all types
+    if isinstance(extracted_content, str):
+        extracted_content_str = extracted_content if extracted_content else ""
+    elif isinstance(extracted_content, (dict, list)):
+        # Only convert non-empty dicts/lists to string
+        if extracted_content:
+            extracted_content_str = str(extracted_content)
+        else:
+            extracted_content_str = ""
+    elif extracted_content is not None:
+        # For any other non-None type, convert to string
+        extracted_content_str = str(extracted_content)
+    else:
+        # None -> empty string
+        extracted_content_str = ""
 
     return CrawlerAnalysisResponse(
         run_id=crawler_run.id,
@@ -184,5 +248,119 @@ async def analyze_website(
         status=crawler_run.status,
         duration=crawler_run.duration,
         steps=crawler_run.steps_completed,
-        error=None if history.is_successful() else (str(history.errors()[0]) if history.errors() else None)
+        error=None if history.is_successful() else (str(history.errors()[0]) if history.errors() else None),
+        crawler_summary=history.final_result(),
+        crawler_extracted_content=extracted_content_str,
+        tasks=tasks_list,
+        tasks_metadata=tasks_metadata if tasks_metadata else None
+    )
+
+
+# ==================== Save Scenario Endpoint ====================
+
+class SaveScenarioRequest(BaseModel):
+    """Request to save a scenario with selected tasks."""
+    scenario_id: str  # Temporary ID from analyze response
+    name: str
+    website_url: str
+    description: str = ""
+    metrics: List[str] = []
+    email: str = ""
+    selected_task_numbers: List[int] = []  # Task numbers user selected
+    all_tasks: List[Dict] = []  # All generated tasks
+    tasks_metadata: Dict = {}
+    crawler_final_result: Optional[str] = ""  # String from crawler
+    crawler_extracted_content: Optional[str] = ""  # String from crawler
+    discovered_urls: List[Dict] = []
+
+    @field_validator('crawler_extracted_content', mode='before')
+    @classmethod
+    def ensure_extracted_content_string(cls, v):
+        """Ensure crawler_extracted_content is always a string, never a dict"""
+        if isinstance(v, str):
+            return v
+        elif isinstance(v, (dict, list)):
+            return str(v) if v else ""
+        elif v is None:
+            return ""
+        else:
+            return str(v)
+
+    @field_validator('crawler_final_result', mode='before')
+    @classmethod
+    def ensure_final_result_string(cls, v):
+        """Ensure crawler_final_result is always a string, never a dict"""
+        if isinstance(v, str):
+            return v
+        elif isinstance(v, (dict, list)):
+            return str(v) if v else ""
+        elif v is None:
+            return ""
+        else:
+            return str(v)
+
+
+class SaveScenarioResponse(BaseModel):
+    """Response from saving scenario."""
+    scenario_id: str
+    message: str
+
+
+@router.post("/save", response_model=SaveScenarioResponse)
+def save_scenario(
+    request: SaveScenarioRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Save scenario with selected tasks to database.
+
+    This creates a permanent Scenario record with:
+    - User-provided metadata (name, email, metrics)
+    - Selected tasks only (filtered by selected_task_numbers)
+    - Crawler results
+
+    Args:
+        request: Save scenario request with all wizard data
+        db: Database session
+
+    Returns:
+        SaveScenarioResponse with new scenario_id
+    """
+    # Filter tasks to only selected ones
+    selected_tasks = [
+        task for task in request.all_tasks
+        if task.get("number") in request.selected_task_numbers
+    ]
+
+    # Update tasks_metadata with selection info
+    updated_metadata = {
+        **request.tasks_metadata,
+        "total_generated": len(request.all_tasks),
+        "total_selected": len(selected_tasks),
+        "selected_task_numbers": request.selected_task_numbers
+    }
+
+    # Create permanent scenario
+    db_scenario = Scenario(
+        id=str(uuid.uuid4()),  # New permanent ID
+        name=request.name,
+        website_url=request.website_url,
+        personas=["crawler"],
+        description=request.description,
+        metrics=request.metrics,
+        email=request.email,
+        tasks=selected_tasks,
+        tasks_metadata=updated_metadata,
+        discovered_urls=request.discovered_urls,
+        crawler_final_result=request.crawler_final_result,
+        crawler_extracted_content=request.crawler_extracted_content
+    )
+
+    db.add(db_scenario)
+    db.commit()
+    db.refresh(db_scenario)
+
+    return SaveScenarioResponse(
+        scenario_id=db_scenario.id,
+        message=f"Scenario '{request.name}' saved successfully with {len(selected_tasks)} tasks"
     )

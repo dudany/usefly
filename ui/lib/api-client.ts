@@ -14,6 +14,8 @@ import {
   UpdateSystemConfigRequest,
   CrawlerAnalysisRequest,
   CrawlerAnalysisResponse,
+  SaveScenarioRequest,
+  SaveScenarioResponse,
 } from "@/types/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -142,6 +144,12 @@ export const systemConfigApi = {
 export const crawlerApi = {
   analyze: (data: CrawlerAnalysisRequest) =>
     apiFetch<CrawlerAnalysisResponse>("/api/scenario/analyze", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  save: (data: SaveScenarioRequest) =>
+    apiFetch<SaveScenarioResponse>("/api/scenario/save", {
       method: "POST",
       body: JSON.stringify(data),
     }),

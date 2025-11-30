@@ -7,6 +7,29 @@
  * Test Scenario
  * Defines test setup and personas
  */
+export interface UserJourneyTask {
+  number: number;
+  starting_url: string;
+  goal: string;
+  steps: string;
+  persona: string;
+}
+
+export interface TasksMetadata {
+  total_tasks: number;
+  total_generated?: number;
+  total_selected?: number;
+  selected_task_numbers?: number[];
+  persona_distribution: Record<string, number>;
+  generated_at?: string;
+  error?: string;
+}
+
+export interface DiscoveredUrl {
+  url: string;
+  url_decoded?: string;
+}
+
 export interface Scenario {
   id: string;
   name: string;
@@ -14,6 +37,14 @@ export interface Scenario {
   personas: string[];
   created_at: string; // ISO datetime
   updated_at: string; // ISO datetime
+  description?: string;
+  metrics?: string[];
+  email?: string;
+  tasks?: UserJourneyTask[];
+  tasks_metadata?: TasksMetadata;
+  discovered_urls?: DiscoveredUrl[];
+  crawler_final_result?: any;
+  crawler_extracted_content?: any;
 }
 
 export interface CreateScenarioRequest {
@@ -49,16 +80,43 @@ export interface CrawlerAnalysisRequest {
   scenario_id?: string;
   website_url: string;
   description?: string;
+  name?: string;
+  metrics?: string[];
+  email?: string;
 }
 
 export interface CrawlerAnalysisResponse {
   run_id: string;
   scenario_id: string;
-  output_path: string;
+  output_path?: string;
   status: string;
   duration?: number;
   steps?: number;
   error?: string;
+  crawler_summary?: string;
+  crawler_extracted_content: string;
+  tasks?: UserJourneyTask[];
+  tasks_metadata?: TasksMetadata;
+}
+
+export interface SaveScenarioRequest {
+  scenario_id: string;
+  name: string;
+  website_url: string;
+  description?: string;
+  metrics: string[];
+  email: string;
+  selected_task_numbers: number[];
+  all_tasks: UserJourneyTask[];
+  tasks_metadata: TasksMetadata;
+  crawler_final_result?: string;
+  crawler_extracted_content?: string;
+  discovered_urls: DiscoveredUrl[];
+}
+
+export interface SaveScenarioResponse {
+  scenario_id: string;
+  message: string;
 }
 
 /**

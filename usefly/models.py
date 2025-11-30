@@ -32,8 +32,14 @@ class Scenario(Base):
 
     # Crawler results fields
     discovered_urls = Column(JSON, default=[])  # List of {url, url_decoded} objects
-    crawler_final_result = Column(JSON, default={})  # From final.json
-    crawler_extracted_content = Column(JSON, default={})  # From extracted.json
+    crawler_final_result = Column(String, default="")  # String from crawler
+    crawler_extracted_content = Column(String, default="")  # String from crawler
+
+    # Scenario metadata fields
+    metrics = Column(JSON, default=[])  # List of selected metric strings
+    email = Column(String, default="")  # Email for notifications
+    tasks = Column(JSON, default=[])  # List of generated UserJourneyTask dicts
+    tasks_metadata = Column(JSON, default={})  # Metadata about task generation (total_tasks, persona_distribution, etc.)
 
     # Relationships
     reports = relationship("Report", back_populates="config", cascade="all, delete-orphan")
@@ -94,19 +100,13 @@ class CrawlerRun(Base):
     scenario_id = Column(String, ForeignKey("scenarios.id"), nullable=True, index=True)
     status = Column(String, nullable=False, index=True)  # success, error, in-progress
     timestamp = Column(DateTime, nullable=False, index=True)
-    duration = Column(Integer)  # seconds
+    duration = Column(Float)  # seconds
     extracted_content = Column(String)
-    extracted_content = Column(String)
+    final_result = Column(String)  # Stringified final result from crawler
     # Crawler-specific fields
     steps_completed = Column(Integer, default=0)
     total_steps = Column(Integer, default=0)
-    visited_urls = Column(JSON, default=[])  # List of URLs visited during crawl
-    action_history = Column(JSON, default=[])  # Browser actions taken
-    model_actions = Column(JSON, default=[])  # Model's action decisions
-    model_outputs = Column(JSON, default=[])  # Model outputs
-    model_thoughts = Column(JSON, default=[])  # Model thinking process
-    errors = Column(JSON, default=[])  # Errors encountered
-    
+
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -221,16 +221,11 @@ class CrawlerRunCreate(BaseModel):
     scenario_id: Optional[str] = None
     status: str
     timestamp: datetime
-    duration: Optional[int] = None
+    duration: Optional[float] = None
     steps_completed: int = 0
     total_steps: int = 0
-    visited_urls: List[dict] = []
-    action_history: List[dict] = []
-    model_actions: List[dict] = []
-    model_outputs: List[dict] = []
-    model_thoughts: List[dict] = []
-    errors: List[str] = []
-    session_path: Optional[str] = None
+    final_result: Optional[str] = None
+    extracted_content: Optional[str] = None
 
 
 class CrawlerRunResponse(BaseModel):
@@ -239,11 +234,11 @@ class CrawlerRunResponse(BaseModel):
     scenario_id: Optional[str]
     status: str
     timestamp: datetime
-    duration: Optional[int]
+    duration: Optional[float]
     steps_completed: int
     total_steps: int
-    visited_urls: List[dict]
-    session_path: Optional[str]
+    final_result: Optional[str]
+    extracted_content: Optional[str]
     created_at: datetime
     updated_at: datetime
 
