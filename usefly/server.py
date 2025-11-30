@@ -13,6 +13,7 @@ from typing import Optional
 
 from usefly.database import init_db
 from usefly.routes import router as api_router
+from usefly.src.scenario.routes import router as scenario_router
 
 # Initialize database
 init_db()
@@ -33,6 +34,7 @@ static_dir = Path(__file__).parent / "static"
 
 # Include API routes
 app.include_router(api_router)
+app.include_router(scenario_router)
 
 
 # API Routes

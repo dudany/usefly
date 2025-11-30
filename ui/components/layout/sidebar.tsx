@@ -2,13 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, FileText, Zap, Sparkles } from "lucide-react"
+import { BarChart3, FileText, Zap, Sparkles, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { href: "/config", label: "Config", icon: Sparkles },
+  { href: "/scenarios", label: "Scenarios", icon: Sparkles },
   { href: "/reports", label: "Reports", icon: FileText },
   { href: "/runs", label: "Runs", icon: Zap },
+  { href: "/settings", label: "Settings", icon: Settings },
 ]
 
 const wipItems = [

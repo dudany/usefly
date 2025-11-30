@@ -5,8 +5,8 @@ import { useSearchParams } from "next/navigation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader } from "lucide-react"
 import { RunTable } from "./run-table"
-import { agentRunApi, reportApi, configApi } from "@/lib/api-client"
-import { TestConfig, AgentRun, Report } from "@/types/api"
+import { agentRunApi, reportApi, scenarioApi } from "@/lib/api-client"
+import { Scenario, AgentRun, Report } from "@/types/api"
 import { getPersonaLabel } from "./mock-data"
 
 const METRIC_CATEGORIES = ["Conversion", "Friction", "Activation", "Engagement"]
@@ -16,14 +16,14 @@ export function AgentRunsDashboard() {
   const searchParams = useSearchParams()
 
   // State for data fetching
-  const [configs, setConfigs] = useState<TestConfig[]>([])
+  const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [agentRuns, setAgentRuns] = useState<AgentRun[]>([])
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // Initialize filters from URL query parameters or defaults
-  const [configFilter, setConfigFilter] = useState<string>("all")
+  const [scenarioFilter, setScenarioFilter] = useState<string>("all")
   const [reportFilter, setReportFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [personaFilter, setPersonaFilter] = useState<string>("all")
@@ -33,12 +33,12 @@ export function AgentRunsDashboard() {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [configsData, runsData, reportsData] = await Promise.all([
-          configApi.list(),
+        const [scenariosData, runsData, reportsData] = await Promise.all([
+          scenarioApi.list(),
           agentRunApi.list({ limit: 100 }),
           reportApi.list({ limit: 100 }),
         ])
-        setConfigs(configsData)
+        setScenarios(scenariosData)
         setAgentRuns(runsData)
         setReports(reportsData)
       } catch (err) {
@@ -60,7 +60,7 @@ export function AgentRunsDashboard() {
     if (reportId) {
       const report = reports.find((r) => r.id === reportId)
       if (report) {
-        setConfigFilter(report.config_id)
+        setScenarioFilter(report.config_id)
         setReportFilter(reportId)
       }
     }
@@ -72,19 +72,19 @@ export function AgentRunsDashboard() {
     }
   }, [searchParams, reports])
 
-  // Get available reports for selected config
+  // Get available reports for selected scenario
   const availableReports = useMemo(() => {
-    if (configFilter === "all") return reports
-    return reports.filter((r) => r.config_id === configFilter)
-  }, [configFilter, reports])
+    if (scenarioFilter === "all") return reports
+    return reports.filter((r) => r.config_id === scenarioFilter)
+  }, [scenarioFilter, reports])
 
-  // Update report filter when config changes
-  const handleConfigChange = (configId: string) => {
-    setConfigFilter(configId)
-    if (configId !== "all") {
-      const configReports = reports.filter((r) => r.config_id === configId)
-      if (configReports.length > 0) {
-        setReportFilter(configReports[0].id)
+  // Update report filter when scenario changes
+  const handleScenarioChange = (scenarioId: string) => {
+    setScenarioFilter(scenarioId)
+    if (scenarioId !== "all") {
+      const scenarioReports = reports.filter((r) => r.config_id === scenarioId)
+      if (scenarioReports.length > 0) {
+        setReportFilter(scenarioReports[0].id)
       }
     } else {
       setReportFilter("all")
@@ -94,15 +94,15 @@ export function AgentRunsDashboard() {
   // Filter runs based on all criteria
   const filteredRuns = useMemo(() => {
     return agentRuns.filter((run) => {
-      // Config filter
-      if (configFilter !== "all" && run.config_id !== configFilter) return false
+      // Scenario filter
+      if (scenarioFilter !== "all" && run.config_id !== scenarioFilter) return false
 
       // Persona filter
       if (personaFilter !== "all" && run.persona_type !== personaFilter) return false
 
       return true
     })
-  }, [configFilter, personaFilter, agentRuns])
+  }, [scenarioFilter, personaFilter, agentRuns])
 
   if (loading) {
     return (
@@ -127,16 +127,16 @@ export function AgentRunsDashboard() {
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Test Config</label>
-            <Select value={configFilter} onValueChange={handleConfigChange}>
+            <label className="text-sm font-medium text-foreground mb-2 block">Test Scenario</label>
+            <Select value={scenarioFilter} onValueChange={handleScenarioChange}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select config" />
+                <SelectValue placeholder="Select scenario" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Configs</SelectItem>
-                {configs.map((config) => (
-                  <SelectItem key={config.id} value={config.id}>
-                    {config.name}
+                <SelectItem value="all">All Scenarios</SelectItem>
+                {scenarios.map((scenario) => (
+                  <SelectItem key={scenario.id} value={scenario.id}>
+                    {scenario.name}
                   </SelectItem>
                 ))}
               </SelectContent>

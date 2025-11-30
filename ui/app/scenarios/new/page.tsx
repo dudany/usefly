@@ -1,22 +1,29 @@
+import Link from "next/link"
 import { Suspense } from "react"
 import { AppLayout } from "@/components/layout/app-layout"
 import { NewReportForm } from "@/components/reports/new-report-form"
 import { Card, CardContent } from "@/components/ui/card"
-import { Zap, Target, LineChart } from "lucide-react"
+import { Zap, Target, LineChart, ChevronLeft } from "lucide-react"
 
-export default function ConfigPage() {
+export default function NewScenarioPage() {
   return (
     <AppLayout>
       <div className="p-6">
+        {/* Back Button */}
+        <Link href="/scenarios" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+          <ChevronLeft className="w-4 h-4" />
+          Back to Scenarios
+        </Link>
+
         {/* Hero Section */}
         <div className="mb-12">
           <div className="max-w-4xl mx-auto text-center mb-8">
             <h1 className="text-4xl font-bold text-foreground mb-4">
-              Ship Features Faster with AI-Powered QA
+              Create Your Test Scenario
             </h1>
             <p className="text-lg text-muted-foreground mb-6">
-              Speed up your GTM by running AI agents on your new features to understand friction points,
-              catch errors before real users do, and know exactly what to measure when you launch.
+              Set up a new test scenario with your website URL, testing focus areas, and personas to analyze.
+              Our AI agents will test your features and identify friction points.
             </p>
           </div>
 
@@ -68,7 +75,7 @@ export default function ConfigPage() {
 
         {/* Form */}
         <Suspense fallback={<div className="text-muted-foreground">Loading...</div>}>
-          <NewReportForm />
+          <NewReportForm mode="scenario" />
         </Suspense>
       </div>
     </AppLayout>

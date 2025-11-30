@@ -1,4 +1,8 @@
-You are exploring {website} to document its structure and navigation for AI task planning.
+You are exploring {website} website or subpath of it to document its structure and navigation for AI task planning.
+
+USER DESCRIPTION: {description}
+
+Use the user's description to guide your analysis focus. If specific features or journeys are mentioned, prioritize exploring those areas.
 
 GOAL: Create a comprehensive website structure map focused on navigation, sections, functionality, and purpose.
 

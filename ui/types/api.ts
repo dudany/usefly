@@ -4,10 +4,10 @@
  */
 
 /**
- * Test Configuration
+ * Test Scenario
  * Defines test setup and personas
  */
-export interface TestConfig {
+export interface Scenario {
   id: string;
   name: string;
   website_url: string;
@@ -16,10 +16,49 @@ export interface TestConfig {
   updated_at: string; // ISO datetime
 }
 
-export interface CreateTestConfigRequest {
+export interface CreateScenarioRequest {
   name: string;
   website_url: string;
   personas?: string[];
+}
+
+/**
+ * System Configuration
+ * Global settings for the application
+ */
+export interface SystemConfig {
+  id: number;
+  model_name: string;
+  api_key: string;
+  use_thinking: boolean;
+  created_at: string; // ISO datetime
+  updated_at: string; // ISO datetime
+}
+
+export interface UpdateSystemConfigRequest {
+  model_name: string;
+  api_key: string;
+  use_thinking: boolean;
+}
+
+/**
+ * Crawler Analysis
+ * Website crawling and analysis
+ */
+export interface CrawlerAnalysisRequest {
+  scenario_id?: string;
+  website_url: string;
+  description?: string;
+}
+
+export interface CrawlerAnalysisResponse {
+  run_id: string;
+  scenario_id: string;
+  output_path: string;
+  status: string;
+  duration?: number;
+  steps?: number;
+  error?: string;
 }
 
 /**

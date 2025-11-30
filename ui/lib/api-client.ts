@@ -4,12 +4,16 @@
  */
 
 import {
-  TestConfig,
-  CreateTestConfigRequest,
+  Scenario,
+  CreateScenarioRequest,
   AgentRun,
   CreateAgentRunRequest,
   Report,
   CreateReportRequest,
+  SystemConfig,
+  UpdateSystemConfigRequest,
+  CrawlerAnalysisRequest,
+  CrawlerAnalysisResponse,
 } from "@/types/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -39,17 +43,22 @@ async function apiFetch<T>(
 }
 
 /**
- * Test Config API methods
+ * Scenario API methods
  */
-export const configApi = {
-  list: () => apiFetch<TestConfig[]>("/api/configs"),
+export const scenarioApi = {
+  list: () => apiFetch<Scenario[]>("/api/scenarios"),
 
-  get: (id: string) => apiFetch<TestConfig>(`/api/configs/${id}`),
+  get: (id: string) => apiFetch<Scenario>(`/api/scenarios/${id}`),
 
-  create: (data: CreateTestConfigRequest) =>
-    apiFetch<TestConfig>("/api/configs", {
+  create: (data: CreateScenarioRequest) =>
+    apiFetch<Scenario>("/api/scenarios", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    apiFetch<void>(`/api/scenarios/${id}`, {
+      method: "DELETE",
     }),
 };
 
@@ -109,6 +118,30 @@ export const reportApi = {
 
   create: (data: CreateReportRequest) =>
     apiFetch<Report>("/api/reports", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
+
+/**
+ * System Config API methods
+ */
+export const systemConfigApi = {
+  get: () => apiFetch<SystemConfig>("/api/system-config"),
+
+  update: (data: UpdateSystemConfigRequest) =>
+    apiFetch<SystemConfig>("/api/system-config", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+};
+
+/**
+ * Crawler API methods
+ */
+export const crawlerApi = {
+  analyze: (data: CrawlerAnalysisRequest) =>
+    apiFetch<CrawlerAnalysisResponse>("/api/scenario/analyze", {
       method: "POST",
       body: JSON.stringify(data),
     }),

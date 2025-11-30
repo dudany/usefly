@@ -18,9 +18,9 @@ from usefly.database import Base
 
 # ==================== SQLAlchemy Models ====================
 
-class Config(Base):
-    """Test configuration for agent runs."""
-    __tablename__ = "configs"
+class Scenario(Base):
+    """Test scenario configuration for agent runs."""
+    __tablename__ = "scenarios"
 
     id = Column(String, primary_key=True)
     name = Column(String, nullable=False, index=True)
@@ -28,6 +28,12 @@ class Config(Base):
     personas = Column(JSON, default=[])  # List of persona types
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    description = Column(String, default="")
+
+    # Crawler results fields
+    discovered_urls = Column(JSON, default=[])  # List of {url, url_decoded} objects
+    crawler_final_result = Column(JSON, default={})  # From final.json
+    crawler_extracted_content = Column(JSON, default={})  # From extracted.json
 
     # Relationships
     reports = relationship("Report", back_populates="config", cascade="all, delete-orphan")
@@ -38,7 +44,7 @@ class AgentRun(Base):
     __tablename__ = "agent_runs"
 
     id = Column(String, primary_key=True)
-    config_id = Column(String, ForeignKey("configs.id"), nullable=False, index=True)
+    config_id = Column(String, ForeignKey("scenarios.id"), nullable=False, index=True)
     report_id = Column(String, ForeignKey("reports.id"), nullable=True, index=True)
     persona_type = Column(String, nullable=False, index=True)
     status = Column(String, nullable=False, index=True)  # success, error, anomaly, in-progress
@@ -57,7 +63,7 @@ class AgentRun(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    config = relationship("Config", backref="agent_runs")
+    config = relationship("Scenario", backref="agent_runs")
     report = relationship("Report", back_populates="agent_runs")
 
 
@@ -66,7 +72,7 @@ class Report(Base):
     __tablename__ = "reports"
 
     id = Column(String, primary_key=True)
-    config_id = Column(String, ForeignKey("configs.id"), nullable=False, index=True)
+    config_id = Column(String, ForeignKey("scenarios.id"), nullable=False, index=True)
     name = Column(String, nullable=False, index=True)
     description = Column(String)
     is_baseline = Column(Boolean, default=False, index=True)
@@ -76,8 +82,36 @@ class Report(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    config = relationship("Config", back_populates="reports")
+    config = relationship("Scenario", back_populates="reports")
     agent_runs = relationship("AgentRun", back_populates="report", cascade="all, delete-orphan")
+
+
+class CrawlerRun(Base):
+    """Crawler agent execution record."""
+    __tablename__ = "crawler_runs"
+
+    id = Column(String, primary_key=True)
+    scenario_id = Column(String, ForeignKey("scenarios.id"), nullable=True, index=True)
+    status = Column(String, nullable=False, index=True)  # success, error, in-progress
+    timestamp = Column(DateTime, nullable=False, index=True)
+    duration = Column(Integer)  # seconds
+    extracted_content = Column(String)
+    extracted_content = Column(String)
+    # Crawler-specific fields
+    steps_completed = Column(Integer, default=0)
+    total_steps = Column(Integer, default=0)
+    visited_urls = Column(JSON, default=[])  # List of URLs visited during crawl
+    action_history = Column(JSON, default=[])  # Browser actions taken
+    model_actions = Column(JSON, default=[])  # Model's action decisions
+    model_outputs = Column(JSON, default=[])  # Model outputs
+    model_thoughts = Column(JSON, default=[])  # Model thinking process
+    errors = Column(JSON, default=[])  # Errors encountered
+    
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Relationship
+    scenario = relationship("Scenario", backref="crawler_runs")
 
 
 # ==================== Pydantic Schemas (for API) ====================
@@ -138,15 +172,15 @@ class AgentRunResponse(BaseModel):
         from_attributes = True
 
 
-class ConfigCreate(BaseModel):
-    """Schema for creating a new config."""
+class ScenarioCreate(BaseModel):
+    """Schema for creating a new scenario."""
     name: str
     website_url: str
     personas: List[str] = []
 
 
-class ConfigResponse(BaseModel):
-    """Schema for returning config data."""
+class ScenarioResponse(BaseModel):
+    """Schema for returning scenario data."""
     id: str
     name: str
     website_url: str
@@ -175,6 +209,75 @@ class ReportResponse(BaseModel):
     is_baseline: bool
     metrics_summary: dict
     journey_sankey: dict
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CrawlerRunCreate(BaseModel):
+    """Schema for creating a new crawler run."""
+    scenario_id: Optional[str] = None
+    status: str
+    timestamp: datetime
+    duration: Optional[int] = None
+    steps_completed: int = 0
+    total_steps: int = 0
+    visited_urls: List[dict] = []
+    action_history: List[dict] = []
+    model_actions: List[dict] = []
+    model_outputs: List[dict] = []
+    model_thoughts: List[dict] = []
+    errors: List[str] = []
+    session_path: Optional[str] = None
+
+
+class CrawlerRunResponse(BaseModel):
+    """Schema for returning crawler run data."""
+    id: str
+    scenario_id: Optional[str]
+    status: str
+    timestamp: datetime
+    duration: Optional[int]
+    steps_completed: int
+    total_steps: int
+    visited_urls: List[dict]
+    session_path: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ==================== System Configuration ====================
+
+class SystemConfig(Base):
+    """System configuration (singleton)."""
+    __tablename__ = "system_config"
+
+    id = Column(Integer, primary_key=True, default=1)
+    model_name = Column(String, nullable=False, default="gpt-4o")
+    api_key = Column(String, nullable=False)
+    use_thinking = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class SystemConfigCreate(BaseModel):
+    """Schema for creating/updating system config."""
+    model_name: str = "gpt-4o"
+    api_key: str
+    use_thinking: bool = True
+
+
+class SystemConfigResponse(BaseModel):
+    """Schema for returning system config data."""
+    id: int
+    model_name: str
+    api_key: str
+    use_thinking: bool
     created_at: datetime
     updated_at: datetime
 

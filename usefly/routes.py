@@ -16,51 +16,19 @@ import uuid
 
 from usefly.database import get_db
 from usefly.models import (
-    Config,
+    Scenario,
     AgentRun,
     Report,
-    ConfigCreate,
-    ConfigResponse,
+    SystemConfig,
     AgentRunCreate,
     AgentRunResponse,
     ReportCreate,
     ReportResponse,
+    SystemConfigCreate,
+    SystemConfigResponse,
 )
 
 router = APIRouter(prefix="/api", tags=["API"])
-
-
-# ==================== Config Endpoints ====================
-
-@router.get("/configs", response_model=List[ConfigResponse])
-def list_configs(db: Session = Depends(get_db)):
-    """List all test configurations."""
-    configs = db.query(Config).order_by(Config.created_at.desc()).all()
-    return configs
-
-
-@router.post("/configs", response_model=ConfigResponse)
-def create_config(config: ConfigCreate, db: Session = Depends(get_db)):
-    """Create a new test configuration."""
-    db_config = Config(
-        id=str(uuid.uuid4()),
-        name=config.name,
-        website_url=config.website_url,
-        personas=config.personas,
-    )
-    db.add(db_config)
-    db.commit()
-    db.refresh(db_config)
-    return db_config
-
-
-@router.get("/configs/{config_id}", response_model=ConfigResponse)
-def get_config(config_id: str, db: Session = Depends(get_db)):
-    """Get a specific test configuration."""
-    config = db.query(Config).filter(Config.id == config_id).first()
-    if not config:
-        raise HTTPException(status_code=404, detail="Config not found")
-    return config
 
 
 # ==================== Agent Run Endpoints ====================
@@ -91,10 +59,10 @@ def list_agent_runs(
 @router.post("/agent-runs", response_model=AgentRunResponse)
 def create_agent_run(run: AgentRunCreate, db: Session = Depends(get_db)):
     """Create a new agent run."""
-    # Verify config exists
-    config = db.query(Config).filter(Config.id == run.config_id).first()
-    if not config:
-        raise HTTPException(status_code=404, detail="Config not found")
+    # Verify scenario exists
+    scenario = db.query(Scenario).filter(Scenario.id == run.config_id).first()
+    if not scenario:
+        raise HTTPException(status_code=404, detail="Scenario not found")
 
     db_run = AgentRun(
         id=str(uuid.uuid4()),
@@ -154,10 +122,10 @@ def list_reports(
 @router.post("/reports", response_model=ReportResponse)
 def create_report(report: ReportCreate, db: Session = Depends(get_db)):
     """Create a new report."""
-    # Verify config exists
-    config = db.query(Config).filter(Config.id == report.config_id).first()
-    if not config:
-        raise HTTPException(status_code=404, detail="Config not found")
+    # Verify scenario exists
+    scenario = db.query(Scenario).filter(Scenario.id == report.config_id).first()
+    if not scenario:
+        raise HTTPException(status_code=404, detail="Scenario not found")
 
     # Calculate metrics summary from runs with this config
     config_runs = db.query(AgentRun).filter(AgentRun.config_id == report.config_id).all()
@@ -190,6 +158,33 @@ def get_report(report_id: str, db: Session = Depends(get_db)):
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     return report
+
+
+@router.get("/system-config", response_model=SystemConfigResponse)
+def get_system_config(db: Session = Depends(get_db)):
+    """Get system configuration (singleton)."""
+    config = db.query(SystemConfig).filter(SystemConfig.id == 1).first()
+    if not config:
+        raise HTTPException(status_code=404, detail="System config not found")
+    return config
+
+
+@router.put("/system-config", response_model=SystemConfigResponse)
+def update_system_config(config_data: SystemConfigCreate, db: Session = Depends(get_db)):
+    """Create or update system configuration."""
+    config = db.query(SystemConfig).filter(SystemConfig.id == 1).first()
+
+    if config:
+        config.model_name = config_data.model_name
+        config.api_key = config_data.api_key
+        config.use_thinking = config_data.use_thinking
+    else:
+        config = SystemConfig(**config_data.dict())
+        db.add(config)
+
+    db.commit()
+    db.refresh(config)
+    return config
 
 
 # ==================== Helper Functions ====================

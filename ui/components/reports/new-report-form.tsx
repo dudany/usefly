@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -13,15 +14,22 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { Sparkles, X } from "lucide-react"
-import { configApi } from "@/lib/api-client"
+import { crawlerApi } from "@/lib/api-client"
 
-const formSchema = z.object({
+const reportFormSchema = z.object({
   url: z.string().url({ message: "Please enter a valid URL" }),
   description: z.string().optional(),
   email: z.string().email({ message: "Please enter a valid email address" }),
 })
 
-type FormData = z.infer<typeof formSchema>
+const scenarioFormSchema = z.object({
+  name: z.string().min(1, "Scenario name is required"),
+  url: z.string().url({ message: "Please enter a valid URL" }),
+  description: z.string().optional(),
+  email: z.string().email({ message: "Please enter a valid email address" }),
+})
+
+type FormData = z.infer<typeof reportFormSchema> & { name?: string }
 
 const METRIC_OPTIONS = [
   "Conversion Rate",
@@ -39,12 +47,17 @@ const METRIC_OPTIONS = [
 interface NewReportFormProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  mode?: "report" | "scenario"
 }
 
-export function NewReportForm({ open, onOpenChange }: NewReportFormProps = {}) {
+export function NewReportForm({ open, onOpenChange, mode = "report" }: NewReportFormProps = {}) {
+  const router = useRouter()
   const isModal = open !== undefined && onOpenChange !== undefined
+  const isScenarioMode = mode === "scenario"
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const formSchema = isScenarioMode ? scenarioFormSchema : reportFormSchema
 
   const {
     register,
@@ -70,29 +83,55 @@ export function NewReportForm({ open, onOpenChange }: NewReportFormProps = {}) {
     setIsSubmitting(true)
 
     try {
-      // Extract a test name from the URL
-      const urlObj = new URL(data.url)
-      const testName = `Test - ${urlObj.hostname || data.url}`
+      if (isScenarioMode) {
+        // Run crawler analysis for scenario
+        const result = await crawlerApi.analyze({
+          website_url: data.url,
+          description: data.description || "",
+        })
 
-      // Create test config on the backend
-      const config = await configApi.create({
-        name: testName,
-        website_url: data.url,
-        personas: ["default"],
-      })
+        if (result.status === "error") {
+          toast.error("Crawler analysis failed", {
+            description: result.error || "Unknown error occurred",
+          })
+          return
+        }
 
-      toast.success("Test configuration created successfully!", {
-        description: `Test "${config.name}" is ready for analysis.`,
-      })
+        toast.success("Analysis started!", {
+          description: `Analyzing ${data.name || "scenario"}. View results in the Runs page.`,
+        })
 
-      // Reset form and close modal if in modal mode
-      reset()
-      setSelectedMetrics([])
-      if (onOpenChange) {
-        onOpenChange(false)
+        // Reset form and navigate to scenarios list
+        reset()
+        setSelectedMetrics([])
+        router.push("/scenarios")
+      } else {
+        // Run crawler analysis
+        const result = await crawlerApi.analyze({
+          website_url: data.url,
+          description: data.description || "",
+        })
+
+        if (result.status === "error") {
+          toast.error("Crawler analysis failed", {
+            description: result.error || "Unknown error occurred",
+          })
+          return
+        }
+
+        toast.success("Analysis completed!", {
+          description: `Crawled ${result.steps || 0} steps in ${result.duration || 0}s. View results in the Runs page.`,
+        })
+
+        // Reset form and close modal if in modal mode
+        reset()
+        setSelectedMetrics([])
+        if (onOpenChange) {
+          onOpenChange(false)
+        }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to submit report request"
+      const errorMessage = error instanceof Error ? error.message : "Failed to submit request"
       toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
@@ -102,6 +141,25 @@ export function NewReportForm({ open, onOpenChange }: NewReportFormProps = {}) {
   const formContent = (
     <div className={isModal ? "mt-4" : ""}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Name Field - Only for scenario mode */}
+            {isScenarioMode && (
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-semibold">
+                  Scenario Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="e.g., Checkout Flow Test"
+                  {...register("name")}
+                  className={errors.name ? "border-destructive" : ""}
+                />
+                {errors.name && (
+                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                )}
+              </div>
+            )}
+
             {/* URL Field */}
             <div className="space-y-2">
               <Label htmlFor="url" className="text-sm font-semibold">
@@ -199,12 +257,12 @@ export function NewReportForm({ open, onOpenChange }: NewReportFormProps = {}) {
                 {isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                    Submitting Request...
+                    {isScenarioMode ? "Creating Scenario..." : "Submitting Request..."}
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 mr-2" />
-                    Request Analysis Report
+                    {isScenarioMode ? "Create Scenario" : "Request Analysis Report"}
                   </>
                 )}
               </Button>
@@ -235,11 +293,14 @@ export function NewReportForm({ open, onOpenChange }: NewReportFormProps = {}) {
               <div className="p-2 rounded-lg bg-primary/10">
                 <Sparkles className="w-5 h-5 text-primary" />
               </div>
-              <DialogTitle className="text-2xl">Request New Report</DialogTitle>
+              <DialogTitle className="text-2xl">
+                {isScenarioMode ? "Create New Scenario" : "Request New Report"}
+              </DialogTitle>
             </div>
             <DialogDescription className="text-base">
-              Submit your website or feature URL to get detailed analytics on user journeys and AI agent behavior.
-              We'll analyze the data and send you comprehensive insights.
+              {isScenarioMode
+                ? "Set up a new test scenario with your website URL and testing focus areas. Our AI agents will test your features and identify friction points."
+                : "Submit your website or feature URL to get detailed analytics on user journeys and AI agent behavior. We'll analyze the data and send you comprehensive insights."}
             </DialogDescription>
           </DialogHeader>
           {formContent}
@@ -256,11 +317,14 @@ export function NewReportForm({ open, onOpenChange }: NewReportFormProps = {}) {
             <div className="p-2 rounded-lg bg-primary/10">
               <Sparkles className="w-5 h-5 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Request New Report</CardTitle>
+            <CardTitle className="text-2xl">
+              {isScenarioMode ? "Create New Scenario" : "Request New Report"}
+            </CardTitle>
           </div>
           <CardDescription className="text-base">
-            Submit your website or feature URL to get detailed analytics on user journeys and AI agent behavior.
-            We'll analyze the data and send you comprehensive insights.
+            {isScenarioMode
+              ? "Set up a new test scenario with your website URL and testing focus areas. Our AI agents will test your features and identify friction points."
+              : "Submit your website or feature URL to get detailed analytics on user journeys and AI agent behavior. We'll analyze the data and send you comprehensive insights."}
           </CardDescription>
         </CardHeader>
         <CardContent>

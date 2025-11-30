@@ -58,10 +58,9 @@ async def main(task,prompt_v):
     agent = Agent(
         task=task,
         llm=llm,
-        max_steps=20,
+        max_steps=30,
         use_vision=True,
-        use_thinking=True,
-        generate_gif=True
+        use_thinking=True
     )
 
     history = await agent.run()
