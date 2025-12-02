@@ -9,6 +9,7 @@ import { Loader, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { scenarioApi } from "@/lib/api-client"
 import { Scenario } from "@/types/api"
+import { ScenarioTasksModal } from "@/components/scenarios/scenario-tasks-modal"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,8 @@ export default function ScenariosPage() {
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [editingScenario, setEditingScenario] = useState<Scenario | null>(null)
+  const [showTasksModal, setShowTasksModal] = useState(false)
 
   // Fetch scenarios on mount
   useEffect(() => {
@@ -49,6 +52,36 @@ export default function ScenariosPage() {
 
     fetchScenarios()
   }, [router])
+
+  const handleViewDetails = async (scenario: Scenario) => {
+    console.log("handleViewDetails called with scenario:", scenario)
+    try {
+      console.log("Fetching scenario with ID:", scenario.id)
+      const fullScenario = await scenarioApi.get(scenario.id)
+      console.log("Received full scenario:", fullScenario)
+      setEditingScenario(fullScenario)
+      setShowTasksModal(true)
+      console.log("Modal should now be open")
+    } catch (error) {
+      console.error("Error in handleViewDetails:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to load scenario"
+      toast.error(errorMessage)
+    }
+  }
+
+  const handleScenarioUpdate = async () => {
+    try {
+      const data = await scenarioApi.list()
+      setScenarios(data)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to refresh scenarios"
+      toast.error(errorMessage)
+    }
+  }
+
+  const handleScenarioDelete = (scenarioId: string) => {
+    setScenarios(scenarios.filter((s) => s.id !== scenarioId))
+  }
 
   const handleDelete = async (id: string) => {
     setDeleting(id)
@@ -145,7 +178,7 @@ export default function ScenariosPage() {
                         variant="outline"
                         size="sm"
                         className="flex-1"
-                        onClick={() => router.push(`/scenarios/${scenario.id}`)}
+                        onClick={() => handleViewDetails(scenario)}
                       >
                         View Details
                       </Button>
@@ -190,6 +223,21 @@ export default function ScenariosPage() {
           </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Scenario Modal */}
+      <ScenarioTasksModal
+        open={showTasksModal}
+        onOpenChange={(open) => {
+          setShowTasksModal(open)
+          if (!open) {
+            setEditingScenario(null)
+          }
+        }}
+        mode="edit"
+        scenario={editingScenario || undefined}
+        onUpdate={handleScenarioUpdate}
+        onDelete={handleScenarioDelete}
+      />
     </AppLayout>
   )
 }

@@ -187,6 +187,14 @@ class ScenarioResponse(BaseModel):
     personas: List[str]
     created_at: datetime
     updated_at: datetime
+    description: str = ""
+    discovered_urls: List[dict] = []
+    crawler_final_result: str = ""
+    crawler_extracted_content: str = ""
+    metrics: List[str] = []
+    email: str = ""
+    tasks: List[dict] = []
+    tasks_metadata: dict = {}
 
     class Config:
         from_attributes = True

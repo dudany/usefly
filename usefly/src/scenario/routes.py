@@ -364,3 +364,75 @@ def save_scenario(
         scenario_id=db_scenario.id,
         message=f"Scenario '{request.name}' saved successfully with {len(selected_tasks)} tasks"
     )
+
+
+class UpdateScenarioTasksRequest(BaseModel):
+    """Request to update scenario task selection."""
+    selected_task_numbers: List[int] = []
+
+    @field_validator('selected_task_numbers')
+    @classmethod
+    def validate_task_numbers(cls, v):
+        if not v:
+            raise ValueError("At least one task must be selected")
+        return v
+
+
+@router.patch("/{scenario_id}/tasks")
+def update_scenario_tasks(
+    scenario_id: str,
+    request: UpdateScenarioTasksRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Update selected tasks for an existing scenario.
+
+    This endpoint allows users to modify which tasks are selected
+    for a scenario after it has been created.
+
+    Args:
+        scenario_id: ID of the scenario to update
+        request: Update request with selected task numbers
+        db: Database session
+
+    Returns:
+        Updated Scenario object
+
+    Raises:
+        HTTPException: If scenario not found or validation fails
+    """
+    # Get scenario
+    scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
+    if not scenario:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+
+    # Get all tasks from scenario
+    all_tasks = scenario.tasks or []
+
+    # Filter to selected tasks
+    selected_tasks = [
+        task for task in all_tasks
+        if task.get("number") in request.selected_task_numbers
+    ]
+
+    if not selected_tasks:
+        raise HTTPException(
+            status_code=400,
+            detail="No tasks match the provided task numbers"
+        )
+
+    # Update scenario
+    scenario.tasks = selected_tasks
+
+    # Update tasks_metadata
+    current_metadata = scenario.tasks_metadata or {}
+    scenario.tasks_metadata = {
+        **current_metadata,
+        "total_selected": len(selected_tasks),
+        "selected_task_numbers": request.selected_task_numbers,
+    }
+
+    db.commit()
+    db.refresh(scenario)
+
+    return scenario

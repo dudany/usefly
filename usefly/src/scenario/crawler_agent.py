@@ -84,7 +84,8 @@ async def main(
         llm=llm,
         max_steps=30,
         use_vision=True,
-        use_thinking=use_thinking
+        use_thinking=use_thinking,
+        headless=True,
     )
 
     history = await agent.run()

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -18,6 +18,7 @@ import { Sparkles, X, Loader2 } from "lucide-react"
 import { crawlerApi } from "@/lib/api-client"
 import { CrawlerAnalysisResponse, SaveScenarioRequest } from "@/types/api"
 import { cn } from "@/lib/utils"
+import { ScenarioTasksModal } from "@/components/scenarios/scenario-tasks-modal"
 
 const reportFormSchema = z.object({
   url: z.string().url({ message: "Please enter a valid URL" }),
@@ -66,8 +67,6 @@ export function NewReportForm({ open, onOpenChange, mode = "report" }: NewReport
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<CrawlerAnalysisResponse | null>(null)
   const [showResultsModal, setShowResultsModal] = useState(false)
-  const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set())
-  const [isSaving, setIsSaving] = useState(false)
 
   const formSchema = isScenarioMode ? scenarioFormSchema : reportFormSchema
 
@@ -81,29 +80,11 @@ export function NewReportForm({ open, onOpenChange, mode = "report" }: NewReport
     resolver: zodResolver(formSchema),
   })
 
-  // Initialize selected tasks when analysis completes
-  useEffect(() => {
-    if (analysisResult?.tasks && showResultsModal) {
-      setSelectedTasks(new Set(analysisResult.tasks.map(t => t.number)))
-    }
-  }, [analysisResult, showResultsModal])
 
   const toggleMetric = (metric: string) => {
     setSelectedMetrics((prev) =>
       prev.includes(metric) ? prev.filter((m) => m !== metric) : [...prev, metric]
     )
-  }
-
-  const toggleTask = (taskNumber: number) => {
-    setSelectedTasks(prev => {
-      const next = new Set(prev)
-      if (next.has(taskNumber)) {
-        next.delete(taskNumber)
-      } else {
-        next.add(taskNumber)
-      }
-      return next
-    })
   }
 
   const onSubmit = async (data: FormData) => {
@@ -188,59 +169,6 @@ export function NewReportForm({ open, onOpenChange, mode = "report" }: NewReport
     }
   }
 
-  const handleSaveScenario = async () => {
-    if (!analysisResult || selectedTasks.size === 0) {
-      toast.error("Please select at least one task")
-      return
-    }
-
-    setIsSaving(true)
-    try {
-      const formData = getValues()
-
-      const saveRequest: SaveScenarioRequest = {
-        scenario_id: analysisResult.scenario_id,
-        name: formData.name || "",
-        website_url: formData.url,
-        description: formData.description || "",
-        metrics: selectedMetrics,
-        email: formData.email || "",
-        selected_task_numbers: Array.from(selectedTasks),
-        all_tasks: analysisResult.tasks || [],
-        tasks_metadata: analysisResult.tasks_metadata || { total_tasks: 0, persona_distribution: {} },
-        crawler_final_result: analysisResult.crawler_summary || "",
-        crawler_extracted_content: analysisResult.crawler_extracted_content || "",
-        discovered_urls: [],
-      }
-
-      try {
-        await crawlerApi.save(saveRequest)
-
-        toast.success("Scenario saved successfully!", {
-          description: `Created scenario "${formData.name}" with ${selectedTasks.size} tasks`
-        })
-
-        // Reset and navigate
-        reset()
-        setSelectedMetrics([])
-        setAnalysisResult(null)
-        setShowResultsModal(false)
-        setSelectedTasks(new Set())
-
-        router.push("/scenarios")
-      } catch (saveError) {
-        const errorMessage = saveError instanceof Error ? saveError.message : "Failed to save scenario"
-        toast.error("Save failed", {
-          description: errorMessage
-        })
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
-      toast.error("Error", { description: errorMessage })
-    } finally {
-      setIsSaving(false)
-    }
-  }
 
   const formContent = (
     <div className={isModal ? "mt-4" : ""}>
@@ -394,14 +322,26 @@ export function NewReportForm({ open, onOpenChange, mode = "report" }: NewReport
       <LoadingDialog open={isAnalyzing} />
 
       {/* Results Modal */}
-      <ResultsModal
+      <ScenarioTasksModal
         open={showResultsModal}
         onOpenChange={setShowResultsModal}
-        result={analysisResult}
-        selectedTasks={selectedTasks}
-        onToggleTask={toggleTask}
-        onSave={handleSaveScenario}
-        isSaving={isSaving}
+        mode="create"
+        analysisResult={analysisResult || undefined}
+        createFormData={{
+          name: getValues("name") || "",
+          website_url: getValues("url"),
+          description: getValues("description") || "",
+          metrics: selectedMetrics,
+          email: getValues("email") || "",
+        }}
+        onSave={(scenarioId) => {
+          // Reset and navigate
+          reset()
+          setSelectedMetrics([])
+          setAnalysisResult(null)
+          setShowResultsModal(false)
+          router.push("/scenarios")
+        }}
       />
 
       {/* Main Form */}
@@ -499,163 +439,3 @@ function LoadingDialog({ open }: { open: boolean }) {
   )
 }
 
-// ==================== Results Modal Component ====================
-
-interface ResultsModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  result: CrawlerAnalysisResponse | null
-  selectedTasks: Set<number>
-  onToggleTask: (taskNumber: number) => void
-  onSave: () => Promise<void>
-  isSaving: boolean
-}
-
-function ResultsModal({
-  open,
-  onOpenChange,
-  result,
-  selectedTasks,
-  onToggleTask,
-  onSave,
-  isSaving,
-}: ResultsModalProps) {
-  if (!result) return null
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">Scenario Analysis Complete</DialogTitle>
-          <DialogDescription>
-            Review the generated tasks and select which ones to include in your scenario
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto space-y-6 pr-4">
-          {/* Website Analysis Summary */}
-          {result.crawler_summary && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Website Analysis Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <pre className="text-xs bg-muted p-4 rounded overflow-x-auto max-h-48 text-muted-foreground">
-                  {JSON.stringify(result.crawler_summary, null, 2)}
-                </pre>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Task Generation Error Warning */}
-          {result.tasks_metadata?.error && (
-            <Card className="border-amber-200 bg-amber-50">
-              <CardHeader>
-                <CardTitle className="text-sm text-amber-900">Task Generation Warning</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-amber-800">
-                {result.tasks_metadata.error}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Generated Tasks */}
-          {result.tasks && result.tasks.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  Generated Tasks ({result.tasks.length})
-                </CardTitle>
-                <CardDescription>
-                  Selected: {selectedTasks.size} of {result.tasks.length}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {result.tasks.map((task) => (
-                  <div
-                    key={task.number}
-                    className={cn(
-                      "border rounded-lg p-4 transition-colors cursor-pointer",
-                      selectedTasks.has(task.number)
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                    onClick={() => onToggleTask(task.number)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={selectedTasks.has(task.number)}
-                        onCheckedChange={() => onToggleTask(task.number)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">Task {task.number}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {task.persona}
-                          </Badge>
-                        </div>
-                        <div className="space-y-1 text-sm">
-                          <p className="text-muted-foreground">
-                            <span className="font-medium">Starting URL:</span>{" "}
-                            <span className="break-all">{task.starting_url}</span>
-                          </p>
-                          <p>
-                            <span className="font-medium">Goal:</span> {task.goal}
-                          </p>
-                          <p className="text-muted-foreground">
-                            <span className="font-medium">Steps:</span> {task.steps}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Persona Distribution */}
-          {result.tasks_metadata?.persona_distribution && Object.keys(result.tasks_metadata.persona_distribution).length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Persona Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {Object.entries(result.tasks_metadata.persona_distribution).map(
-                    ([persona, count]) => (
-                      <div key={persona} className="flex items-center justify-between p-3 bg-muted rounded">
-                        <span className="text-sm font-medium">{persona}</span>
-                        <Badge variant="secondary">{count}</Badge>
-                      </div>
-                    )
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <DialogFooter className="mt-4 border-t pt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={onSave}
-            disabled={isSaving || selectedTasks.size === 0}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>Save Scenario ({selectedTasks.size} tasks)</>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}

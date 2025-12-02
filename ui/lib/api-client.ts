@@ -58,6 +58,12 @@ export const scenarioApi = {
       body: JSON.stringify(data),
     }),
 
+  updateTasks: (id: string, selectedTaskNumbers: number[]) =>
+    apiFetch<Scenario>(`/api/scenario/${id}/tasks`, {
+      method: "PATCH",
+      body: JSON.stringify({ selected_task_numbers: selectedTaskNumbers }),
+    }),
+
   delete: (id: string) =>
     apiFetch<void>(`/api/scenarios/${id}`, {
       method: "DELETE",
