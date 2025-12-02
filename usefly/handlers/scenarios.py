@@ -3,7 +3,6 @@ from typing import List, Optional, Dict
 import uuid
 from datetime import datetime
 from urllib.parse import urlparse, unquote
-from browser_use import Agent, ChatOpenAI
 from langchain_openai import ChatOpenAI as LangchainChatOpenAI
 import json
 
@@ -11,6 +10,7 @@ from usefly.models import (
     Scenario, SystemConfig, ScenarioCreate,
     CrawlerRun, UserJourneyTask, TaskList
 )
+from usefly.common.browser_use_common import run_browser_use_agent
 
 
 def list_scenarios(db: Session) -> List[Scenario]:
@@ -131,26 +131,22 @@ async def analyze_website(db: Session, request) -> Dict:
         metrics=request.metrics,
         email=request.email
     )
-    
-    # Read prompt
+
     with open(f'usefly/prompts/website_crawler_prompt.txt', 'r') as f:
         task = f.read().format(website=scenario.website_url, description=scenario.description)
-    
-    llm = ChatOpenAI(model=sys_config.model_name, api_key=sys_config.api_key)
-    agent = Agent(
-        task=task,
-        llm=llm,
-        max_steps=30,
-        use_vision=True,
-        use_thinking=True,
-        headless=True
-    )
 
-    history = await agent.run()
+    history = await run_browser_use_agent(task=task, system_config=sys_config, max_steps=30)
+
+    # Extract data from history object
     raw_urls = history.urls()
     processed_urls = process_urls(raw_urls)
     final_result = history.final_result()
     extracted_content = history.extracted_content()
+    duration = history.total_duration_seconds()
+    steps_completed = history.number_of_steps()
+    is_successful = history.is_successful()
+    error_list = history.errors()
+    error_str = str(error_list[0]) if error_list else None
 
     scenario.discovered_urls = processed_urls
     scenario.crawler_final_result = final_result
@@ -180,40 +176,31 @@ async def analyze_website(db: Session, request) -> Dict:
     scenario.tasks_metadata = tasks_metadata
     tasks_list = [task.dict() for task in task_list.tasks]
 
+    # Convert extracted content to string
+    extracted_content_str = ""
+    if isinstance(extracted_content, str):
+        extracted_content_str = extracted_content if extracted_content else ""
+    elif isinstance(extracted_content, (dict, list)):
+        if extracted_content:
+            extracted_content_str = str(extracted_content)
+    elif extracted_content is not None:
+        extracted_content_str = str(extracted_content)
+
     crawler_run = CrawlerRun(
         id=str(uuid.uuid4()),
         scenario_id=None,  # No scenario in DB yet
-        status="success" if history.is_successful() else "error",
+        status="success" if is_successful else "error",
         timestamp=datetime.now(),
-        duration=history.total_duration_seconds(),
-        steps_completed=history.number_of_steps(),
+        duration=duration,
+        steps_completed=steps_completed,
         total_steps=30,  # max_steps from agent config
-        final_result=str(history.final_result()),
-        extracted_content=str(history.extracted_content()) if isinstance(history.extracted_content(), list) else history.extracted_content()
+        final_result=str(final_result) if final_result else "",
+        extracted_content=extracted_content_str
     )
 
     db.add(crawler_run)
     db.commit()
     db.refresh(crawler_run)
-
-    extracted_content = history.extracted_content()
-    extracted_content_str = ""
-
-    # Convert to string, handling all types
-    if isinstance(extracted_content, str):
-        extracted_content_str = extracted_content if extracted_content else ""
-    elif isinstance(extracted_content, (dict, list)):
-        # Only convert non-empty dicts/lists to string
-        if extracted_content:
-            extracted_content_str = str(extracted_content)
-        else:
-            extracted_content_str = ""
-    elif extracted_content is not None:
-        # For any other non-None type, convert to string
-        extracted_content_str = str(extracted_content)
-    else:
-        # None -> empty string
-        extracted_content_str = ""
 
     return {
         "run_id": crawler_run.id,
@@ -221,39 +208,38 @@ async def analyze_website(db: Session, request) -> Dict:
         "status": crawler_run.status,
         "duration": crawler_run.duration,
         "steps": crawler_run.steps_completed,
-        "error": None if history.is_successful() else (str(history.errors()[0]) if history.errors() else None),
-        "crawler_summary": history.final_result(),
+        "error": error_str,
+        "crawler_summary": final_result,
         "crawler_extracted_content": extracted_content_str,
         "tasks": tasks_list,
         "tasks_metadata": tasks_metadata if tasks_metadata else None
     }
 
 def save_scenario(db: Session, request) -> Dict:
-    """Save scenario with selected tasks to database."""
-    # Filter tasks to only selected ones
-    selected_tasks = [
-        task for task in request.all_tasks
+    all_tasks = request.all_tasks
+
+    selected_indices = [
+        i for i, task in enumerate(all_tasks)
         if task.get("number") in request.selected_task_numbers
     ]
 
-    # Update tasks_metadata with selection info
     updated_metadata = {
         **request.tasks_metadata,
-        "total_generated": len(request.all_tasks),
-        "total_selected": len(selected_tasks),
+        "total_generated": len(all_tasks),
+        "total_selected": len(selected_indices),
         "selected_task_numbers": request.selected_task_numbers
     }
 
-    # Create permanent scenario
     db_scenario = Scenario(
-        id=str(uuid.uuid4()),  # New permanent ID
+        id=str(uuid.uuid4()),
         name=request.name,
         website_url=request.website_url,
         personas=["crawler"],
         description=request.description,
         metrics=request.metrics,
         email=request.email,
-        tasks=selected_tasks,
+        tasks=all_tasks,
+        selected_task_indices=selected_indices,
         tasks_metadata=updated_metadata,
         discovered_urls=request.discovered_urls,
         crawler_final_result=request.crawler_final_result,
@@ -266,36 +252,30 @@ def save_scenario(db: Session, request) -> Dict:
 
     return {
         "scenario_id": db_scenario.id,
-        "message": f"Scenario '{request.name}' saved successfully with {len(selected_tasks)} tasks"
+        "message": f"Scenario '{request.name}' saved successfully with {len(selected_indices)} tasks"
     }
 
 def update_scenario_tasks(db: Session, scenario_id: str, request) -> Scenario:
-    """Update selected tasks for an existing scenario."""
-    # Get scenario
     scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
     if not scenario:
         raise ValueError("Scenario not found")
 
-    # Get all tasks from scenario
     all_tasks = scenario.tasks or []
 
-    # Filter to selected tasks
-    selected_tasks = [
-        task for task in all_tasks
+    selected_indices = [
+        i for i, task in enumerate(all_tasks)
         if task.get("number") in request.selected_task_numbers
     ]
 
-    if not selected_tasks:
+    if not selected_indices:
         raise ValueError("No tasks match the provided task numbers")
 
-    # Update scenario
-    scenario.tasks = selected_tasks
+    scenario.selected_task_indices = selected_indices
 
-    # Update tasks_metadata
     current_metadata = scenario.tasks_metadata or {}
     scenario.tasks_metadata = {
         **current_metadata,
-        "total_selected": len(selected_tasks),
+        "total_selected": len(selected_indices),
         "selected_task_numbers": request.selected_task_numbers,
     }
 

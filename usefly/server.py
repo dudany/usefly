@@ -14,6 +14,7 @@ from usefly.routers.agent_runs import router as agent_runs_router
 from usefly.routers.reports import router as reports_router
 from usefly.routers.system_config import router as system_config_router
 from usefly.routers.scenarios import router as scenario_router
+from usefly.routers.scenario_runner import router as scenario_runner_router
 
 # Initialize database
 init_db()
@@ -37,6 +38,7 @@ app.include_router(agent_runs_router)
 app.include_router(reports_router)
 app.include_router(system_config_router)
 app.include_router(scenario_router)
+app.include_router(scenario_runner_router)
 
 
 # API Routes

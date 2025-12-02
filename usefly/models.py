@@ -40,6 +40,7 @@ class Scenario(Base):
     email = Column(String, default="")  # Email for notifications
     tasks = Column(JSON, default=[])  # List of generated UserJourneyTask dicts
     tasks_metadata = Column(JSON, default={})  # Metadata about task generation (total_tasks, persona_distribution, etc.)
+    selected_task_indices = Column(JSON, default=[])  # List of selected task indices
 
     # Relationships
     reports = relationship("Report", back_populates="config", cascade="all, delete-orphan")
@@ -54,6 +55,8 @@ class AgentRun(Base):
     report_id = Column(String, ForeignKey("reports.id"), nullable=True, index=True)
     persona_type = Column(String, nullable=False, index=True)
     status = Column(String, nullable=False, index=True)  # success, error, anomaly, in-progress
+    run_status = Column(String, nullable=True)  # Agent run status: completed, failed, in-progress
+    verdict_status = Column(String, nullable=True)  # Verdict from agent: True/False or result reason
     timestamp = Column(DateTime, nullable=False, index=True)
     duration = Column(Integer)  # seconds
     platform = Column(String, default="web")
@@ -65,6 +68,10 @@ class AgentRun(Base):
     goals_achieved = Column(JSON, default=[])  # List of goal strings
     friction_points = Column(JSON, default=[])  # List of friction point objects
     metrics = Column(JSON, default={})  # Nested metrics object
+    judgement_data = Column(JSON, default={})  # Full judgement result from agent (reasoning, verdict, failure_reason, etc.)
+    initial_prompt = Column(String)
+    urls_visited = Column(JSON, default=[])
+    events = Column(JSON, default=[])
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -134,6 +141,8 @@ class AgentRunCreate(BaseModel):
     report_id: Optional[str] = None
     persona_type: str
     status: str
+    run_status: Optional[str] = None  # Agent run completion status from history
+    verdict_status: Optional[str] = None  # Verdict result (True/False or failure reason)
     timestamp: datetime
     duration: Optional[int] = None
     platform: str = "web"
@@ -145,6 +154,10 @@ class AgentRunCreate(BaseModel):
     goals_achieved: List[str] = []
     friction_points: List[dict] = []
     metrics: dict = {}
+    judgement_data: dict = {}  # Full judgement object from agent history
+    initial_prompt: Optional[str] = None
+    urls_visited: List[str] = []
+    events: List[dict] = []
 
 
 class AgentRunResponse(BaseModel):
@@ -154,6 +167,8 @@ class AgentRunResponse(BaseModel):
     report_id: Optional[str]
     persona_type: str
     status: str
+    run_status: Optional[str]
+    verdict_status: Optional[str]
     timestamp: datetime
     duration: Optional[int]
     platform: str
@@ -165,6 +180,10 @@ class AgentRunResponse(BaseModel):
     goals_achieved: List[str]
     friction_points: list
     metrics: dict
+    judgement_data: dict
+    initial_prompt: Optional[str]
+    urls_visited: List[str]
+    events: List[dict]
     created_at: datetime
     updated_at: datetime
 
@@ -195,9 +214,28 @@ class ScenarioResponse(BaseModel):
     email: str = ""
     tasks: List[dict] = []
     tasks_metadata: dict = {}
+    selected_task_indices: List[int] = []
 
     class Config:
         from_attributes = True
+
+
+class RunScenarioResponse(BaseModel):
+    run_id: str
+    scenario_id: str
+    report_id: str
+    task_count: int
+    status: str
+    message: str
+
+
+class RunStatusResponse(BaseModel):
+    run_id: str
+    status: str
+    total_tasks: int
+    completed_tasks: int
+    failed_tasks: int
+    agent_run_ids: List[str]
 
 
 class ReportCreate(BaseModel):

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { Loader2, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { scenarioApi, crawlerApi } from "@/lib/api-client"
 import { Scenario, CrawlerAnalysisResponse, SaveScenarioRequest } from "@/types/api"
@@ -38,6 +38,7 @@ interface ScenarioTasksModalProps {
   onSave?: (scenarioId: string) => void
   onUpdate?: (scenarioId: string) => void
   onDelete?: (scenarioId: string) => void
+  onRun?: (scenario: Scenario) => Promise<void>
 }
 
 export function ScenarioTasksModal({
@@ -50,6 +51,7 @@ export function ScenarioTasksModal({
   onSave,
   onUpdate,
   onDelete,
+  onRun,
 }: ScenarioTasksModalProps) {
   const router = useRouter()
 
@@ -57,6 +59,7 @@ export function ScenarioTasksModal({
   const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set())
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isRunning, setIsRunning] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Initialize selected tasks
@@ -159,6 +162,32 @@ export function ScenarioTasksModal({
       })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handlePlay = async () => {
+    if (!scenario || !onRun) return
+
+    setIsRunning(true)
+    try {
+      const currentSelected = scenario.tasks_metadata?.selected_task_numbers || []
+      const newSelected = Array.from(selectedTasks)
+
+      const hasChanged = currentSelected.length !== newSelected.length ||
+        !currentSelected.every(n => newSelected.includes(n))
+
+      if (hasChanged) {
+        toast.info("Saving changes before running...")
+        await scenarioApi.updateTasks(scenario.id, newSelected)
+      }
+
+      await onRun(scenario)
+      onOpenChange(false)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to run scenario"
+      toast.error(errorMessage)
+    } finally {
+      setIsRunning(false)
     }
   }
 
@@ -316,15 +345,34 @@ export function ScenarioTasksModal({
 
           <DialogFooter className="mt-4 border-t pt-4">
             <div className="flex justify-between w-full">
-              <div>
+              <div className="flex gap-2">
                 {mode === 'edit' && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => setShowDeleteDialog(true)}
-                    disabled={isDeleting || isSaving}
-                  >
-                    Delete Scenario
-                  </Button>
+                  <>
+                    <Button
+                      variant="default"
+                      onClick={handlePlay}
+                      disabled={isRunning || isSaving || selectedTasks.size === 0}
+                    >
+                      {isRunning ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Starting...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4 mr-2" />
+                          Play Selected Tasks
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => setShowDeleteDialog(true)}
+                      disabled={isDeleting || isSaving || isRunning}
+                    >
+                      Delete Scenario
+                    </Button>
+                  </>
                 )}
               </div>
               <div className="flex gap-2">
@@ -333,7 +381,7 @@ export function ScenarioTasksModal({
                 </Button>
                 <Button
                   onClick={handleSave}
-                  disabled={isSaving || selectedTasks.size === 0}
+                  disabled={isSaving || selectedTasks.size === 0 || isRunning}
                 >
                   {isSaving ? (
                     <>

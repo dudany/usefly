@@ -45,6 +45,7 @@ export interface Scenario {
   discovered_urls?: DiscoveredUrl[];
   crawler_final_result?: any;
   crawler_extracted_content?: any;
+  selected_task_indices?: number[];
 }
 
 export interface CreateScenarioRequest {
@@ -253,6 +254,24 @@ export interface CreateReportRequest {
   name: string;
   description?: string;
   is_baseline?: boolean;
+}
+
+export interface RunScenarioResponse {
+  run_id: string;
+  scenario_id: string;
+  report_id: string;
+  task_count: number;
+  status: string;
+  message: string;
+}
+
+export interface RunStatusResponse {
+  run_id: string;
+  status: "in_progress" | "completed" | "partial_failure" | "failed";
+  total_tasks: number;
+  completed_tasks: number;
+  failed_tasks: number;
+  agent_run_ids: string[];
 }
 
 /**

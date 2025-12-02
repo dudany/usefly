@@ -16,6 +16,8 @@ import {
   CrawlerAnalysisResponse,
   SaveScenarioRequest,
   SaveScenarioResponse,
+  RunScenarioResponse,
+  RunStatusResponse,
 } from "@/types/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -158,5 +160,23 @@ export const crawlerApi = {
     apiFetch<SaveScenarioResponse>("/api/scenario/save", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+};
+
+/**
+ * Scenario Execution API methods
+ */
+export const scenarioRunApi = {
+  run: (scenarioId: string) =>
+    apiFetch<RunScenarioResponse>(`/api/scenario/run/${scenarioId}`, {
+      method: "POST",
+    }),
+
+  getStatus: (runId: string) =>
+    apiFetch<RunStatusResponse>(`/api/scenario/run/${runId}/status`),
+
+  acknowledgeCompletion: (runId: string) =>
+    apiFetch<void>(`/api/scenario/run/${runId}`, {
+      method: "DELETE",
     }),
 };
