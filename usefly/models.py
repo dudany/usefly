@@ -12,7 +12,7 @@ from typing import Optional, List
 from sqlalchemy import Column, String, Integer, Float, DateTime, JSON, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from usefly.database import Base
 
 
@@ -286,3 +286,19 @@ class SystemConfigResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UserJourneyTask(BaseModel):
+    """Represents a single user journey task."""
+    number: int = Field(description="Task number")
+    starting_url: str = Field(description="Starting URL where user begins")
+    goal: str = Field(description="User's goal/intention (e.g., 'Buy spicy onion jam for dinner party')")
+    steps: str = Field(description="Step-by-step actions user takes")
+    persona: str = Field(description="User persona category: SHOPPER, RESEARCHER, LOCAL_VISITOR, SUPPORT_SEEKER, or BROWSER")
+
+
+class TaskList(BaseModel):
+    """List of generated user journey tasks."""
+    tasks: List[UserJourneyTask] = Field(description="List of user journey tasks")
+    total_tasks: int = Field(default=0, description="Total number of tasks")
+    website_url: str = Field(default="", description="Website base URL")
