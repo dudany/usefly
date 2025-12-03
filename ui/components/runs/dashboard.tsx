@@ -5,8 +5,8 @@ import { useSearchParams } from "next/navigation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader } from "lucide-react"
 import { RunTable } from "./run-table"
-import { agentRunApi, reportApi, scenarioApi } from "@/lib/api-client"
-import { Scenario, AgentRun, Report } from "@/types/api"
+import { personaRecordsApi, reportApi, scenarioApi } from "@/lib/api-client"
+import { Scenario, PersonaRun, Report } from "@/types/api"
 import { getPersonaLabel } from "./mock-data"
 
 const METRIC_CATEGORIES = ["Conversion", "Friction", "Activation", "Engagement"]
@@ -17,7 +17,7 @@ export function AgentRunsDashboard() {
 
   // State for data fetching
   const [scenarios, setScenarios] = useState<Scenario[]>([])
-  const [agentRuns, setAgentRuns] = useState<AgentRun[]>([])
+  const [agentRuns, setAgentRuns] = useState<PersonaRun[]>([])
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -35,7 +35,7 @@ export function AgentRunsDashboard() {
         setLoading(true)
         const [scenariosData, runsData, reportsData] = await Promise.all([
           scenarioApi.list(),
-          agentRunApi.list({ limit: 100 }),
+          personaRecordsApi.list({ limit: 100 }),
           reportApi.list({ limit: 100 }),
         ])
         setScenarios(scenariosData)

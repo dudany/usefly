@@ -3,9 +3,9 @@ from sqlalchemy import desc
 from typing import List, Optional
 import uuid
 
-from usefly.models import AgentRun, Scenario, AgentRunCreate
+from usefly.models import AgentRun, Scenario, PersonaRunCreate
 
-def list_agent_runs(
+def list_persona_runs(
     db: Session,
     config_id: Optional[str] = None,
     persona_type: Optional[str] = None,
@@ -13,7 +13,7 @@ def list_agent_runs(
     limit: int = 50,
     offset: int = 0,
 ) -> List[AgentRun]:
-    """List agent runs with optional filters."""
+    """List persona runs with optional filters."""
     query = db.query(AgentRun).order_by(AgentRun.timestamp.desc())
 
     if config_id:
@@ -25,8 +25,8 @@ def list_agent_runs(
 
     return query.offset(offset).limit(limit).all()
 
-def create_agent_run(db: Session, run: AgentRunCreate) -> AgentRun:
-    """Create a new agent run."""
+def create_persona_run(db: Session, run: PersonaRunCreate) -> AgentRun:
+    """Create a new persona run."""
     # Verify scenario exists
     scenario = db.query(Scenario).filter(Scenario.id == run.config_id).first()
     if not scenario:
@@ -55,6 +55,6 @@ def create_agent_run(db: Session, run: AgentRunCreate) -> AgentRun:
     db.refresh(db_run)
     return db_run
 
-def get_agent_run(db: Session, run_id: str) -> Optional[AgentRun]:
-    """Get a specific agent run."""
+def get_persona_run(db: Session, run_id: str) -> Optional[AgentRun]:
+    """Get a specific persona run."""
     return db.query(AgentRun).filter(AgentRun.id == run_id).first()

@@ -148,10 +148,10 @@ export interface MetricsData {
 }
 
 /**
- * Agent Run
- * Represents a single agent execution
+ * Persona Run
+ * Represents a single persona execution
  */
-export interface AgentRun {
+export interface PersonaRun {
   id: string;
   config_id: string;
   report_id?: string;
@@ -172,7 +172,7 @@ export interface AgentRun {
   updated_at: string; // ISO datetime
 }
 
-export interface CreateAgentRunRequest {
+export interface CreatePersonaRunRequest {
   config_id: string;
   report_id?: string;
   persona_type: string;
@@ -256,7 +256,7 @@ export interface CreateReportRequest {
   is_baseline?: boolean;
 }
 
-export interface RunScenarioResponse {
+export interface PersonaExecutionResponse {
   run_id: string;
   scenario_id: string;
   report_id: string;

@@ -4,8 +4,8 @@ import { useState, useMemo, useEffect } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from "@/components/ui/card"
 import { Loader } from "lucide-react"
-import { reportApi, agentRunApi } from "@/lib/api-client"
-import { Report, AgentRun } from "@/types/api"
+import { reportApi, personaRecordsApi } from "@/lib/api-client"
+import { Report, PersonaRun } from "@/types/api"
 import { useSegments } from "@/components/providers/segments-provider"
 import { SegmentsFilter } from "@/components/filters/segments-filter"
 import { JourneySankey } from "./journey-sankey"
@@ -17,7 +17,7 @@ export function ReportsDashboard() {
 
   // State for data fetching
   const [reports, setReports] = useState<Report[]>([])
-  const [agentRuns, setAgentRuns] = useState<AgentRun[]>([])
+  const [agentRuns, setAgentRuns] = useState<PersonaRun[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -32,7 +32,7 @@ export function ReportsDashboard() {
         setLoading(true)
         const [reportsData, runsData] = await Promise.all([
           reportApi.list({ limit: 100 }),
-          agentRunApi.list({ limit: 100 }),
+          personaRecordsApi.list({ limit: 100 }),
         ])
         setReports(reportsData)
         setAgentRuns(runsData)

@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader, Plus, Trash2, Play } from "lucide-react"
 import { toast } from "sonner"
-import { scenarioApi, scenarioRunApi } from "@/lib/api-client"
+import { scenarioApi, personaExecutionApi } from "@/lib/api-client"
 import { Scenario, RunStatusResponse } from "@/types/api"
 import { ScenarioTasksModal } from "@/components/scenarios/scenario-tasks-modal"
 import {
@@ -104,7 +104,7 @@ export default function ScenariosPage() {
     try {
       setRunningScenarios(prev => new Set(prev).add(scenario.id))
 
-      const response = await scenarioRunApi.run(scenario.id)
+      const response = await personaExecutionApi.run(scenario.id)
 
       toast.success("Scenario execution started", {
         description: `Running ${response.task_count} tasks in background`
@@ -125,7 +125,7 @@ export default function ScenariosPage() {
   const pollRunStatus = async (runId: string, scenarioId: string) => {
     const pollInterval = setInterval(async () => {
       try {
-        const status = await scenarioRunApi.getStatus(runId)
+        const status = await personaExecutionApi.getStatus(runId)
 
         setRunStatuses(prev => new Map(prev).set(scenarioId, status))
 
@@ -151,7 +151,7 @@ export default function ScenariosPage() {
             })
           }
 
-          await scenarioRunApi.acknowledgeCompletion(runId)
+          await personaExecutionApi.acknowledgeCompletion(runId)
 
           setRunStatuses(prev => {
             const next = new Map(prev)

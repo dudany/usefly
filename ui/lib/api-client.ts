@@ -6,8 +6,8 @@
 import {
   Scenario,
   CreateScenarioRequest,
-  AgentRun,
-  CreateAgentRunRequest,
+  PersonaRun,
+  CreatePersonaRunRequest,
   Report,
   CreateReportRequest,
   SystemConfig,
@@ -16,7 +16,7 @@ import {
   CrawlerAnalysisResponse,
   SaveScenarioRequest,
   SaveScenarioResponse,
-  RunScenarioResponse,
+  PersonaExecutionResponse,
   RunStatusResponse,
 } from "@/types/api";
 
@@ -73,9 +73,9 @@ export const scenarioApi = {
 };
 
 /**
- * Agent Run API methods
+ * Persona Run Records API methods
  */
-export const agentRunApi = {
+export const personaRecordsApi = {
   list: (filters?: {
     configId?: string;
     personaType?: string;
@@ -91,13 +91,13 @@ export const agentRunApi = {
     if (filters?.offset) params.append("offset", filters.offset.toString());
 
     const query = params.toString() ? `?${params.toString()}` : "";
-    return apiFetch<AgentRun[]>(`/api/agent-runs${query}`);
+    return apiFetch<PersonaRun[]>(`/api/persona-runs${query}`);
   },
 
-  get: (id: string) => apiFetch<AgentRun>(`/api/agent-runs/${id}`),
+  get: (id: string) => apiFetch<PersonaRun>(`/api/persona-runs/${id}`),
 
-  create: (data: CreateAgentRunRequest) =>
-    apiFetch<AgentRun>("/api/agent-runs", {
+  create: (data: CreatePersonaRunRequest) =>
+    apiFetch<PersonaRun>("/api/persona-runs", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -164,19 +164,19 @@ export const crawlerApi = {
 };
 
 /**
- * Scenario Execution API methods
+ * Persona Execution API methods
  */
-export const scenarioRunApi = {
+export const personaExecutionApi = {
   run: (scenarioId: string) =>
-    apiFetch<RunScenarioResponse>(`/api/scenario/run/${scenarioId}`, {
+    apiFetch<PersonaExecutionResponse>(`/api/persona/run/${scenarioId}`, {
       method: "POST",
     }),
 
   getStatus: (runId: string) =>
-    apiFetch<RunStatusResponse>(`/api/scenario/run/${runId}/status`),
+    apiFetch<RunStatusResponse>(`/api/persona/run/${runId}/status`),
 
   acknowledgeCompletion: (runId: string) =>
-    apiFetch<void>(`/api/scenario/run/${runId}`, {
+    apiFetch<void>(`/api/persona/run/${runId}`, {
       method: "DELETE",
     }),
 };

@@ -1,11 +1,12 @@
+from pathlib import Path
 import uuid
 from datetime import datetime
 from typing import Dict, Optional, List
 from browser_use import AgentHistoryList
 from sqlalchemy.orm import Session
-from usefly.models import Scenario, SystemConfig, UserJourneyTask, AgentRunCreate
-from usefly.common.browser_use_common import run_user_journey_task
-from usefly.handlers.agent_runs import create_agent_run
+from usefly.common.browser_use_common import run_browser_use_agent
+from usefly.models import Scenario, SystemConfig, UserJourneyTask, PersonaRunCreate
+from usefly.handlers.persona_runs import create_persona_run
 
 _active_runs: Dict[str, Dict] = {}
 
@@ -67,7 +68,7 @@ def validate_scenario_for_run(scenario: Scenario) -> tuple:
     return True, None
 
 
-def extract_agent_run_data(history: AgentHistoryList, journey_task: UserJourneyTask) -> dict:
+def extract_agent_events(history: AgentHistoryList) -> dict:
     events = []
 
     for h in history.history:
@@ -95,13 +96,7 @@ def extract_agent_run_data(history: AgentHistoryList, journey_task: UserJourneyT
                         'url': h.state.url
                     })
 
-    return {
-        'initial_prompt': journey_task.goal,
-        'urls_visited': history.urls(),
-        'events': events,
-        'steps_completed': history.number_of_steps(),
-        'judgement_data': history.judgement() or {}
-    }
+    events
 
 
 async def execute_single_task(
@@ -116,45 +111,49 @@ async def execute_single_task(
         journey_task = UserJourneyTask(**task)
         start_time = datetime.now()
 
-        result = await run_user_journey_task(
-            journey_task=journey_task,
-            system_config=system_config,
-            max_steps=30
+        prompt_path = Path(__file__).parent.parent / "prompts" / "user_journey_task.txt"
+        with open(prompt_path, "r") as f:
+            prompt_template = f.read()
+
+        task_description = prompt_template.format(
+            persona=journey_task.persona,
+            starting_url=journey_task.starting_url,
+            goal=journey_task.goal,
+            steps=journey_task.steps
         )
+        max_steps = 30 #TODO introduce env var
+        history: AgentHistoryList = await run_browser_use_agent(task=task_description, system_config=system_config, max_steps=max_steps)
 
-        end_time = datetime.now()
+        events = extract_agent_events(history)
 
-        history: AgentHistoryList = result.get("history")
-        extracted_data = extract_agent_run_data(history, journey_task)
-
-        agent_run_data = AgentRunCreate(
+        persona_run_data = PersonaRunCreate(
             config_id=scenario.id,
             report_id=report_id,
-            persona_type=result.get("persona", "UNKNOWN"),
-            status="success",
+            persona_type=journey_task.persona,
+            is_done=history.is_done(),
             timestamp=start_time,
-            duration=int(result.get("duration", 0)),
+            duration_seconds=history.total_duration_seconds(),
             platform="web",
             location=None,
-            error_type=result.get("error"),
-            steps_completed=extracted_data['steps_completed'],
+            error_type="",#TODO add error
+            steps_completed=history.number_of_steps(),
             total_steps=30,
-            journey_path=extracted_data['urls_visited'],
-            judgement_data=extracted_data['judgement_data'],
-            initial_prompt=extracted_data['initial_prompt'],
-            urls_visited=extracted_data['urls_visited'],
-            events=extracted_data['events']
+            final_Result=history.final_result(),
+            journey_path=history.urls(),
+            judgement_data=history.judgement(),
+            task_description=task_description,
+            events=events
         )
 
-        agent_run = create_agent_run(db, agent_run_data)
+        persona_run = create_persona_run(db, persona_run_data)
 
-        update_run_status(run_id, completed=1, agent_run_id=agent_run.id)
+        update_run_status(run_id, completed=1, agent_run_id=persona_run.id)
 
 
-        return agent_run.id
+        return persona_run.id
 
     except Exception as e:
-        agent_run_data = AgentRunCreate(
+        persona_run_data = PersonaRunCreate(
             config_id=scenario.id,
             report_id=report_id,
             persona_type=task.get("persona", "UNKNOWN"),
@@ -175,12 +174,12 @@ async def execute_single_task(
             judgement_data={}
         )
 
-        agent_run = create_agent_run(db, agent_run_data)
-        update_run_status(run_id, failed=1, agent_run_id=agent_run.id)
-        return agent_run.id
+        persona_run = create_persona_run(db, persona_run_data)
+        update_run_status(run_id, failed=1, agent_run_id=persona_run.id)
+        return persona_run.id
 
 
-async def run_persona_tasks(db_session_factory, persona_id: str, report_id: str, run_id: str):
+async def run_persona_tasks(db_session_factory, persona_id: str, report_id: str, run_id: str,background_tasks):
     db = db_session_factory()
 
     try:
@@ -203,11 +202,9 @@ async def run_persona_tasks(db_session_factory, persona_id: str, report_id: str,
 
         if not tasks_to_run:
             raise ValueError("No tasks to run")
-
-        init_run_status(run_id, persona_id, report_id, len(tasks_to_run))
-
+        
         for task in tasks_to_run:
-            await execute_single_task(db, scenario, task, report_id, run_id, sys_config)
+            background_tasks.add_task(execute_single_task,db,scenario,task, report_id, run_id,sys_config)
 
     except Exception as e:
         print(f"Fatal error in run_scenario_tasks: {e}")
