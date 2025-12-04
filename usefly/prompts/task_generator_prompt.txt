@@ -13,7 +13,7 @@ Task Format (Strictly 3-5 Lines):
    Stop: [The required outcome is achieved or the next logical step (e.g., finding the relevant page/form) is identified]
 
 ### CRITICAL RULES
-1. Localization: Use original language labels and URLs from the JSON map for all UI elements and products/plans. Include the English translation in parentheses if available.
+1. URLs from Navigation Structure: **CRITICAL** - For every URL in tasks, use the exact "url" value from the navigation structure in the JSON map. The navigation contains: { "label_original": "String", "label_en": "String", "url": "String", ...}. Copy the "url" field EXACTLY as provided - do NOT modify, translate, encode, or infer different URLs. Use "label_original" for the UI element text and "label_en" for English translations in parentheses.
 2. User Intent: Tasks must be framed as a real user goal and represent actual, high-value user behavior.
 3. Inferred Flows (The "Unmapped"): Generate tasks based on likely, industry-standard behavior even if a specific link isn't mapped. E-COMMERCE Inference: Assume functionality for filtering (by price, category, attribute), purchasing bundles/sets, and finding discount/clearance pages. SaaS/SUBSCRIPTION Inference: Assume a cancellation flow includes prompts for pausing/delaying the subscription, offering a discount, or collecting detailed churn feedback.
 4. Variety: Include successful paths, failure scenarios (e.g., searching for a non-existent item), and diverse persona types.

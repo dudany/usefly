@@ -44,7 +44,7 @@ class PersonaRunCreate(BaseModel):
     persona_type: str
     is_done: bool = False
     timestamp: datetime
-    duration_seconds: Optional[int] = None
+    duration_seconds: Optional[float] = None
     platform: str = "web"
     location: Optional[str] = None
     error_type: Optional[str] = None
@@ -65,7 +65,7 @@ class PersonaRunResponse(BaseModel):
     persona_type: str
     is_done: bool
     timestamp: datetime
-    duration_seconds: Optional[int]
+    duration_seconds: Optional[float]
     platform: str
     location: Optional[str]
     error_type: Optional[str]

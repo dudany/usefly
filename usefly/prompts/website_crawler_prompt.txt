@@ -6,7 +6,7 @@ GOAL: Generate a flexible JSON map of the website's structure, focusing on user 
 
 ### ANALYSIS PROTOCOL
 1.  **Identify Business Model:** Determine if the site is E-commerce (Physical/Digital Goods), SaaS (Software/Subscription), Service (Consulting/Agency), or Hybrid.
-2.  **Navigation:** Extract Header (including mega-menus), Sidebar, and Footer. Group utility links (Login, Cart, Support).
+2.  **Navigation:** Extract Header (including mega-menus), Sidebar, and Footer. Group utility links (Login, Cart, Support). **CRITICAL: For each navigation link, record the full original URL exactly as it appears in the HTML href attribute. The "url" field is essential for task generation and must NOT be simplified, translated, or encoded differently.**
 3.  **Core Offerings (Dynamic):**
     * **If E-commerce:** Document product categories, filters, and collections.
     * **If SaaS/Service:** Document "Solutions," "Features," "Use Cases," and "Pricing" tiers.

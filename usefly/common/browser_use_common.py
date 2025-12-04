@@ -15,7 +15,8 @@ async def run_browser_use_agent(task: str, system_config: SystemConfig, max_step
             max_steps=max_steps,
             use_vision=True,
             use_thinking=True,
-            headless=True
+            headless=True,
+            llm_timeout=90
         )
 
         history = await asyncio.wait_for(agent.run(), timeout=600)

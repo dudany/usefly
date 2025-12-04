@@ -170,7 +170,7 @@ export default function ScenariosPage() {
           return next
         })
       }
-    }, 2000)
+    }, 20000)
   }
 
   if (loading) {

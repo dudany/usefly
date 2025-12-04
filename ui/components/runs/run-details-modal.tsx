@@ -76,7 +76,7 @@ export function RunDetailsModal({ run, onClose }: RunDetailsModalProps) {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Duration</p>
-                <p className="font-medium">{run.duration_seconds || 0}s</p>
+                <p className="font-medium">{run.duration_seconds ? Math.round(run.duration_seconds * 10) / 10 : 0}s</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Platform</p>

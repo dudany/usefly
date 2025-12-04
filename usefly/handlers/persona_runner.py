@@ -68,35 +68,167 @@ def validate_scenario_for_run(scenario: Scenario) -> tuple:
     return True, None
 
 
-def extract_agent_events(history: AgentHistoryList) -> dict:
+def extract_agent_events(history: AgentHistoryList) -> list:
+    """Extract ALL agent actions from browser history sequentially."""
     events = []
 
-    for h in history.history:
-        if h.model_output:
-            for action, result in zip(h.model_output.action, h.result):
-                action_dict = action.model_dump(exclude_none=True, mode='json')
-                action_name = list(action_dict.keys())[0]
-                action_params = action_dict[action_name]
+    # Use model_actions() - official browser_use API for extracting actions
+    actions = history.model_actions()
+    results = history.action_results()
 
-                if action_name == 'click_element' and action_params:
-                    events.append({
-                        'type': 'click',
-                        'index': action_params.get('index'),
-                        'coordinate_x': action_params.get('coordinate_x'),
-                        'coordinate_y': action_params.get('coordinate_y'),
-                        'url': h.state.url,
-                        'metadata': result.metadata if result.metadata else {}
-                    })
-                elif action_name == 'scroll' and action_params:
-                    events.append({
-                        'type': 'scroll',
-                        'direction': 'down' if action_params.get('down', True) else 'up',
-                        'pages': action_params.get('pages', 1.0),
-                        'index': action_params.get('index'),
-                        'url': h.state.url
-                    })
+    for step_idx, (h, action_dict) in enumerate(zip(history.history, actions), start=1):
+        # Guard against empty action dicts
+        if not action_dict:
+            continue
 
-    events
+        # Get action name and params
+        action_keys = [k for k in action_dict.keys() if k != 'interacted_element']
+        if not action_keys:
+            continue
+
+        action_name = action_keys[0]
+        action_params = action_dict[action_name]
+
+        # Base event structure
+        event = {
+            'step': step_idx,
+            'url': h.state.url if h.state else None,
+        }
+
+        # Extract by action type
+        if action_name == 'click_element':
+            event.update({
+                'type': 'click',
+                'index': action_params.get('index'),
+                'coordinate_x': action_params.get('coordinate_x'),
+                'coordinate_y': action_params.get('coordinate_y'),
+            })
+
+        elif action_name == 'scroll':
+            event.update({
+                'type': 'scroll',
+                'direction': 'down' if action_params.get('down', True) else 'up',
+                'pages': action_params.get('pages', 1.0),
+                'index': action_params.get('index'),
+            })
+
+        elif action_name == 'navigate':
+            event.update({
+                'type': 'navigate',
+                'target_url': action_params.get('url'),
+                'new_tab': action_params.get('new_tab', False),
+            })
+
+        elif action_name == 'input':
+            event.update({
+                'type': 'input',
+                'index': action_params.get('index'),
+                'text': action_params.get('text'),
+                'clear': action_params.get('clear', True),
+            })
+
+        elif action_name == 'search':
+            event.update({
+                'type': 'search',
+                'query': action_params.get('query'),
+                'engine': action_params.get('engine', 'google'),
+            })
+
+        elif action_name == 'go_back':
+            event.update({'type': 'go_back'})
+
+        elif action_name == 'wait':
+            event.update({
+                'type': 'wait',
+                'seconds': action_params if isinstance(action_params, (int, float)) else action_params.get('seconds', 3),
+            })
+
+        elif action_name == 'upload_file':
+            event.update({
+                'type': 'upload_file',
+                'index': action_params.get('index'),
+                'path': action_params.get('path'),
+            })
+
+        elif action_name == 'switch':
+            event.update({
+                'type': 'switch_tab',
+                'tab_id': action_params.get('tab_id'),
+            })
+
+        elif action_name == 'close':
+            event.update({
+                'type': 'close_tab',
+                'tab_id': action_params.get('tab_id'),
+            })
+
+        elif action_name == 'extract':
+            event.update({
+                'type': 'extract',
+                'query': action_params.get('query'),
+                'extract_links': action_params.get('extract_links', False),
+            })
+
+        elif action_name == 'send_keys':
+            event.update({
+                'type': 'send_keys',
+                'keys': action_params.get('keys'),
+            })
+
+        elif action_name == 'find_text':
+            event.update({
+                'type': 'find_text',
+                'text': action_params if isinstance(action_params, str) else action_params.get('text'),
+            })
+
+        elif action_name == 'screenshot':
+            event.update({'type': 'screenshot'})
+
+        elif action_name == 'dropdown_options':
+            event.update({
+                'type': 'dropdown_options',
+                'index': action_params.get('index'),
+            })
+
+        elif action_name == 'select_dropdown':
+            event.update({
+                'type': 'select_dropdown',
+                'index': action_params.get('index'),
+                'text': action_params.get('text'),
+            })
+
+        elif action_name == 'done':
+            event.update({
+                'type': 'done',
+                'text': action_params.get('text'),
+                'success': action_params.get('success', True),
+            })
+
+        else:
+            # Fallback for unknown action types
+            event.update({
+                'type': action_name,
+                'params': action_params,
+            })
+
+        # Add interacted_element if available (convert to dict for JSON serialization)
+        if action_dict.get('interacted_element'):
+            interacted_elem = action_dict['interacted_element']
+            # Convert DOMInteractedElement to dict if it's not already
+            if hasattr(interacted_elem, 'model_dump'):
+                event['interacted_element'] = interacted_elem.model_dump(exclude_none=True)
+            elif isinstance(interacted_elem, dict):
+                event['interacted_element'] = interacted_elem
+            else:
+                event['interacted_element'] = str(interacted_elem)
+
+        # Add result metadata
+        if step_idx <= len(results) and results[step_idx - 1].metadata:
+            event['metadata'] = results[step_idx - 1].metadata
+
+        events.append(event)
+
+    return events
 
 
 async def execute_single_task(
@@ -107,6 +239,15 @@ async def execute_single_task(
     run_id: str,
     system_config: SystemConfig
 ) -> str:
+    # Initialize status tracking if not already initialized
+    if run_id not in _active_runs:
+        init_run_status(
+            run_id=run_id,
+            scenario_id=scenario.id,
+            report_id=report_id,
+            task_count=1
+        )
+
     try:
         journey_task = UserJourneyTask(**task)
         start_time = datetime.now()

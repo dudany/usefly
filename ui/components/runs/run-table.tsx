@@ -104,7 +104,7 @@ export function RunTable({ runs }: RunTableProps) {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-muted-foreground">{run.duration_seconds}s</td>
+                  <td className="px-6 py-4 text-muted-foreground">{run.duration_seconds ? Math.round(run.duration_seconds * 10) / 10 : 0}s</td>
                   <td className="px-6 py-4 text-muted-foreground text-xs">{formatDate(run.timestamp)}</td>
                   <td className="px-6 py-4">
                     <Button
