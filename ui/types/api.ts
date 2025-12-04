@@ -156,38 +156,38 @@ export interface PersonaRun {
   config_id: string;
   report_id?: string;
   persona_type: string;
-  status: "success" | "error" | "anomaly" | "in-progress";
+  is_done: boolean;
   timestamp: string; // ISO datetime
-  duration?: number; // seconds
+  duration_seconds?: number; // seconds
   platform: string;
   location?: string; // Geographic location (US, UK, CA, etc.)
   error_type?: string; // Error type for failed runs
   steps_completed: number;
   total_steps: number;
   journey_path: string[];
-  goals_achieved: string[];
-  friction_points: FrictionPoint[];
-  metrics: MetricsData;
-  created_at: string; // ISO datetime
-  updated_at: string; // ISO datetime
+  final_result?: string;
+  judgement_data: any;
+  task_description?: string;
+  events: any[];
 }
 
 export interface CreatePersonaRunRequest {
   config_id: string;
   report_id?: string;
   persona_type: string;
-  status: string;
+  is_done?: boolean;
   timestamp: string;
-  duration?: number;
+  duration_seconds?: number;
   platform?: string;
   location?: string;
   error_type?: string;
   steps_completed?: number;
   total_steps?: number;
   journey_path?: string[];
-  goals_achieved?: string[];
-  friction_points?: FrictionPoint[];
-  metrics?: MetricsData;
+  final_result?: string;
+  judgement_data?: any;
+  task_description?: string;
+  events?: any[];
 }
 
 /**

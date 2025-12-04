@@ -9,7 +9,6 @@ def list_persona_runs(
     db: Session,
     config_id: Optional[str] = None,
     persona_type: Optional[str] = None,
-    status: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ) -> List[AgentRun]:
@@ -20,8 +19,6 @@ def list_persona_runs(
         query = query.filter(AgentRun.config_id == config_id)
     if persona_type:
         query = query.filter(AgentRun.persona_type == persona_type)
-    if status:
-        query = query.filter(AgentRun.status == status)
 
     return query.offset(offset).limit(limit).all()
 
@@ -37,18 +34,19 @@ def create_persona_run(db: Session, run: PersonaRunCreate) -> AgentRun:
         config_id=run.config_id,
         report_id=run.report_id,
         persona_type=run.persona_type,
-        status=run.status,
+        is_done=run.is_done,
         timestamp=run.timestamp,
-        duration=run.duration,
+        duration_seconds=run.duration_seconds,
         platform=run.platform,
         location=run.location,
         error_type=run.error_type,
         steps_completed=run.steps_completed,
         total_steps=run.total_steps,
         journey_path=run.journey_path,
-        goals_achieved=run.goals_achieved,
-        friction_points=run.friction_points,
-        metrics=run.metrics,
+        final_result=run.final_result,
+        judgement_data=run.judgement_data,
+        task_description=run.task_description,
+        events=run.events,
     )
     db.add(db_run)
     db.commit()

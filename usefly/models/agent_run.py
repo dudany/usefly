@@ -4,9 +4,8 @@ Agent/Persona run models for execution records.
 
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import Column, String, Integer, DateTime, JSON, ForeignKey
+from sqlalchemy import Column, String, Integer, DateTime, JSON, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 from pydantic import BaseModel
 from usefly.database import Base
 
@@ -19,26 +18,19 @@ class AgentRun(Base):
     config_id = Column(String, ForeignKey("scenarios.id"), nullable=False, index=True)
     report_id = Column(String, ForeignKey("reports.id"), nullable=True, index=True)
     persona_type = Column(String, nullable=False, index=True)
-    status = Column(String, nullable=False, index=True)  # success, error, anomaly, in-progress
-    run_status = Column(String, nullable=True)  # Agent run status: completed, failed, in-progress
-    verdict_status = Column(String, nullable=True)  # Verdict from agent: True/False or result reason
+    is_done = Column(Boolean, default=False, nullable=False)
     timestamp = Column(DateTime, nullable=False, index=True)
-    duration = Column(Integer)  # seconds
+    duration_seconds = Column(Integer)  # seconds
     platform = Column(String, default="web")
     location = Column(String)  # Geographic location (US, UK, CA, DE, FR, etc.)
     error_type = Column(String)  # Error type for failed runs
     steps_completed = Column(Integer, default=0)
     total_steps = Column(Integer, default=0)
     journey_path = Column(JSON, default=[])  # List of page names
-    goals_achieved = Column(JSON, default=[])  # List of goal strings
-    friction_points = Column(JSON, default=[])  # List of friction point objects
-    metrics = Column(JSON, default={})  # Nested metrics object
+    final_result = Column(String)  # Final result from agent execution
     judgement_data = Column(JSON, default={})  # Full judgement result from agent (reasoning, verdict, failure_reason, etc.)
-    initial_prompt = Column(String)
-    urls_visited = Column(JSON, default=[])
+    task_description = Column(String)  # Description of the task
     events = Column(JSON, default=[])
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
     config = relationship("Scenario", backref="agent_runs")
@@ -50,23 +42,18 @@ class PersonaRunCreate(BaseModel):
     config_id: str
     report_id: Optional[str] = None
     persona_type: str
-    status: str
-    run_status: Optional[str] = None  # Agent run completion status from history
-    verdict_status: Optional[str] = None  # Verdict result (True/False or failure reason)
+    is_done: bool = False
     timestamp: datetime
-    duration: Optional[int] = None
+    duration_seconds: Optional[int] = None
     platform: str = "web"
     location: Optional[str] = None
     error_type: Optional[str] = None
     steps_completed: int = 0
     total_steps: int = 0
     journey_path: List[str] = []
-    goals_achieved: List[str] = []
-    friction_points: List[dict] = []
-    metrics: dict = {}
-    judgement_data: dict = {}  # Full judgement object from agent history
-    initial_prompt: Optional[str] = None
-    urls_visited: List[str] = []
+    final_result: Optional[str] = None
+    judgement_data: dict = {}
+    task_description: Optional[str] = None
     events: List[dict] = []
 
 
@@ -76,26 +63,19 @@ class PersonaRunResponse(BaseModel):
     config_id: str
     report_id: Optional[str]
     persona_type: str
-    status: str
-    run_status: Optional[str]
-    verdict_status: Optional[str]
+    is_done: bool
     timestamp: datetime
-    duration: Optional[int]
+    duration_seconds: Optional[int]
     platform: str
     location: Optional[str]
     error_type: Optional[str]
     steps_completed: int
     total_steps: int
     journey_path: List[str]
-    goals_achieved: List[str]
-    friction_points: list
-    metrics: dict
+    final_result: Optional[str]
     judgement_data: dict
-    initial_prompt: Optional[str]
-    urls_visited: List[str]
+    task_description: Optional[str]
     events: List[dict]
-    created_at: datetime
-    updated_at: datetime
 
     class Config:
         from_attributes = True

@@ -138,7 +138,7 @@ async def execute_single_task(
             error_type="",#TODO add error
             steps_completed=history.number_of_steps(),
             total_steps=30,
-            final_Result=history.final_result(),
+            final_result=history.final_result(),
             journey_path=history.urls(),
             judgement_data=history.judgement(),
             task_description=task_description,
@@ -157,21 +157,19 @@ async def execute_single_task(
             config_id=scenario.id,
             report_id=report_id,
             persona_type=task.get("persona", "UNKNOWN"),
-            status="error",
-            run_status="failed",
-            verdict_status=None,
+            is_done=False,
             timestamp=datetime.now(),
-            duration=0,
+            duration_seconds=0,
             platform="web",
             location=None,
             error_type=str(e),
             steps_completed=0,
             total_steps=30,
             journey_path=[],
-            goals_achieved=[],
-            friction_points=[],
-            metrics={},
-            judgement_data={}
+            final_result=f"ERROR: {str(e)}",
+            judgement_data={},
+            task_description=task.get("goal", "UNKNOWN"),
+            events=[]
         )
 
         persona_run = create_persona_run(db, persona_run_data)

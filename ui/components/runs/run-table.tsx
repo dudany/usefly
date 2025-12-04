@@ -6,45 +6,39 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { RunDetailsModal } from "./run-details-modal"
-import type { AgentRun } from "@/types/api"
+import type { PersonaRun } from "@/types/api"
 import { getPersonaLabel } from "./mock-data"
 
 interface RunTableProps {
-  runs: AgentRun[]
+  runs: PersonaRun[]
 }
 
 export function RunTable({ runs }: RunTableProps) {
-  const [selectedRun, setSelectedRun] = useState<AgentRun | null>(null)
+  const [selectedRun, setSelectedRun] = useState<PersonaRun | null>(null)
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "success":
-        return <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-      case "error":
-        return <AlertCircle className="w-4 h-4 text-red-500" />
-      case "anomaly":
-        return <AlertCircle className="w-4 h-4 text-amber-500" />
-      case "in-progress":
-        return <Clock className="w-4 h-4 text-blue-500 animate-spin" />
-      default:
-        return null
+  const getStatusIcon = (isDone: boolean, errorType?: string) => {
+    if (errorType && errorType !== "") {
+      return <AlertCircle className="w-4 h-4 text-red-500" />
     }
+    if (isDone) {
+      return <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+    }
+    return <Clock className="w-4 h-4 text-blue-500 animate-spin" />
   }
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      success: "default",
-      error: "destructive",
-      anomaly: "secondary",
-      "in-progress": "secondary",
+  const getStatusBadge = (isDone: boolean, errorType?: string) => {
+    let variant: "default" | "secondary" | "destructive" = "secondary"
+    let label = "In Progress"
+
+    if (errorType && errorType !== "") {
+      variant = "destructive"
+      label = "Error"
+    } else if (isDone) {
+      variant = "default"
+      label = "Success"
     }
-    const labels = {
-      success: "Success",
-      error: "Error",
-      anomaly: "Anomaly Detected",
-      "in-progress": "In Progress",
-    }
-    return <Badge variant={variants[status] || "default"}>{labels[status] || status}</Badge>
+
+    return <Badge variant={variant}>{label}</Badge>
   }
 
   const formatDate = (timestamp: string) => {
@@ -93,8 +87,8 @@ export function RunTable({ runs }: RunTableProps) {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(run.status)}
-                      {getStatusBadge(run.status)}
+                      {getStatusIcon(run.is_done, run.error_type)}
+                      {getStatusBadge(run.is_done, run.error_type)}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -110,7 +104,7 @@ export function RunTable({ runs }: RunTableProps) {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-muted-foreground">{run.duration}s</td>
+                  <td className="px-6 py-4 text-muted-foreground">{run.duration_seconds}s</td>
                   <td className="px-6 py-4 text-muted-foreground text-xs">{formatDate(run.timestamp)}</td>
                   <td className="px-6 py-4">
                     <Button

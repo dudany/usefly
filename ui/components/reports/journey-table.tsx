@@ -9,11 +9,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { AgentRun } from "@/types/api"
+import type { PersonaRun } from "@/types/api"
 import { aggregateBySegment, getPercentageColor } from "./utils"
 
 interface JourneyTableProps {
-  runs: AgentRun[]
+  runs: PersonaRun[]
   groupByPlatform: boolean
   groupByPersona: boolean
 }

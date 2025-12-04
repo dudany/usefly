@@ -132,8 +132,10 @@ async def analyze_website(db: Session, request) -> Dict:
         email=request.email
     )
 
-    with open(f'usefly/prompts/website_crawler_prompt.txt', 'r') as f:
-        task = f.read().format(website=scenario.website_url, description=scenario.description)
+    with open('usefly/prompts/website_crawler_prompt.txt', 'r') as f:
+        task = f.read()
+        task = task.replace('{website}', scenario.website_url)
+        task = task.replace('{description}', scenario.description)
 
     history = await run_browser_use_agent(task=task, system_config=sys_config, max_steps=30)
 

@@ -7,8 +7,8 @@ from usefly.models import SystemConfig, UserJourneyTask
 
 async def run_browser_use_agent(task: str, system_config: SystemConfig, max_steps: int = 30):
     try:
-        # llm = ChatOpenAI(model=system_config.model_name, api_key=system_config.api_key)
-        llm = ChatGoogle(model=system_config.model_name, api_key=system_config.api_key)
+        llm = ChatOpenAI(model=system_config.model_name, api_key=system_config.api_key)
+        # llm = ChatGoogle(model=system_config.model_name, api_key=system_config.api_key) #TODO incorporate open ai and gemini for choosing llm
         agent = Agent(
             task=task,
             llm=llm,

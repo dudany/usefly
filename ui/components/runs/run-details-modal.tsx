@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, AlertCircle } from "lucide-react"
-import type { AgentRun } from "@/types/api"
+import type { PersonaRun } from "@/types/api"
 import { getPersonaLabel } from "./mock-data"
 
 const mockSteps = [
@@ -19,16 +19,21 @@ const mockSteps = [
 ]
 
 interface RunDetailsModalProps {
-  run: AgentRun
+  run: PersonaRun
   onClose: () => void
 }
 
 export function RunDetailsModal({ run, onClose }: RunDetailsModalProps) {
-  const statusColor = {
-    success: "text-emerald-500",
-    error: "text-red-500",
-    anomaly: "text-amber-500",
-    "in-progress": "text-blue-500",
+  const getStatusColor = (isDone: boolean, errorType?: string) => {
+    if (errorType && errorType !== "") return "text-red-500"
+    if (isDone) return "text-emerald-500"
+    return "text-blue-500"
+  }
+
+  const getStatusLabel = (isDone: boolean, errorType?: string) => {
+    if (errorType && errorType !== "") return "Error"
+    if (isDone) return "Success"
+    return "In Progress"
   }
 
   return (
@@ -49,19 +54,29 @@ export function RunDetailsModal({ run, onClose }: RunDetailsModalProps) {
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Status</p>
                 <div className="flex items-center gap-2">
-                  {run.status === "success" ? (
+                  {run.error_type && run.error_type !== "" ? (
+                    <AlertCircle className="w-4 h-4 text-red-500" />
+                  ) : run.is_done ? (
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                   ) : (
-                    <AlertCircle className="w-4 h-4 text-red-500" />
+                    <AlertCircle className="w-4 h-4 text-blue-500" />
                   )}
-                  <Badge variant={run.status === "success" ? "default" : "destructive"} className="capitalize">
-                    {run.status}
+                  <Badge
+                    variant={
+                      run.error_type && run.error_type !== ""
+                        ? "destructive"
+                        : run.is_done
+                          ? "default"
+                          : "secondary"
+                    }
+                  >
+                    {getStatusLabel(run.is_done, run.error_type)}
                   </Badge>
                 </div>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Duration</p>
-                <p className="font-medium">{run.duration}s</p>
+                <p className="font-medium">{run.duration_seconds || 0}s</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Platform</p>
@@ -73,17 +88,75 @@ export function RunDetailsModal({ run, onClose }: RunDetailsModalProps) {
           </Card>
 
           {/* Error Info */}
-          {run.status === "error" && (
+          {run.error_type && run.error_type !== "" && (
             <Card className="p-4 bg-red-500/10 border-red-500/20">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-red-500">Error Encountered</p>
-                  <p className="text-sm text-foreground/80 mt-1">The agent encountered an error during execution</p>
+                  <p className="text-sm text-foreground/80 mt-1">{run.error_type}</p>
                 </div>
               </div>
             </Card>
           )}
+
+          {/* Task Description */}
+          {run.task_description && (
+            <Card className="p-4 bg-card border-border">
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Task Description</p>
+                <p className="text-sm">{run.task_description}</p>
+              </div>
+            </Card>
+          )}
+
+          {/* Final Result */}
+          {run.final_result && (
+            <Card className="p-4 bg-card border-border">
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Final Result</p>
+                <p className="text-sm">{run.final_result}</p>
+              </div>
+            </Card>
+          )}
+
+          {/* Journey Path */}
+          {run.journey_path && run.journey_path.length > 0 && (
+            <Card className="p-4 bg-card border-border">
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Journey Path</p>
+                <div className="flex flex-wrap gap-2">
+                  {run.journey_path.map((url, idx) => (
+                    <Badge key={idx} variant="outline" className="text-xs">
+                      {url}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Steps Progress */}
+          <Card className="p-4 bg-card border-border">
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">Progress</p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{
+                        width: `${run.total_steps > 0 ? (run.steps_completed / run.total_steps) * 100 : 0}%`,
+                      }}
+                    ></div>
+                  </div>
+                </div>
+                <span className="text-sm font-medium">
+                  {run.steps_completed}/{run.total_steps}
+                </span>
+              </div>
+            </div>
+          </Card>
 
           {/* Steps Timeline */}
           <div>
