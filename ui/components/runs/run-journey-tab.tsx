@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { ArrowRight, Globe, Zap } from "lucide-react"
-import { DerivedMetrics, formatUrl } from "./run-utils"
+import { DerivedMetrics, formatUrl, getFullDecodedUrl } from "./run-utils"
 
 interface RunJourneyTabProps {
   journeyPath: string[]
@@ -41,7 +41,7 @@ export function RunJourneyTab({
               <Badge
                 variant="outline"
                 className="text-xs max-w-xs truncate"
-                title={url}
+                title={getFullDecodedUrl(url)}
               >
                 {formatUrl(url)}
               </Badge>
@@ -81,7 +81,7 @@ export function RunJourneyTab({
                 key={url}
                 className="flex items-center justify-between p-3 bg-muted rounded-md border"
               >
-                <span className="text-sm truncate flex-1 mr-2" title={url}>
+                <span className="text-sm truncate flex-1 mr-2" title={getFullDecodedUrl(url)}>
                   {formatUrl(url)}
                 </span>
                 <Badge variant="secondary" className="flex-shrink-0">
@@ -104,7 +104,7 @@ export function RunJourneyTab({
                   key={url}
                   className="flex items-center justify-between p-3 bg-muted rounded-md border"
                 >
-                  <span className="text-sm truncate flex-1 mr-2" title={url}>
+                  <span className="text-sm truncate flex-1 mr-2" title={getFullDecodedUrl(url)}>
                     {formatUrl(url)}
                   </span>
                   <Badge variant="outline" className="flex-shrink-0">

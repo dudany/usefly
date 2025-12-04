@@ -194,7 +194,19 @@ export function calculateDerivedMetrics(run: PersonaRun): DerivedMetrics {
 export function formatUrl(url: string): string {
   try {
     const urlObj = new URL(url)
-    return urlObj.hostname + (urlObj.pathname !== "/" ? urlObj.pathname : "")
+    // Decode the pathname separately to handle multi-byte characters
+    const pathname = decodeURIComponent(urlObj.pathname)
+    return urlObj.hostname + (pathname !== "/" ? pathname : "")
+  } catch {
+    // If URL parsing fails, return the URL as-is
+    return url
+  }
+}
+
+// Get full decoded URL for title/hover
+export function getFullDecodedUrl(url: string): string {
+  try {
+    return decodeURIComponent(url)
   } catch {
     return url
   }

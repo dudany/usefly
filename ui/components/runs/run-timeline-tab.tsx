@@ -8,6 +8,7 @@ import {
   EVENT_ICON_MAP,
   getEventDescription,
   formatUrl,
+  getFullDecodedUrl,
 } from "./run-utils"
 
 interface RunTimelineTabProps {
@@ -63,7 +64,7 @@ function TimelineEvent({ event, index, totalEvents }: TimelineEventProps) {
 
             {/* URL and step info */}
             <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>
+              <span title={event.url ? getFullDecodedUrl(event.url) : ""}>
                 Step {event.step}
                 {event.url && ` • ${formatUrl(event.url)}`}
               </span>
