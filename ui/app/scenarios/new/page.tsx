@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Suspense } from "react"
 import { AppLayout } from "@/components/layout/app-layout"
-import { NewReportForm } from "@/components/reports/new-report-form"
+import { NewScenarioForm } from "@/components/scenarios/new-scenario-form"
 import { Card, CardContent } from "@/components/ui/card"
 import { Zap, Target, LineChart, ChevronLeft } from "lucide-react"
 
@@ -75,7 +75,7 @@ export default function NewScenarioPage() {
 
         {/* Form */}
         <Suspense fallback={<div className="text-muted-foreground">Loading...</div>}>
-          <NewReportForm mode="scenario" />
+          <NewScenarioForm />
         </Suspense>
       </div>
     </AppLayout>

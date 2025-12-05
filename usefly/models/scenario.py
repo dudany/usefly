@@ -35,9 +35,6 @@ class Scenario(Base):
     tasks_metadata = Column(JSON, default={})  # Metadata about task generation (total_tasks, persona_distribution, etc.)
     selected_task_indices = Column(JSON, default=[])  # List of selected task indices
 
-    # Relationships
-    reports = relationship("Report", back_populates="config", cascade="all, delete-orphan")
-
 
 class ScenarioCreate(BaseModel):
     """Schema for creating a new scenario."""

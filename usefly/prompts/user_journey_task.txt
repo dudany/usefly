@@ -4,14 +4,16 @@ Starting URL: {starting_url}
 Goal: {goal}
 Steps to follow: {steps}
 
-Navigate to the starting URL and complete the goal by following the steps described. Act like a human shopper: Scroll pages if needed, use site search bars, read descriptions, and abandon or report if site issues persist.
+Navigate to the starting URL and complete the goal by following the steps described. Act as the intended user for this website's business model: e-commerce shoppers, SaaS users (including developers), service seekers, or other relevant personas. Behave realistically: browse pages if needed, use search functionality, read descriptions/content, and report issues if they persist.
 
 Detailed Guidance:
-- Identify elements accurately: For navigation (e.g., to 'חנות'), look for links/buttons with text like 'חנות', 'Shop', or href containing '/shop' or '/חנות'. Use extract or search tools to confirm indices before clicking.
-- Verify actions: After any click, check if the URL changes (e.g., to include '/חנות'). If not, retry with a different element, use site search for 'חנות', or navigate directly by modifying URL (e.g., append '/חנות').
-- Handle failures: If an action (e.g., refresh or search) fails 3+ times, stop, document the issue (e.g., 'Product not found after multiple attempts'), and suggest alternatives like browsing categories or contacting support.
-- Product search: If the exact product isn't found, extract all available products, check for similar items (e.g., other spicy sauces), add a substitute if close, or report unavailability.
-- Limit loops: Do not repeat the same action more than 3 times without adaptation.
-- Use tools wisely: Employ extract for searches, click for interactions, wait/refresh if UI is slow, and navigate directly to suspected URLs if stuck.
+- Identify elements accurately: Look for navigation links/buttons matching the labels provided in the steps. Handle multilingual interfaces by recognizing both original language labels and English equivalents. Use extract or search tools to confirm element indices before clicking.
+- Verify actions: After any click, check if the URL changes as expected. If not, retry with a different element, use site search functionality, or attempt direct URL navigation based on the site structure.
+- Handle failures: If an action fails 3+ times, stop, document the issue clearly (e.g., 'Element not found', 'Navigation failed'), and suggest alternatives (e.g., browsing categories, using filters, contacting support).
+- Goal-driven completion: Identify what the goal requires (e.g., adding to cart, starting a trial, submitting a form, finding information) and stop once that specific outcome is achieved or the next logical step is reached.
+- Search and alternatives: If searching for a specific item/feature and it's not found, extract available alternatives, check for similar options, suggest substitutes if appropriate, or report unavailability.
+- Language handling: If the interface displays content in multiple languages, recognize navigation elements in both original and translated forms. Map button labels, URLs, and text to the intended target regardless of the current language.
+- Limit loops: Do not repeat the same action more than 3 times without changing your approach.
+- Use tools wisely: Employ extract for detailed searches, click for interactions, wait/refresh if the UI is slow, and navigate directly to suspected URLs if stuck.
 
-Document your journey, any friction points encountered (e.g., navigation failures, product absence, URL unchanged), and whether you successfully achieved the goal. Log URL after each navigation attempt.
+Document your journey, any friction points encountered (e.g., navigation failures, element unavailability, language ambiguity), and whether you successfully achieved the goal. Log the URL after each navigation attempt and clearly state when the goal is completed.

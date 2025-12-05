@@ -197,7 +197,6 @@ export interface CreatePersonaRunRequest {
 export interface SankeyNode {
   name: string;
   visits: number;
-  errors: number;
 }
 
 /**
@@ -225,35 +224,37 @@ export interface SankeyData {
  */
 export interface MetricsSummary {
   total_runs: number;
-  success_count: number;
-  error_count: number;
-  anomaly_count: number;
+  completed_runs: number;
+  failed_runs: number;
   success_rate: number;
-  avg_duration: number;
-  avg_completion: number;
+  avg_duration_seconds: number;
+  avg_steps: number;
 }
 
 /**
- * Report
- * Aggregated results from multiple agent runs
+ * Report List Item
+ * Summary of a report for the report selector
  */
-export interface Report {
-  id: string;
-  config_id: string;
-  name: string;
-  description?: string;
-  is_baseline: boolean;
-  metrics_summary: MetricsSummary;
-  journey_sankey: SankeyData;
-  created_at: string; // ISO datetime
-  updated_at: string; // ISO datetime
+export interface ReportListItem {
+  report_id: string;
+  scenario_id: string;
+  scenario_name: string;
+  run_count: number;
+  first_run: string;  // ISO datetime
+  last_run: string;   // ISO datetime
 }
 
-export interface CreateReportRequest {
-  config_id: string;
-  name: string;
-  description?: string;
-  is_baseline?: boolean;
+/**
+ * Report Aggregate
+ * Full aggregated data for a specific report
+ */
+export interface ReportAggregate {
+  report_id: string;
+  scenario_id: string;
+  scenario_name: string;
+  run_count: number;
+  metrics_summary: MetricsSummary;
+  journey_sankey: SankeyData;
 }
 
 export interface PersonaExecutionResponse {

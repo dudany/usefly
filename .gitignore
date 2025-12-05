@@ -42,3 +42,4 @@ env/
 usefly/data/*
 usefly/static/
 *.gif*
+*.db*

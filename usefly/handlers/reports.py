@@ -1,132 +1,215 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import func
 from typing import List, Optional, Dict
-import uuid
+from datetime import datetime
 
-from usefly.models import Report, Scenario, AgentRun, ReportCreate
+from usefly.models import AgentRun, Scenario
 
-def list_reports(
-    db: Session,
-    config_id: Optional[str] = None,
-    is_baseline: Optional[bool] = None,
-    limit: int = 50,
-    offset: int = 0,
-) -> List[Report]:
-    """List reports with optional filters."""
-    query = db.query(Report).order_by(Report.created_at.desc())
 
-    if config_id:
-        query = query.filter(Report.config_id == config_id)
-    if is_baseline is not None:
-        query = query.filter(Report.is_baseline == is_baseline)
+def list_report_summaries(db: Session) -> List[Dict]:
+    """
+    List all unique report_ids with metadata.
 
-    return query.offset(offset).limit(limit).all()
+    Returns a list of report summaries with scenario information and run counts.
+    """
+    # Query to get unique report_ids with aggregated metadata
+    query = db.query(
+        AgentRun.report_id,
+        AgentRun.config_id,
+        func.count(AgentRun.id).label("run_count"),
+        func.min(AgentRun.timestamp).label("first_run"),
+        func.max(AgentRun.timestamp).label("last_run"),
+    ).filter(
+        AgentRun.report_id.isnot(None)
+    ).group_by(
+        AgentRun.report_id,
+        AgentRun.config_id
+    ).all()
 
-def create_report(db: Session, report: ReportCreate) -> Report:
-    """Create a new report."""
-    # Verify scenario exists
-    scenario = db.query(Scenario).filter(Scenario.id == report.config_id).first()
-    if not scenario:
-        raise ValueError("Scenario not found")
+    # Build response with scenario names
+    summaries = []
+    for row in query:
+        scenario = db.query(Scenario).filter(Scenario.id == row.config_id).first()
+        scenario_name = scenario.name if scenario else "Unknown Scenario"
 
-    # Calculate metrics summary from runs with this config
-    config_runs = db.query(AgentRun).filter(AgentRun.config_id == report.config_id).all()
+        summaries.append({
+            "report_id": row.report_id,
+            "scenario_id": row.config_id,
+            "scenario_name": scenario_name,
+            "run_count": row.run_count,
+            "first_run": row.first_run.isoformat() if row.first_run else None,
+            "last_run": row.last_run.isoformat() if row.last_run else None,
+        })
+
+    return summaries
+
+
+def get_report_aggregate(db: Session, report_id: str) -> Optional[Dict]:
+    """
+    Get aggregated data for a specific report_id.
+
+    Returns metrics summary and journey Sankey diagram data.
+    """
+    # Get all runs for this report_id
+    runs = db.query(AgentRun).filter(AgentRun.report_id == report_id).all()
+
+    if not runs:
+        return None
+
+    # Get scenario info from first run
+    scenario = db.query(Scenario).filter(Scenario.id == runs[0].config_id).first()
+    scenario_name = scenario.name if scenario else "Unknown Scenario"
 
     # Calculate metrics summary
-    metrics_summary = _calculate_metrics_summary(config_runs)
+    metrics_summary = _calculate_metrics_summary(runs)
 
-    # Generate sankey data
-    journey_sankey = _generate_sankey_data(config_runs)
+    # Generate Sankey diagram data
+    journey_sankey = _generate_sankey_data(runs)
 
-    db_report = Report(
-        id=str(uuid.uuid4()),
-        config_id=report.config_id,
-        name=report.name,
-        description=report.description,
-        is_baseline=report.is_baseline,
-        metrics_summary=metrics_summary,
-        journey_sankey=journey_sankey,
-    )
-    db.add(db_report)
-    db.commit()
-    db.refresh(db_report)
-    return db_report
+    return {
+        "report_id": report_id,
+        "scenario_id": runs[0].config_id,
+        "scenario_name": scenario_name,
+        "run_count": len(runs),
+        "metrics_summary": metrics_summary,
+        "journey_sankey": journey_sankey,
+    }
 
-def get_report(db: Session, report_id: str) -> Optional[Report]:
-    """Get a specific report."""
-    return db.query(Report).filter(Report.id == report_id).first()
 
 def _calculate_metrics_summary(agent_runs: List[AgentRun]) -> dict:
     """Calculate aggregated metrics from agent runs."""
     if not agent_runs:
         return {}
 
-    success_count = sum(1 for run in agent_runs if run.status == "success")
-    error_count = sum(1 for run in agent_runs if run.status == "error")
-    anomaly_count = sum(1 for run in agent_runs if run.status == "anomaly")
+    completed_count = sum(1 for run in agent_runs if run.is_done)
+    failed_count = sum(1 for run in agent_runs if not run.is_done)
 
-    avg_duration = sum(run.duration or 0 for run in agent_runs) / len(agent_runs) if agent_runs else 0
-    avg_completion = sum(run.steps_completed for run in agent_runs) / len(agent_runs) if agent_runs else 0
+    # Calculate average duration (only for completed runs with duration data)
+    durations = [run.duration_seconds for run in agent_runs if run.duration_seconds is not None]
+    avg_duration = sum(durations) / len(durations) if durations else 0
+
+    # Calculate average steps
+    avg_steps = sum(run.steps_completed for run in agent_runs) / len(agent_runs) if agent_runs else 0
 
     return {
         "total_runs": len(agent_runs),
-        "success_count": success_count,
-        "error_count": error_count,
-        "anomaly_count": anomaly_count,
-        "success_rate": success_count / len(agent_runs) if agent_runs else 0,
-        "avg_duration": avg_duration,
-        "avg_completion": avg_completion,
+        "completed_runs": completed_count,
+        "failed_runs": failed_count,
+        "success_rate": completed_count / len(agent_runs) if agent_runs else 0,
+        "avg_duration_seconds": round(avg_duration, 2),
+        "avg_steps": round(avg_steps, 1),
     }
 
-def _generate_sankey_data(agent_runs: List[AgentRun]) -> dict:
-    """Generate Sankey diagram data from journey paths."""
-    if not agent_runs:
-        return {"nodes": [], "links": []}
 
-    # Collect all unique pages
-    pages = set()
+def extract_url_sequence_from_events(events: List[dict]) -> List[str]:
+    urls = []
+    for event in events:
+        url = event.get('url')
+        if url:
+            normalized_url = url.rstrip('/')
+            urls.append(normalized_url)
+    return urls
+
+
+def break_sequence_on_cycles(url_sequence: List[str]) -> List[List[str]]:
+    if not url_sequence:
+        return []
+
+    sequences = []
+    current_sequence = []
+    seen_in_current = set()
+
+    for url in url_sequence:
+        if not current_sequence:
+            current_sequence.append(url)
+            seen_in_current.add(url)
+        elif url == current_sequence[-1]:
+            current_sequence.append(url)
+        elif url in seen_in_current:
+            sequences.append(current_sequence)
+            current_sequence = [url]
+            seen_in_current = {url}
+        else:
+            current_sequence.append(url)
+            seen_in_current.add(url)
+
+    if current_sequence:
+        sequences.append(current_sequence)
+
+    return sequences
+
+
+def extract_sequences_from_runs(agent_runs: List[AgentRun]) -> List[List[str]]:
+    all_sequences = []
     for run in agent_runs:
-        pages.update(run.journey_path)
+        if not run.events:
+            continue
+        url_sequence = extract_url_sequence_from_events(run.events)
+        broken_sequences = break_sequence_on_cycles(url_sequence)
+        all_sequences.extend(broken_sequences)
+    return all_sequences
 
-    pages_list = sorted(list(pages))
-    page_to_index = {page: idx for idx, page in enumerate(pages_list)}
 
-    # Count transitions
+def aggregate_transitions(sequences: List[List[str]]) -> Dict[tuple, int]:
     transitions = {}
-    for run in agent_runs:
-        path = run.journey_path
-        for i in range(len(path) - 1):
-            source = path[i]
-            target = path[i + 1]
-            key = (source, target)
-            transitions[key] = transitions.get(key, 0) + 1
+    for sequence in sequences:
+        for i in range(len(sequence) - 1):
+            source = sequence[i]
+            target = sequence[i + 1]
+            if source != target:
+                key = (source, target)
+                transitions[key] = transitions.get(key, 0) + 1
+    return transitions
 
-    # Build nodes with stats
+
+def calculate_node_metrics(sequences: List[List[str]]) -> Dict[str, Dict[str, int]]:
+    metrics = {}
+
+    for sequence in sequences:
+        prev_url = None
+        for url in sequence:
+            if url not in metrics:
+                metrics[url] = {"visits": 0, "event_count": 0}
+
+            metrics[url]["event_count"] += 1
+
+            if url != prev_url:
+                metrics[url]["visits"] += 1
+
+            prev_url = url
+
+    return metrics
+
+
+def build_sankey_structure(node_metrics: Dict[str, Dict[str, int]], transitions: Dict[tuple, int]) -> dict:
+    urls = sorted(node_metrics.keys())
+    url_to_index = {url: idx for idx, url in enumerate(urls)}
+
     nodes = []
-    page_stats = {page: {"visits": 0, "errors": 0} for page in pages_list}
-
-    for run in agent_runs:
-        for page in run.journey_path:
-            page_stats[page]["visits"] += 1
-        # Add errors from friction points
-        for friction in run.friction_points:
-            if friction.get("step") in page_stats:
-                page_stats[friction["step"]]["errors"] += 1
-
-    for page in pages_list:
+    for url in urls:
         nodes.append({
-            "name": page,
-            "visits": page_stats[page]["visits"],
-            "errors": page_stats[page]["errors"],
+            "name": url,
+            "visits": node_metrics[url]["visits"],
+            "event_count": node_metrics[url]["event_count"],
         })
 
-    # Build links
     links = []
     for (source, target), count in transitions.items():
         links.append({
-            "source": page_to_index[source],
-            "target": page_to_index[target],
+            "source": url_to_index[source],
+            "target": url_to_index[target],
             "value": count,
         })
 
     return {"nodes": nodes, "links": links}
+
+
+def _generate_sankey_data(agent_runs: List[AgentRun]) -> dict:
+    if not agent_runs:
+        return {"nodes": [], "links": []}
+
+    all_sequences = extract_sequences_from_runs(agent_runs)
+    transitions = aggregate_transitions(all_sequences)
+    node_metrics = calculate_node_metrics(all_sequences)
+
+    return build_sankey_structure(node_metrics, transitions)

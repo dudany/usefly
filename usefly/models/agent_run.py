@@ -16,7 +16,7 @@ class AgentRun(Base):
 
     id = Column(String, primary_key=True)
     config_id = Column(String, ForeignKey("scenarios.id"), nullable=False, index=True)
-    report_id = Column(String, ForeignKey("reports.id"), nullable=True, index=True)
+    report_id = Column(String, nullable=True, index=True)
     persona_type = Column(String, nullable=False, index=True)
     is_done = Column(Boolean, default=False, nullable=False)
     timestamp = Column(DateTime, nullable=False, index=True)
@@ -34,7 +34,6 @@ class AgentRun(Base):
 
     # Relationships
     config = relationship("Scenario", backref="agent_runs")
-    report = relationship("Report", back_populates="agent_runs")
 
 
 class PersonaRunCreate(BaseModel):

@@ -8,8 +8,8 @@ import {
   CreateScenarioRequest,
   PersonaRun,
   CreatePersonaRunRequest,
-  Report,
-  CreateReportRequest,
+  ReportListItem,
+  ReportAggregate,
   SystemConfig,
   UpdateSystemConfigRequest,
   CrawlerAnalysisRequest,
@@ -107,30 +107,10 @@ export const personaRecordsApi = {
  * Report API methods
  */
 export const reportApi = {
-  list: (filters?: {
-    configId?: string;
-    isBaseline?: boolean;
-    limit?: number;
-    offset?: number;
-  }) => {
-    const params = new URLSearchParams();
-    if (filters?.configId) params.append("config_id", filters.configId);
-    if (filters?.isBaseline !== undefined)
-      params.append("is_baseline", filters.isBaseline.toString());
-    if (filters?.limit) params.append("limit", filters.limit.toString());
-    if (filters?.offset) params.append("offset", filters.offset.toString());
+  list: () => apiFetch<ReportListItem[]>("/api/reports/list"),
 
-    const query = params.toString() ? `?${params.toString()}` : "";
-    return apiFetch<Report[]>(`/api/reports${query}`);
-  },
-
-  get: (id: string) => apiFetch<Report>(`/api/reports/${id}`),
-
-  create: (data: CreateReportRequest) =>
-    apiFetch<Report>("/api/reports", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+  getAggregate: (reportId: string) =>
+    apiFetch<ReportAggregate>(`/api/reports/${reportId}/aggregate`),
 };
 
 /**

@@ -278,7 +278,7 @@ async def execute_single_task(
             location=None,
             error_type="",#TODO add error
             steps_completed=history.number_of_steps(),
-            total_steps=30,
+            total_steps=max_steps,
             final_result=history.final_result(),
             journey_path=history.urls(),
             judgement_data=history.judgement(),
