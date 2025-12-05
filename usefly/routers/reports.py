@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from usefly.database import get_db
 from usefly.handlers import reports
@@ -13,9 +13,13 @@ async def list_reports(db: Session = Depends(get_db)):
 
 
 @router.get("/{report_id}/aggregate")
-async def get_report_aggregate(report_id: str, db: Session = Depends(get_db)):
+async def get_report_aggregate(
+    report_id: str,
+    mode: str = Query("compact", description="Sankey mode: 'compact' or 'full'"),
+    db: Session = Depends(get_db)
+):
     """Get aggregated data for a specific report_id."""
-    result = reports.get_report_aggregate(db, report_id)
+    result = reports.get_report_aggregate(db, report_id, sankey_mode=mode)
     if not result:
         raise HTTPException(status_code=404, detail="Report not found")
     return result

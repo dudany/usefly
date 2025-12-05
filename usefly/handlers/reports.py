@@ -44,7 +44,7 @@ def list_report_summaries(db: Session) -> List[Dict]:
     return summaries
 
 
-def get_report_aggregate(db: Session, report_id: str) -> Optional[Dict]:
+def get_report_aggregate(db: Session, report_id: str, sankey_mode: str = "compact") -> Optional[Dict]:
     """
     Get aggregated data for a specific report_id.
 
@@ -64,7 +64,7 @@ def get_report_aggregate(db: Session, report_id: str) -> Optional[Dict]:
     metrics_summary = _calculate_metrics_summary(runs)
 
     # Generate Sankey diagram data
-    journey_sankey = _generate_sankey_data(runs)
+    journey_sankey = _generate_sankey_data(runs, mode=sankey_mode)
 
     return {
         "report_id": report_id,
@@ -74,6 +74,7 @@ def get_report_aggregate(db: Session, report_id: str) -> Optional[Dict]:
         "metrics_summary": metrics_summary,
         "journey_sankey": journey_sankey,
     }
+
 
 
 def _calculate_metrics_summary(agent_runs: List[PersonaRun]) -> dict:
@@ -204,12 +205,124 @@ def build_sankey_structure(node_metrics: Dict[str, Dict[str, int]], transitions:
     return {"nodes": nodes, "links": links}
 
 
-def _generate_sankey_data(agent_runs: List[PersonaRun]) -> dict:
+def remove_back_edges(transitions: Dict[tuple, int]) -> Dict[tuple, int]:
+    """
+    Remove transitions that create cycles.
+    Keeps highest-count edges, drops edges that would close a loop.
+    """
+    sorted_edges = sorted(transitions.items(), key=lambda x: x[1], reverse=True)
+    
+    graph = {}
+    acyclic = {}
+
+    def creates_cycle(source, target):
+        # Check if there's already a path from target back to source
+        visited = set()
+        stack = [target]
+        while stack:
+            node = stack.pop()
+            if node == source:
+                return True
+            if node not in visited:
+                visited.add(node)
+                stack.extend(graph.get(node, []))
+        return False
+
+    for (source, target), count in sorted_edges:
+        if not creates_cycle(source, target):
+            acyclic[(source, target)] = count
+            graph.setdefault(source, []).append(target)
+
+    return acyclic
+
+
+# =============================================================================
+# Step-Based Sankey (Full Mode)
+# =============================================================================
+
+def extract_raw_sequences_from_runs(agent_runs: List[PersonaRun]) -> List[List[str]]:
+    """Extract URL sequences without breaking on cycles (for step-based mode)."""
+    all_sequences = []
+    for run in agent_runs:
+        if not run.events:
+            continue
+        url_sequence = extract_url_sequence_from_events(run.events)
+        if url_sequence:
+            all_sequences.append(url_sequence)
+    return all_sequences
+
+
+def build_step_based_sankey(sequences: List[List[str]], max_steps: int = 10) -> dict:
+    """
+    Build Sankey data using step-based approach.
+    Each node is (step_index, url) - guarantees no cycles.
+    """
+    node_map = {}  # (step, url) -> node_index
+    nodes = []
+    links_map = {}  # (source_idx, target_idx) -> count
+
+    for sequence in sequences:
+        seq_len = min(len(sequence), max_steps)
+        
+        for i in range(seq_len):
+            url = sequence[i]
+            node_key = (i, url)
+            
+            # Create node if needed
+            if node_key not in node_map:
+                node_map[node_key] = len(nodes)
+                nodes.append({
+                    "name": url,
+                    "step": i,
+                    "visits": 0,
+                    "event_count": 0,
+                })
+            
+            node_idx = node_map[node_key]
+            nodes[node_idx]["visits"] += 1
+            nodes[node_idx]["event_count"] += 1
+            
+            # Create link from previous step
+            if i > 0:
+                prev_url = sequence[i - 1]
+                prev_key = (i - 1, prev_url)
+                if prev_key in node_map:
+                    prev_idx = node_map[prev_key]
+                    link_key = (prev_idx, node_idx)
+                    links_map[link_key] = links_map.get(link_key, 0) + 1
+
+    links = [
+        {"source": src, "target": tgt, "value": val}
+        for (src, tgt), val in links_map.items()
+    ]
+
+    return {"nodes": nodes, "links": links}
+
+
+# =============================================================================
+# Main Entry Point
+# =============================================================================
+
+def _generate_sankey_data(agent_runs: List[PersonaRun], mode: str = "compact") -> dict:
+    """
+    Generate Sankey diagram data.
+    
+    Args:
+        agent_runs: List of persona runs to analyze
+        mode: "compact" (fewer nodes, drops back-edges) or "full" (step-based, no data loss)
+    """
     if not agent_runs:
         return {"nodes": [], "links": []}
 
+    if mode == "full":
+        # Step-based: wider diagram, no data loss
+        sequences = extract_raw_sequences_from_runs(agent_runs)
+        return build_step_based_sankey(sequences)
+    
+    # Compact mode (default): fewer nodes, drops cycle-causing edges
     all_sequences = extract_sequences_from_runs(agent_runs)
     transitions = aggregate_transitions(all_sequences)
+    acyclic_transitions = remove_back_edges(transitions)
     node_metrics = calculate_node_metrics(all_sequences)
 
-    return build_sankey_structure(node_metrics, transitions)
+    return build_sankey_structure(node_metrics, acyclic_transitions)
