@@ -14,26 +14,32 @@ class SystemConfig(Base):
     __tablename__ = "system_config"
 
     id = Column(Integer, primary_key=True, default=1)
+    provider = Column(String, nullable=False, default="openai")
     model_name = Column(String, nullable=False, default="gpt-4o")
     api_key = Column(String, nullable=False)
     use_thinking = Column(Boolean, nullable=False, default=True)
+    max_steps = Column(Integer, nullable=False, default=30)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class SystemConfigCreate(BaseModel):
     """Schema for creating/updating system config."""
+    provider: str = "openai"
     model_name: str = "gpt-4o"
     api_key: str
     use_thinking: bool = True
+    max_steps: int = 30
 
 
 class SystemConfigResponse(BaseModel):
     """Schema for returning system config data."""
     id: int
+    provider: str
     model_name: str
     api_key: str
     use_thinking: bool
+    max_steps: int
     created_at: datetime
     updated_at: datetime
 

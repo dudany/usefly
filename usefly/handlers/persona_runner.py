@@ -262,7 +262,7 @@ async def execute_single_task(
             goal=journey_task.goal,
             steps=journey_task.steps
         )
-        max_steps = 30 #TODO introduce env var
+        max_steps = system_config.max_steps
         history: AgentHistoryList = await run_browser_use_agent(task=task_description, system_config=system_config, max_steps=max_steps)
 
         events = extract_agent_events(history)
@@ -280,7 +280,6 @@ async def execute_single_task(
             steps_completed=history.number_of_steps(),
             total_steps=max_steps,
             final_result=history.final_result(),
-            journey_path=history.urls(),
             judgement_data=history.judgement(),
             task_description=task_description,
             events=events

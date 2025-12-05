@@ -10,18 +10,29 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { Settings as SettingsIcon, Loader, Save, ChevronLeft } from "lucide-react"
 import { systemConfigApi } from "@/lib/api-client"
 import { SystemConfig } from "@/types/api"
+import { AppLayout } from "@/components/layout/app-layout"
 
 const formSchema = z.object({
+  provider: z.string().min(1, "Provider is required"),
   model_name: z.string().min(1, "Model name is required"),
   api_key: z.string().min(1, "API key is required"),
   use_thinking: z.boolean(),
+  max_steps: z.number().min(10).max(100),
 })
 
 type FormData = z.infer<typeof formSchema>
+
+const providerModels = {
+  openai: ["gpt-5-nano", "gpt-5-mini","gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+  claude: ["claude-sonnet-4", "claude-opus-4", "claude-haiku-4"],
+  groq: ["llama-3.1-70b", "mixtral-8x7b"],
+  google: ["gemini-2.0-flash-exp", "gemini-1.5-pro"],
+} as const
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
@@ -37,13 +48,16 @@ export default function SettingsPage() {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      provider: "openai",
       model_name: "gpt-4o",
       api_key: "",
       use_thinking: true,
+      max_steps: 30,
     },
   })
 
   const useThinking = watch("use_thinking")
+  const selectedProvider = watch("provider") as keyof typeof providerModels
 
   // Fetch existing config on mount
   useEffect(() => {
@@ -52,9 +66,11 @@ export default function SettingsPage() {
         setLoading(true)
         const data = await systemConfigApi.get()
         setConfig(data)
+        setValue("provider", data.provider || "openai")
         setValue("model_name", data.model_name)
         setValue("api_key", data.api_key)
         setValue("use_thinking", data.use_thinking)
+        setValue("max_steps", data.max_steps || 30)
       } catch (error) {
         // Config doesn't exist yet, use defaults
         console.log("No existing config found, using defaults")
@@ -85,17 +101,20 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="flex items-center justify-center py-12">
-          <Loader className="w-6 h-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">Loading settings...</span>
+      <AppLayout>
+        <div className="container mx-auto py-8">
+          <div className="flex items-center justify-center py-12">
+            <Loader className="w-6 h-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading settings...</span>
+          </div>
         </div>
-      </div>
+      </AppLayout>
     )
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-3xl">
+    <AppLayout>
+      <div className="container mx-auto py-8 max-w-3xl">
       <div className="mb-6">
         <Link href="/scenarios" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
           <ChevronLeft className="w-4 h-4" />
@@ -119,35 +138,72 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Provider */}
+            <div className="space-y-2">
+              <Label htmlFor="provider" className="text-sm font-semibold">
+                AI Provider <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={selectedProvider}
+                onValueChange={(value) => {
+                  setValue("provider", value)
+                  // Reset model to first available model for this provider
+                  const firstModel = providerModels[value as keyof typeof providerModels][0]
+                  setValue("model_name", firstModel)
+                }}
+              >
+                <SelectTrigger id="provider">
+                  <SelectValue placeholder="Select a provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="openai">OpenAI</SelectItem>
+                  <SelectItem value="claude">Anthropic (Claude)</SelectItem>
+                  <SelectItem value="groq">Groq</SelectItem>
+                  <SelectItem value="google">Google</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose the AI provider for your crawler agent
+              </p>
+            </div>
+
             {/* Model Name */}
             <div className="space-y-2">
               <Label htmlFor="model_name" className="text-sm font-semibold">
-                Model Name <span className="text-destructive">*</span>
+                Model <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="model_name"
-                type="text"
-                placeholder="gpt-4o"
-                {...register("model_name")}
-                className={errors.model_name ? "border-destructive" : ""}
-              />
+              <Select
+                value={watch("model_name")}
+                onValueChange={(value) => setValue("model_name", value)}
+              >
+                <SelectTrigger id="model_name">
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {providerModels[selectedProvider]?.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {errors.model_name && (
                 <p className="text-sm text-destructive">{errors.model_name.message}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                The OpenAI model to use for the crawler agent (e.g., gpt-4o, gpt-4o-mini)
+                The model to use for the crawler agent
               </p>
             </div>
 
             {/* API Key */}
             <div className="space-y-2">
               <Label htmlFor="api_key" className="text-sm font-semibold">
-                OpenAI API Key <span className="text-destructive">*</span>
+                API Key <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="api_key"
                 type="password"
-                placeholder="sk-..."
+                placeholder="Enter your API key..."
                 {...register("api_key")}
                 className={errors.api_key ? "border-destructive" : ""}
               />
@@ -155,15 +211,29 @@ export default function SettingsPage() {
                 <p className="text-sm text-destructive">{errors.api_key.message}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Your OpenAI API key. Get one at{" "}
-                <a
-                  href="https://platform.openai.com/api-keys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  platform.openai.com/api-keys
-                </a>
+                Your API key for the selected provider
+              </p>
+            </div>
+
+            {/* Max Steps */}
+            <div className="space-y-2">
+              <Label htmlFor="max_steps" className="text-sm font-semibold">
+                Max Browser Steps <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="max_steps"
+                type="number"
+                placeholder="30"
+                min="10"
+                max="100"
+                {...register("max_steps", { valueAsNumber: true })}
+                className={errors.max_steps ? "border-destructive" : ""}
+              />
+              {errors.max_steps && (
+                <p className="text-sm text-destructive">{errors.max_steps.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Maximum number of steps the browser agent can take (10-100)
               </p>
             </div>
 
@@ -225,6 +295,7 @@ export default function SettingsPage() {
           <p>• Make sure your API key has sufficient credits for crawler operations</p>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </AppLayout>
   )
 }

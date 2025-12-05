@@ -60,17 +60,21 @@ export interface CreateScenarioRequest {
  */
 export interface SystemConfig {
   id: number;
+  provider: string;
   model_name: string;
   api_key: string;
   use_thinking: boolean;
+  max_steps: number;
   created_at: string; // ISO datetime
   updated_at: string; // ISO datetime
 }
 
 export interface UpdateSystemConfigRequest {
+  provider: string;
   model_name: string;
   api_key: string;
   use_thinking: boolean;
+  max_steps: number;
 }
 
 /**
@@ -164,7 +168,6 @@ export interface PersonaRun {
   error_type?: string; // Error type for failed runs
   steps_completed: number;
   total_steps: number;
-  journey_path: string[];
   final_result?: string;
   judgement_data: any;
   task_description?: string;

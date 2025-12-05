@@ -3,7 +3,7 @@ from sqlalchemy import func
 from typing import List, Optional, Dict
 from datetime import datetime
 
-from usefly.models import AgentRun, Scenario
+from usefly.models import PersonaRun, Scenario
 
 
 def list_report_summaries(db: Session) -> List[Dict]:
@@ -14,16 +14,16 @@ def list_report_summaries(db: Session) -> List[Dict]:
     """
     # Query to get unique report_ids with aggregated metadata
     query = db.query(
-        AgentRun.report_id,
-        AgentRun.config_id,
-        func.count(AgentRun.id).label("run_count"),
-        func.min(AgentRun.timestamp).label("first_run"),
-        func.max(AgentRun.timestamp).label("last_run"),
+        PersonaRun.report_id,
+        PersonaRun.config_id,
+        func.count(PersonaRun.id).label("run_count"),
+        func.min(PersonaRun.timestamp).label("first_run"),
+        func.max(PersonaRun.timestamp).label("last_run"),
     ).filter(
-        AgentRun.report_id.isnot(None)
+        PersonaRun.report_id.isnot(None)
     ).group_by(
-        AgentRun.report_id,
-        AgentRun.config_id
+        PersonaRun.report_id,
+        PersonaRun.config_id
     ).all()
 
     # Build response with scenario names
@@ -51,7 +51,7 @@ def get_report_aggregate(db: Session, report_id: str) -> Optional[Dict]:
     Returns metrics summary and journey Sankey diagram data.
     """
     # Get all runs for this report_id
-    runs = db.query(AgentRun).filter(AgentRun.report_id == report_id).all()
+    runs = db.query(PersonaRun).filter(PersonaRun.report_id == report_id).all()
 
     if not runs:
         return None
@@ -76,7 +76,7 @@ def get_report_aggregate(db: Session, report_id: str) -> Optional[Dict]:
     }
 
 
-def _calculate_metrics_summary(agent_runs: List[AgentRun]) -> dict:
+def _calculate_metrics_summary(agent_runs: List[PersonaRun]) -> dict:
     """Calculate aggregated metrics from agent runs."""
     if not agent_runs:
         return {}
@@ -139,7 +139,7 @@ def break_sequence_on_cycles(url_sequence: List[str]) -> List[List[str]]:
     return sequences
 
 
-def extract_sequences_from_runs(agent_runs: List[AgentRun]) -> List[List[str]]:
+def extract_sequences_from_runs(agent_runs: List[PersonaRun]) -> List[List[str]]:
     all_sequences = []
     for run in agent_runs:
         if not run.events:
@@ -204,7 +204,7 @@ def build_sankey_structure(node_metrics: Dict[str, Dict[str, int]], transitions:
     return {"nodes": nodes, "links": links}
 
 
-def _generate_sankey_data(agent_runs: List[AgentRun]) -> dict:
+def _generate_sankey_data(agent_runs: List[PersonaRun]) -> dict:
     if not agent_runs:
         return {"nodes": [], "links": []}
 

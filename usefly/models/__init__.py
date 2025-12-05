@@ -13,7 +13,7 @@ from usefly.models.scenario import (
 
 # Agent/Persona run models
 from usefly.models.agent_run import (
-    AgentRun,
+    PersonaRun,
     PersonaRunCreate,
     PersonaRunResponse,
     PersonaExecutionResponse,
@@ -48,7 +48,7 @@ __all__ = [
     "ScenarioCreate",
     "ScenarioResponse",
     # Agent/Persona run
-    "AgentRun",
+    "PersonaRun",
     "PersonaRunCreate",
     "PersonaRunResponse",
     "PersonaExecutionResponse",

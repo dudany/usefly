@@ -10,8 +10,8 @@ from pydantic import BaseModel
 from usefly.database import Base
 
 
-class AgentRun(Base):
-    """Individual agent execution record."""
+class PersonaRun(Base):
+    """Individual persona execution record."""
     __tablename__ = "persona_runs"
 
     id = Column(String, primary_key=True)
@@ -26,14 +26,13 @@ class AgentRun(Base):
     error_type = Column(String)  # Error type for failed runs
     steps_completed = Column(Integer, default=0)
     total_steps = Column(Integer, default=0)
-    journey_path = Column(JSON, default=[])  # List of page names
     final_result = Column(String)  # Final result from agent execution
     judgement_data = Column(JSON, default={})  # Full judgement result from agent (reasoning, verdict, failure_reason, etc.)
     task_description = Column(String)  # Description of the task
     events = Column(JSON, default=[])
 
     # Relationships
-    config = relationship("Scenario", backref="agent_runs")
+    config = relationship("Scenario", backref="persona_runs")
 
 
 class PersonaRunCreate(BaseModel):
@@ -49,7 +48,6 @@ class PersonaRunCreate(BaseModel):
     error_type: Optional[str] = None
     steps_completed: int = 0
     total_steps: int = 0
-    journey_path: List[str] = []
     final_result: Optional[str] = None
     judgement_data: dict = {}
     task_description: Optional[str] = None
@@ -70,7 +68,6 @@ class PersonaRunResponse(BaseModel):
     error_type: Optional[str]
     steps_completed: int
     total_steps: int
-    journey_path: List[str]
     final_result: Optional[str]
     judgement_data: dict
     task_description: Optional[str]

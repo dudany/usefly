@@ -24,7 +24,7 @@ class UserJourneyTask(BaseModel):
     starting_url: str = Field(description="Starting URL where user begins")
     goal: str = Field(description="User's goal/intention (e.g., 'Buy spicy onion jam for dinner party')")
     steps: str = Field(description="Step-by-step actions user takes")
-    persona: str = Field(description="User persona category: SHOPPER, RESEARCHER, LOCAL_VISITOR, SUPPORT_SEEKER, or BROWSER")
+    persona: str = Field(description="User persona category: SHOPPER, USER, RESEARCHER, LOCAL_VISITOR, SUPPORT_SEEKER, or BROWSER")
 
 
 class TaskList(BaseModel):

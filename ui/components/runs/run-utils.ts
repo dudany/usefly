@@ -138,8 +138,7 @@ export function calculateSuccessRate(run: PersonaRun): number {
 }
 
 export function calculateTimePerPage(
-  events: any[],
-  journeyPath: string[]
+  events: any[]
 ): Record<string, number> {
   const pageTime: Record<string, { start: number; end: number }> = {}
 
@@ -183,7 +182,7 @@ export function calculateDerivedMetrics(run: PersonaRun): DerivedMetrics {
     averageActionsPerPage:
       uniquePages.size > 0 ? events.length / uniquePages.size : 0,
     actionTypeBreakdown: calculateActionTypeBreakdown(events),
-    timePerPage: calculateTimePerPage(events, run.journey_path || []),
+    timePerPage: calculateTimePerPage(events),
     successRate: calculateSuccessRate(run),
     completionRate:
       run.total_steps > 0 ? (run.steps_completed / run.total_steps) * 100 : 0,
@@ -242,20 +241,35 @@ export function getStatusConfig(run: PersonaRun): {
   label: string
   className: string
 } {
-  if (run.error_type) {
+  // Error (purple): execution didn't complete (is_done = false)
+  if (!run.is_done) {
     return {
       label: "Error",
+      className: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+    }
+  }
+
+  // Failed (red): completed but task failed
+  const verdict = run.judgement_data?.verdict
+  const failureReason = run.judgement_data?.failure_reason
+  if (run.is_done && (verdict === false || failureReason)) {
+    return {
+      label: "Failed",
       className: "bg-red-500/10 text-red-600 border-red-500/20",
     }
   }
-  if (!run.is_done) {
+
+  // Success (green): completed successfully
+  if (run.is_done && verdict === true && !failureReason) {
     return {
-      label: "In Progress",
-      className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+      label: "Success",
+      className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
     }
   }
+
+  // Fallback (gray)
   return {
-    label: "Success",
-    className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+    label: "Unknown",
+    className: "bg-gray-500/10 text-gray-600 border-gray-500/20",
   }
 }

@@ -10,7 +10,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Usefly - Agentic UX Analytics",
+  title: "Usefly",
   description: "Visualize how agentic users explore your app. Identify bottlenecks and discover insights.",
   generator: "v0.app",
   icons: {
