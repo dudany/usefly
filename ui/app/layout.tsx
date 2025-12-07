@@ -4,6 +4,8 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { WebsiteProvider } from "@/components/providers/website-provider"
 import { SegmentsProvider } from "@/components/providers/segments-provider"
+import { FilterProvider } from "@/contexts/filter-context"
+import { Suspense } from "react"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -35,7 +37,11 @@ export default function RootLayout({
         >
           <WebsiteProvider>
             <SegmentsProvider>
-              {children}
+              <Suspense>
+                <FilterProvider>
+                  {children}
+                </FilterProvider>
+              </Suspense>
             </SegmentsProvider>
           </WebsiteProvider>
         </ThemeProvider>

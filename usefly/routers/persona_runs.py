@@ -12,13 +12,16 @@ router = APIRouter(prefix="/api/persona-runs", tags=["Persona Runs"])
 def list_persona_runs(
     config_id: str = None,
     persona_type: str = None,
+    report_id: str = None,
+    status: str = None,
+    platform: str = None,
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
 ):
     """List persona runs with optional filters."""
     return persona_runs_handler.list_persona_runs(
-        db, config_id, persona_type, limit, offset
+        db, config_id, persona_type, report_id, status, platform, limit, offset
     )
 
 @router.post("", response_model=PersonaRunResponse)

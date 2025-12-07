@@ -43,3 +43,4 @@ usefly/data/*
 usefly/static/
 *.gif*
 *.db*
+*.log*

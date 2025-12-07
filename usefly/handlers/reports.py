@@ -44,17 +44,103 @@ def list_report_summaries(db: Session) -> List[Dict]:
     return summaries
 
 
-def get_report_aggregate(db: Session, report_id: str, sankey_mode: str = "compact") -> Optional[Dict]:
+def _query_persona_runs(
+    db: Session,
+    report_id: Optional[str] = None,
+    config_id: Optional[str] = None,
+    filters: Optional[Dict[str, str]] = None
+) -> List[PersonaRun]:
     """
-    Get aggregated data for a specific report_id.
+    Query PersonaRun records with optional filters applied at the database level.
+    This is the SINGLE SOURCE OF TRUTH for filtering persona runs.
+    Used by both reports and general persona run queries.
+    """
+    query = db.query(PersonaRun)
+
+    # Report filter
+    if report_id:
+        query = query.filter(PersonaRun.report_id == report_id)
+
+    # Config/Scenario filter
+    if config_id:
+        query = query.filter(PersonaRun.config_id == config_id)
+
+    if filters:
+        # Persona type filter
+        if filters.get("persona_type") and filters["persona_type"] != "all":
+            query = query.filter(PersonaRun.persona_type == filters["persona_type"])
+
+        # Status filter - SINGLE SOURCE OF TRUTH
+        if filters.get("status") and filters["status"] != "all":
+            status = filters["status"]
+
+            # Logic matches frontend definition of status:
+            # - success: is_done=True AND judgement_data.verdict=True
+            # - failed (Goal Not Met): is_done=True AND judgement_data.verdict != True
+            # - error: is_done=False (crashed/timeout)
+
+            if status == "success":
+                query = query.filter(
+                    PersonaRun.is_done == True,
+                    func.json_extract(PersonaRun.judgement_data, '$.verdict') == True
+                )
+            elif status == "failed":
+                # Goal Not Met: is_done but verdict is not true
+                query = query.filter(
+                    PersonaRun.is_done == True,
+                    func.json_extract(PersonaRun.judgement_data, '$.verdict') != True
+                )
+            elif status == "error":
+                query = query.filter(PersonaRun.is_done == False)
+
+        # Platform filter
+        if filters.get("platform") and filters["platform"] != "all":
+            query = query.filter(PersonaRun.platform == filters["platform"])
+
+    return query.all()
+
+
+def get_report_aggregate(
+    db: Session, 
+    report_id: str, 
+    sankey_mode: str = "compact", 
+    filters: Optional[Dict[str, str]] = None
+) -> Optional[Dict]:
+    """
+    Get aggregated data for a specific report_id with optional filtering.
 
     Returns metrics summary and journey Sankey diagram data.
     """
-    # Get all runs for this report_id
-    runs = db.query(PersonaRun).filter(PersonaRun.report_id == report_id).all()
+    # Get all runs for this report_id with filters applied
+    runs = _query_persona_runs(db, report_id=report_id, filters=filters)
 
     if not runs:
-        return None
+        # If filtered runs is empty but report exists (unfiltered check), return empty structure
+        # This handles the case where filters match nothing but the report is valid
+        if not _query_persona_runs(db, report_id=report_id):
+             return None
+             
+        # Get scenario info from unfiltered 
+        first_run = db.query(PersonaRun).filter(PersonaRun.report_id == report_id).first()
+        scenario = db.query(Scenario).filter(Scenario.id == first_run.config_id).first() if first_run else None
+        scenario_name = scenario.name if scenario else "Unknown Scenario"
+        scenario_id = scenario.id if scenario else "unknown"
+
+        return {
+            "report_id": report_id,
+            "scenario_id": scenario_id,
+            "scenario_name": scenario_name,
+            "run_count": 0,
+            "metrics_summary": {
+                "total_runs": 0,
+                "completed_runs": 0,
+                "failed_runs": 0,
+                "success_rate": 0.0,
+                "avg_duration_seconds": 0.0,
+                "avg_steps": 0.0,
+            },
+            "journey_sankey": {"nodes": [], "links": []},
+        }
 
     # Get scenario info from first run
     scenario = db.query(Scenario).filter(Scenario.id == runs[0].config_id).first()
