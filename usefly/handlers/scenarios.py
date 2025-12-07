@@ -285,3 +285,39 @@ def update_scenario_tasks(db: Session, scenario_id: str, request) -> Scenario:
     db.refresh(scenario)
 
     return scenario
+
+
+def get_available_personas(db: Session) -> dict:
+    """Get all unique persona types from all scenarios."""
+    scenarios = db.query(Scenario).all()
+    
+    persona_set = set()
+    persona_counts = {}
+    
+    for scenario in scenarios:
+        if scenario.tasks:
+            for task in scenario.tasks:
+                persona = task.get("persona")
+                if persona:
+                    persona_set.add(persona)
+                    persona_counts[persona] = persona_counts.get(persona, 0) + 1
+    
+    # Also add common default personas
+    default_personas = [
+        "Explorer",
+        "Focused Shopper", 
+        "Hesitant User",
+        "Power User",
+        "First-Time Visitor",
+        "Returning Customer"
+    ]
+    
+    for p in default_personas:
+        if p not in persona_set:
+            persona_set.add(p)
+    
+    return {
+        "personas": sorted(list(persona_set)),
+        "counts": persona_counts
+    }
+

@@ -1,6 +1,7 @@
 "use client"
 
 import { ResponsiveSankey } from "@nivo/sankey"
+import { useTheme } from "next-themes"
 import { useSankeyData } from "./use-sankey-data"
 import { formatUrl, getFullDecodedUrl } from "@/components/runs/run-utils"
 import type { SankeyData } from "@/types/api"
@@ -10,6 +11,9 @@ interface JourneySankeyProps {
 }
 
 export function JourneySankey({ data }: JourneySankeyProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+
   // Use provided data or fall back to mock data
   const sankeyData = data || useSankeyData()
 
@@ -62,44 +66,59 @@ export function JourneySankey({ data }: JourneySankeyProps) {
       }))
   }
 
+  // Theme-aware colors
+  const tooltipBg = isDark ? "#1f1f1f" : "#ffffff"
+  const tooltipBorder = isDark ? "#404040" : "#e0e0e0"
+  const tooltipText = isDark ? "#e0e0e0" : "#333333"
+  const tooltipMuted = isDark ? "#888888" : "#666666"
+  const labelColor = isDark ? "#d0d0d0" : "#333333"
+  const legendColor = isDark ? "#888888" : "#666666"
+
+  // Use brighter color scheme for dark mode
+  const colorScheme = isDark ? "dark2" : "category10"
+
   return (
     <div className="h-[500px] w-full">
       <ResponsiveSankey
         data={transformedData}
         margin={{ top: 40, right: 200, bottom: 40, left: 50 }}
         align="justify"
-        colors={{ scheme: "category10" }}
+        colors={{ scheme: colorScheme }}
         nodeOpacity={1}
         nodeHoverOthersOpacity={0.35}
         nodeThickness={18}
         nodeSpacing={24}
-        nodeBorderWidth={0}
-        nodeBorderColor={{ from: "color", modifiers: [["darker", 0.8]] }}
+        nodeBorderWidth={isDark ? 1 : 0}
+        nodeBorderColor={isDark ? "#ffffff" : { from: "color", modifiers: [["darker", 0.8]] }}
         nodeBorderRadius={3}
-        linkOpacity={0.5}
-        linkHoverOthersOpacity={0.1}
+        linkOpacity={isDark ? 0.85 : 0.5}
+        linkHoverOthersOpacity={0.2}
         linkContract={3}
-        enableLinkGradient={true}
+        enableLinkGradient={!isDark}
+        linkBlendMode={isDark ? "screen" : "multiply"}
         labelPosition="outside"
         labelOrientation="horizontal"
         labelPadding={16}
-        labelTextColor={{ from: "color", modifiers: [["darker", 1]] }}
+        labelTextColor={labelColor}
         label={(node: any) => node.nodeLabel || node.id}
         nodeTooltip={({ node }: any) => (
           <div
             style={{
-              background: "white",
+              background: tooltipBg,
               padding: "12px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              border: `1px solid ${tooltipBorder}`,
+              borderRadius: "6px",
+              boxShadow: isDark
+                ? "0 4px 12px rgba(0,0,0,0.4)"
+                : "0 2px 8px rgba(0,0,0,0.15)",
               maxWidth: "300px",
+              color: tooltipText,
             }}
           >
             <strong style={{ fontSize: "13px", wordBreak: "break-word" }}>
               {node.displayName || node.id}
             </strong>
-            <div style={{ marginTop: "8px", fontSize: "11px", color: "#666", wordBreak: "break-all" }}>
+            <div style={{ marginTop: "8px", fontSize: "11px", color: tooltipMuted, wordBreak: "break-all" }}>
               {node.decodedId}
             </div>
             <div style={{ marginTop: "8px", fontSize: "12px" }}>
@@ -117,7 +136,7 @@ export function JourneySankey({ data }: JourneySankeyProps) {
             itemHeight: 14,
             itemDirection: "right-to-left",
             itemsSpacing: 2,
-            itemTextColor: "#999",
+            itemTextColor: legendColor,
             symbolSize: 14,
           },
         ]}
@@ -125,3 +144,4 @@ export function JourneySankey({ data }: JourneySankeyProps) {
     </div>
   )
 }
+

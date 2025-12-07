@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
-import { ArrowRight, Globe, Zap } from "lucide-react"
+import { ArrowRight, Globe, Zap, MapPin } from "lucide-react"
 import { DerivedMetrics, formatUrl, getFullDecodedUrl } from "./run-utils"
 
 interface RunJourneyTabProps {
@@ -11,15 +11,35 @@ interface RunJourneyTabProps {
   metrics: DerivedMetrics
 }
 
+// Extract journey path from events if not provided
+function extractJourneyFromEvents(events: any[]): string[] {
+  const urls: string[] = []
+  let lastUrl = ""
+
+  for (const event of events) {
+    if (event.url && event.url !== lastUrl) {
+      urls.push(event.url)
+      lastUrl = event.url
+    }
+  }
+
+  return urls
+}
+
 export function RunJourneyTab({
   journeyPath,
   events,
   metrics,
 }: RunJourneyTabProps) {
-  // Get unique pages in order
-  const uniquePages = Array.from(new Set(journeyPath || []))
+  // Use provided journeyPath or extract from events
+  const journey = journeyPath && journeyPath.length > 0
+    ? journeyPath
+    : extractJourneyFromEvents(events)
 
-  if (!journeyPath || journeyPath.length === 0) {
+  // Get unique pages in order
+  const uniquePages = Array.from(new Set(journey))
+
+  if (journey.length === 0) {
     return (
       <div className="flex items-center justify-center py-8 text-muted-foreground">
         <p>No journey data available for this run</p>
@@ -29,26 +49,57 @@ export function RunJourneyTab({
 
   return (
     <div className="space-y-6">
-      {/* Journey Path Flow */}
+      {/* Full Journey Timeline */}
       <Card className="p-4">
         <div className="flex items-center gap-2 mb-4">
-          <Globe className="w-4 h-4" />
-          <p className="text-sm font-medium">Page Journey</p>
+          <MapPin className="w-4 h-4" />
+          <p className="text-sm font-medium">Navigation Timeline</p>
+          <Badge variant="secondary" className="ml-auto">
+            {journey.length} steps
+          </Badge>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
-          {uniquePages.map((url, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <Badge
-                variant="outline"
-                className="text-xs max-w-xs truncate"
+        <div className="space-y-2">
+          {journey.map((url, idx) => (
+            <div key={idx} className="flex items-center gap-3">
+              {/* Step number */}
+              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">
+                {idx + 1}
+              </div>
+              {/* URL */}
+              <div
+                className="flex-1 text-sm truncate p-2 bg-muted rounded-md"
                 title={getFullDecodedUrl(url)}
               >
                 {formatUrl(url)}
-              </Badge>
-              {idx < uniquePages.length - 1 && (
+              </div>
+              {/* Arrow to next (if not last) */}
+              {idx < journey.length - 1 && (
                 <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               )}
             </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Unique Pages Summary */}
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Globe className="w-4 h-4" />
+          <p className="text-sm font-medium">Unique Pages Visited</p>
+          <Badge variant="outline" className="ml-auto">
+            {uniquePages.length} pages
+          </Badge>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {uniquePages.map((url, idx) => (
+            <Badge
+              key={idx}
+              variant="outline"
+              className="text-xs max-w-xs truncate"
+              title={getFullDecodedUrl(url)}
+            >
+              {formatUrl(url)}
+            </Badge>
           ))}
         </div>
       </Card>
@@ -92,7 +143,7 @@ export function RunJourneyTab({
         </div>
       </Card>
 
-      {/* Time Spent Per Page (if available) */}
+      {/* Steps Per Page (if available) */}
       {Object.keys(metrics.timePerPage).length > 0 && (
         <Card className="p-4">
           <p className="text-sm font-medium mb-4">Steps Per Page</p>
@@ -118,3 +169,4 @@ export function RunJourneyTab({
     </div>
   )
 }
+

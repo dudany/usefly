@@ -70,6 +70,9 @@ export const scenarioApi = {
     apiFetch<void>(`/api/scenarios/${id}`, {
       method: "DELETE",
     }),
+
+  getPersonas: () =>
+    apiFetch<{ personas: string[]; counts: Record<string, number> }>("/api/scenario/personas"),
 };
 
 /**

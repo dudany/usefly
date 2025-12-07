@@ -2,20 +2,20 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Loader } from "lucide-react"
-import { reportApi, personaRecordsApi } from "@/lib/api-client"
-import { ReportListItem, ReportAggregate, PersonaRun } from "@/types/api"
-import { useSegments } from "@/components/providers/segments-provider"
-import { SegmentsFilter } from "@/components/filters/segments-filter"
+import { Loader, X } from "lucide-react"
+import { reportApi, personaRecordsApi, scenarioApi } from "@/lib/api-client"
+import { ReportListItem, ReportAggregate, PersonaRun, Scenario } from "@/types/api"
 import { JourneySankey } from "./journey-sankey"
 import { JourneyTable } from "./journey-table"
 import { getPersonaLabel } from "@/components/runs/mock-data"
 
 export function ReportsDashboard() {
-  const { selectedSegments } = useSegments()
 
   // State for data fetching
+  const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [reportList, setReportList] = useState<ReportListItem[]>([])
   const [selectedReportData, setSelectedReportData] = useState<ReportAggregate | null>(null)
   const [agentRuns, setAgentRuns] = useState<PersonaRun[]>([])
@@ -24,16 +24,23 @@ export function ReportsDashboard() {
   const [error, setError] = useState<string | null>(null)
 
   // Filters
+  const [scenarioFilter, setScenarioFilter] = useState<string>("all")
   const [selectedReportId, setSelectedReportId] = useState<string>("")
   const [personaFilter, setPersonaFilter] = useState<string>("all")
+  const [dateFrom, setDateFrom] = useState<string>("")
+  const [dateTo, setDateTo] = useState<string>("")
 
-  // Fetch report list on mount
+  // Fetch report list and scenarios on mount
   useEffect(() => {
-    const fetchReports = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true)
-        const reports = await reportApi.list()
-        setReportList(reports)
+        const [reportsData, scenariosData] = await Promise.all([
+          reportApi.list(),
+          scenarioApi.list(),
+        ])
+        setReportList(reportsData)
+        setScenarios(scenariosData)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch reports")
       } finally {
@@ -41,8 +48,50 @@ export function ReportsDashboard() {
       }
     }
 
-    fetchReports()
+    fetchData()
   }, [])
+
+  // Filter reports by scenario and date range
+  const filteredReports = useMemo(() => {
+    return reportList.filter((report) => {
+      // Scenario filter
+      if (scenarioFilter !== "all" && report.scenario_id !== scenarioFilter) return false
+
+      // Date range filter
+      if (dateFrom) {
+        const reportDate = new Date(report.first_run)
+        const fromDate = new Date(dateFrom)
+        if (reportDate < fromDate) return false
+      }
+      if (dateTo) {
+        const reportDate = new Date(report.last_run)
+        const toDate = new Date(dateTo)
+        toDate.setHours(23, 59, 59, 999)
+        if (reportDate > toDate) return false
+      }
+
+      return true
+    })
+  }, [reportList, scenarioFilter, dateFrom, dateTo])
+
+  // Reset report selection when scenario changes
+  const handleScenarioChange = (value: string) => {
+    setScenarioFilter(value)
+    setSelectedReportId("") // Reset report selection
+  }
+
+  // Clear all filters
+  const clearFilters = () => {
+    setScenarioFilter("all")
+    setSelectedReportId("")
+    setPersonaFilter("all")
+    setDateFrom("")
+    setDateTo("")
+  }
+
+  // Check if any filter is active
+  const hasActiveFilters = scenarioFilter !== "all" || selectedReportId ||
+    personaFilter !== "all" || dateFrom || dateTo
 
   // Fetch aggregated data and runs when report is selected
   useEffect(() => {
@@ -79,27 +128,17 @@ export function ReportsDashboard() {
     return Array.from(personas).sort()
   }, [agentRuns])
 
-  // Filter runs for journey table (applying segment and persona filters)
+  // Filter runs for journey table (applying persona filter)
   const filteredRuns = useMemo(() => {
     if (!selectedReportId) return []
 
     return agentRuns.filter((run) => {
-      // Segment filters - AND logic (must match all selected segments)
-      if (selectedSegments.length > 0) {
-        for (const segment of selectedSegments) {
-          if (segment.type === "platform" && run.platform !== segment.value) return false
-          // Note: PersonaRun doesn't have a 'status' field in the model we saw
-          // Commenting out status filter for now
-          // if (segment.type === "status" && run.status !== segment.value) return false
-        }
-      }
-
       // Persona filter
       if (personaFilter !== "all" && run.persona_type !== personaFilter) return false
 
       return true
     })
-  }, [selectedReportId, agentRuns, selectedSegments, personaFilter])
+  }, [selectedReportId, agentRuns, personaFilter])
 
   if (loading) {
     return (
@@ -132,35 +171,59 @@ export function ReportsDashboard() {
   return (
     <div className="space-y-6">
       {/* Filters Section */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Filters</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Report ID Filter */}
+      <div className="flex flex-col gap-4 p-4 bg-muted/30 rounded-lg border">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-foreground">Filters</h3>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-xs">
+              <X className="w-3 h-3 mr-1" />
+              Clear all
+            </Button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          {/* Scenario Filter */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Report</label>
-            <Select value={selectedReportId} onValueChange={setSelectedReportId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a report" />
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Scenario</label>
+            <Select value={scenarioFilter} onValueChange={handleScenarioChange}>
+              <SelectTrigger className="w-full h-9">
+                <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
-                {reportList.map((report) => (
-                  <SelectItem key={report.report_id} value={report.report_id}>
-                    {report.scenario_name} - {report.run_count} runs
+                <SelectItem value="all">All Scenarios</SelectItem>
+                {scenarios.map((scenario) => (
+                  <SelectItem key={scenario.id} value={scenario.id}>
+                    {scenario.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Unified Segment Multi-Select */}
-          <SegmentsFilter />
+          {/* Report Filter */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Report</label>
+            <Select value={selectedReportId} onValueChange={setSelectedReportId}>
+              <SelectTrigger className="w-full h-9">
+                <SelectValue placeholder="Select a report" />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredReports.map((report) => (
+                  <SelectItem key={report.report_id} value={report.report_id}>
+                    {report.scenario_name} ({report.run_count} runs)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Persona Filter */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Persona</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Persona</label>
             <Select value={personaFilter} onValueChange={setPersonaFilter}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="All Personas" />
+              <SelectTrigger className="w-full h-9">
+                <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Personas</SelectItem>
@@ -172,15 +235,40 @@ export function ReportsDashboard() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Date From */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">From Date</label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-9"
+            />
+          </div>
+
+          {/* Date To */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">To Date</label>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-9"
+            />
+          </div>
         </div>
-      </Card>
+      </div>
 
       {/* Main Content */}
       {!selectedReportId ? (
         <Card className="p-12">
           <div className="text-center text-muted-foreground">
             <p className="text-lg mb-2">Select a report to view journey analysis</p>
-            <p className="text-sm">Use the filters above to choose a report and optionally filter by segment and persona</p>
+            <p className="text-sm">
+              {filteredReports.length} reports available
+              {scenarioFilter !== "all" && ` for selected scenario`}
+            </p>
           </div>
         </Card>
       ) : loadingAggregate ? (
@@ -246,7 +334,7 @@ export function ReportsDashboard() {
             <h3 className="text-lg font-semibold text-foreground mb-4">Journey Metrics</h3>
             <JourneyTable
               runs={filteredRuns}
-              groupByPlatform={!selectedSegments.some((s) => s.type === "platform")}
+              groupByPlatform={true}
               groupByPersona={personaFilter === "all"}
             />
           </Card>
@@ -262,3 +350,4 @@ export function ReportsDashboard() {
     </div>
   )
 }
+

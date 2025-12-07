@@ -180,3 +180,10 @@ def update_scenario_tasks(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/personas")
+def get_available_personas(db: Session = Depends(get_db)):
+    """Get all unique persona types available across scenarios."""
+    return scenarios_handler.get_available_personas(db)
+

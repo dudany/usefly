@@ -1,5 +1,7 @@
 from pathlib import Path
 import uuid
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Dict, Optional, List
 from browser_use import AgentHistoryList
@@ -9,6 +11,12 @@ from usefly.models import Scenario, SystemConfig, UserJourneyTask, PersonaRunCre
 from usefly.handlers.persona_runs import create_persona_run
 
 _active_runs: Dict[str, Dict] = {}
+
+# Thread pool for parallel browser task execution
+# Configurable via environment variable or defaults to 3
+import os
+MAX_BROWSER_WORKERS = int(os.getenv("MAX_BROWSER_WORKERS", "3"))
+_browser_executor = ThreadPoolExecutor(max_workers=MAX_BROWSER_WORKERS, thread_name_prefix="browser_task")
 
 
 def init_run_status(run_id: str, scenario_id: str, report_id: str, task_count: int):
@@ -317,7 +325,41 @@ async def execute_single_task(
         return persona_run.id
 
 
-async def run_persona_tasks(db_session_factory, persona_id: str, report_id: str, run_id: str,background_tasks):
+def _run_task_in_thread(db_session_factory, scenario_id: str, task: Dict, report_id: str, run_id: str, system_config_dict: Dict):
+    """
+    Run a single task in a thread with its own event loop and DB session.
+    This allows parallel execution of browser tasks.
+    """
+    db = db_session_factory()
+    try:
+        scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
+        if not scenario:
+            raise ValueError(f"Scenario {scenario_id} not found")
+        
+        # Recreate SystemConfig from dict (can't pass SQLAlchemy objects across threads)
+        sys_config = db.query(SystemConfig).filter(SystemConfig.id == 1).first()
+        if not sys_config:
+            raise ValueError("System configuration not found")
+        
+        # Create new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(execute_single_task(db, scenario, task, report_id, run_id, sys_config))
+        finally:
+            loop.close()
+    except Exception as e:
+        print(f"Error in browser task thread: {e}")
+        update_run_status(run_id, failed=1)
+    finally:
+        db.close()
+
+
+async def run_persona_tasks(db_session_factory, persona_id: str, report_id: str, run_id: str, background_tasks=None):
+    """
+    Run persona tasks using ThreadPoolExecutor for controlled parallelism.
+    max_workers is controlled by MAX_BROWSER_WORKERS env var (default: 3).
+    """
     db = db_session_factory()
 
     try:
@@ -341,8 +383,28 @@ async def run_persona_tasks(db_session_factory, persona_id: str, report_id: str,
         if not tasks_to_run:
             raise ValueError("No tasks to run")
         
+        # Initialize run status with correct task count
+        init_run_status(run_id, persona_id, report_id, len(tasks_to_run))
+
+        # Submit all tasks to the thread pool for parallel execution
+        loop = asyncio.get_event_loop()
+        futures = []
         for task in tasks_to_run:
-            background_tasks.add_task(execute_single_task,db,scenario,task, report_id, run_id,sys_config)
+            future = loop.run_in_executor(
+                _browser_executor,
+                _run_task_in_thread,
+                db_session_factory,
+                scenario.id,
+                task,
+                report_id,
+                run_id,
+                {}  # SystemConfig will be re-fetched in thread
+            )
+            futures.append(future)
+        
+        # Wait for all tasks to complete (non-blocking)
+        # This happens in background, caller doesn't wait
+        asyncio.create_task(_wait_for_completion(futures, run_id))
 
     except Exception as e:
         print(f"Fatal error in run_scenario_tasks: {e}")
@@ -351,3 +413,15 @@ async def run_persona_tasks(db_session_factory, persona_id: str, report_id: str,
             _active_runs[run_id]["error"] = str(e)
     finally:
         db.close()
+
+
+async def _wait_for_completion(futures, run_id: str):
+    """Wait for all futures to complete and update final status."""
+    try:
+        await asyncio.gather(*futures, return_exceptions=True)
+    except Exception as e:
+        print(f"Error waiting for tasks: {e}")
+        if run_id in _active_runs:
+            _active_runs[run_id]["status"] = "failed"
+            _active_runs[run_id]["error"] = str(e)
+
