@@ -237,39 +237,61 @@ export function formatDuration(seconds?: number): string {
 }
 
 // Get status badge configuration
+// Centralized status labels and descriptions
+export const STATUS_LABELS = {
+  SUCCESS: {
+    label: "Success",
+    tooltip: "Agent successfully completed its goal",
+    className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+  },
+  GOAL_NOT_MET: {
+    label: "Goal Not Met",
+    tooltip: "Agent completed but did not achieve its goal",
+    className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  },
+  ERROR: {
+    label: "Error",
+    tooltip: "Technical error occurred during execution",
+    className: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+  },
+  IN_PROGRESS: {
+    label: "In Progress",
+    tooltip: "Agent is still running",
+    className: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  },
+  UNKNOWN: {
+    label: "Unknown",
+    tooltip: "Status could not be determined",
+    className: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+  },
+} as const
+
+export type StatusType = keyof typeof STATUS_LABELS
+
 export function getStatusConfig(run: PersonaRun): {
   label: string
+  tooltip: string
   className: string
+  type: StatusType
 } {
   // Error (purple): execution didn't complete (is_done = false)
   if (!run.is_done) {
-    return {
-      label: "Error",
-      className: "bg-purple-500/10 text-purple-600 border-purple-500/20",
-    }
+    return { ...STATUS_LABELS.ERROR, type: "ERROR" }
   }
 
-  // Failed (red): completed but task failed
+  // Goal Not Met (amber): completed but task failed
   const verdict = run.judgement_data?.verdict
   const failureReason = run.judgement_data?.failure_reason
   if (run.is_done && (verdict === false || failureReason)) {
-    return {
-      label: "Failed",
-      className: "bg-red-500/10 text-red-600 border-red-500/20",
-    }
+    return { ...STATUS_LABELS.GOAL_NOT_MET, type: "GOAL_NOT_MET" }
   }
 
   // Success (green): completed successfully
   if (run.is_done && verdict === true && !failureReason) {
-    return {
-      label: "Success",
-      className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-    }
+    return { ...STATUS_LABELS.SUCCESS, type: "SUCCESS" }
   }
 
   // Fallback (gray)
-  return {
-    label: "Unknown",
-    className: "bg-gray-500/10 text-gray-600 border-gray-500/20",
-  }
+  return { ...STATUS_LABELS.UNKNOWN, type: "UNKNOWN" }
 }
+

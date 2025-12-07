@@ -41,6 +41,10 @@ export function ReportsDashboard() {
         ])
         setReportList(reportsData)
         setScenarios(scenariosData)
+        // Auto-select the latest report if any exist
+        if (reportsData.length > 0) {
+          setSelectedReportId(reportsData[0].report_id)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch reports")
       } finally {
@@ -299,8 +303,8 @@ export function ReportsDashboard() {
                 <p className="text-2xl font-bold text-green-600">{selectedReportData.metrics_summary.completed_runs}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Failed</p>
-                <p className="text-2xl font-bold text-red-600">{selectedReportData.metrics_summary.failed_runs}</p>
+                <p className="text-sm text-muted-foreground">Goal Not Met</p>
+                <p className="text-2xl font-bold text-amber-600">{selectedReportData.metrics_summary.failed_runs}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Success Rate</p>

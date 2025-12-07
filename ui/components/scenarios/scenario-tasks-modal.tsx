@@ -52,16 +52,6 @@ interface ScenarioTasksModalProps {
   onRun?: (scenario: Scenario) => Promise<void>
 }
 
-// Default personas available
-const DEFAULT_PERSONAS = [
-  "Explorer",
-  "Focused Shopper",
-  "Hesitant User",
-  "Power User",
-  "First-Time Visitor",
-  "Returning Customer"
-]
-
 export function ScenarioTasksModal({
   open,
   onOpenChange,
@@ -83,11 +73,12 @@ export function ScenarioTasksModal({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [personaFilters, setPersonaFilters] = useState<Set<string>>(new Set())
 
   // Task editing state
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [showTaskEditor, setShowTaskEditor] = useState(false)
-  const [availablePersonas, setAvailablePersonas] = useState<string[]>(DEFAULT_PERSONAS)
+  const [availablePersonas, setAvailablePersonas] = useState<string[]>([])
 
   // Fetch available personas
   useEffect(() => {
@@ -173,7 +164,7 @@ export function ScenarioTasksModal({
       next.delete(taskNumber)
       return next
     })
-    toast.success("Task deleted")
+    toast.success("Persona deleted")
   }
 
   // Save edited task
@@ -198,7 +189,7 @@ export function ScenarioTasksModal({
 
     setShowTaskEditor(false)
     setEditingTask(null)
-    toast.success(isNew ? "Task added" : "Task updated")
+    toast.success(isNew ? "Persona added" : "Persona updated")
   }
 
   const handleSave = async () => {
@@ -319,7 +310,7 @@ export function ScenarioTasksModal({
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-2xl">
-              {mode === 'create' ? 'Scenario Analysis Complete' : 'Edit Scenario Tasks'}
+              {mode === 'create' ? 'Scenario Analysis Complete' : 'Edit Scenario Personas to Run'}
             </DialogTitle>
             <DialogDescription>
               {mode === 'create'
@@ -335,25 +326,55 @@ export function ScenarioTasksModal({
                   <CardTitle className="text-sm text-amber-900">No Tasks Available</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-amber-800">
-                  This scenario doesn't have any tasks yet. Click "Add Task" to create one.
+                  This scenario doesn't have any personas yet. Click "Add Persona" to create one.
                 </CardContent>
               </Card>
             )}
             {/* Website Analysis Summary */}
-            {crawlerSummary && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Website Analysis Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {typeof crawlerSummary === 'string'
-                      ? crawlerSummary
-                      : JSON.stringify(crawlerSummary, null, 2)}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+            {crawlerSummary && (() => {
+              // Parse crawlerSummary to extract context
+              let context: { summary?: string; target_audience?: string; value_proposition?: string; vertical?: string } | null = null
+              try {
+                const parsed = typeof crawlerSummary === 'string' ? JSON.parse(crawlerSummary) : crawlerSummary
+                context = parsed?.context || null
+              } catch {
+                // If parsing fails, context remains null
+              }
+
+              return context ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Website Analysis Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {context.summary && (
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Summary</p>
+                        <p className="text-sm text-muted-foreground">{context.summary}</p>
+                      </div>
+                    )}
+                    {context.target_audience && (
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Target Audience</p>
+                        <p className="text-sm text-muted-foreground">{context.target_audience}</p>
+                      </div>
+                    )}
+                    {context.value_proposition && (
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Value Proposition</p>
+                        <p className="text-sm text-muted-foreground">{context.value_proposition}</p>
+                      </div>
+                    )}
+                    {context.vertical && (
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Vertical</p>
+                        <p className="text-sm text-muted-foreground">{context.vertical}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : null
+            })()}
 
             {/* Persona Distribution - moved here, beneath Website Analysis */}
             {tasksMetadata?.persona_distribution && Object.keys(tasksMetadata.persona_distribution).length > 0 && (
@@ -364,14 +385,50 @@ export function ScenarioTasksModal({
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {Object.entries(tasksMetadata.persona_distribution).map(
-                      ([persona, count]) => (
-                        <div key={persona} className="flex items-center justify-between p-3 bg-muted rounded">
-                          <span className="text-sm font-medium">{persona}</span>
-                          <Badge variant="secondary">{String(count)}</Badge>
-                        </div>
-                      )
+                      ([persona, count]) => {
+                        const isSelected = personaFilters.has(persona)
+                        return (
+                          <button
+                            key={persona}
+                            type="button"
+                            onClick={() => {
+                              setPersonaFilters(prev => {
+                                const next = new Set(prev)
+                                if (next.has(persona)) {
+                                  next.delete(persona)
+                                } else {
+                                  next.add(persona)
+                                }
+                                return next
+                              })
+                            }}
+                            className={cn(
+                              "flex items-center justify-between p-3 rounded transition-all duration-150",
+                              "border hover:border-primary/50 cursor-pointer",
+                              isSelected
+                                ? "bg-primary/10 border-primary ring-1 ring-primary/30"
+                                : "bg-muted border-transparent hover:bg-muted/80"
+                            )}
+                          >
+                            <span className={cn(
+                              "text-sm font-medium",
+                              isSelected && "text-primary"
+                            )}>{persona}</span>
+                            <Badge variant={isSelected ? "default" : "secondary"}>{String(count)}</Badge>
+                          </button>
+                        )
+                      }
                     )}
                   </div>
+                  {personaFilters.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPersonaFilters(new Set())}
+                      className="mt-3 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                    >
+                      Clear filters ({personaFilters.size} active)
+                    </button>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -394,7 +451,7 @@ export function ScenarioTasksModal({
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg">
-                      {mode === 'create' ? 'Generated Tasks' : 'Scenario Tasks'} ({localTasks.length})
+                      Personas to Run ({localTasks.length})
                     </CardTitle>
                     <CardDescription>
                       Selected: {selectedTasks.size} of {localTasks.length}
@@ -402,71 +459,75 @@ export function ScenarioTasksModal({
                   </div>
                   <Button onClick={handleAddTask} size="sm" variant="outline">
                     <Plus className="w-4 h-4 mr-1" />
-                    Add Task
+                    Add Persona
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {localTasks.map((task: Task) => (
-                  <div
-                    key={task.number}
-                    className={cn(
-                      "border rounded-lg p-4 transition-colors cursor-pointer group",
-                      selectedTasks.has(task.number)
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                    onClick={() => toggleTask(task.number)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={selectedTasks.has(task.number)}
-                        onCheckedChange={() => toggleTask(task.number)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">Task {task.number}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {task.persona}
-                            </Badge>
+                {localTasks
+                  .filter((task: Task) =>
+                    personaFilters.size === 0 || personaFilters.has(task.persona)
+                  )
+                  .map((task: Task) => (
+                    <div
+                      key={task.number}
+                      className={cn(
+                        "border rounded-lg p-4 transition-colors cursor-pointer group",
+                        selectedTasks.has(task.number)
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50"
+                      )}
+                      onClick={() => toggleTask(task.number)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={selectedTasks.has(task.number)}
+                          onCheckedChange={() => toggleTask(task.number)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">Persona Run {task.number}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {task.persona}
+                              </Badge>
+                            </div>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={(e) => handleEditTask(task, e)}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={(e) => handleDeleteTask(task.number, e)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={(e) => handleEditTask(task, e)}
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={(e) => handleDeleteTask(task.number, e)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
+                          <div className="space-y-1 text-sm">
+                            <p className="text-muted-foreground">
+                              <span className="font-medium">Starting URL:</span>{" "}
+                              <span className="break-all">{task.starting_url}</span>
+                            </p>
+                            <p>
+                              <span className="font-medium">Goal:</span> {task.goal}
+                            </p>
+                            <p className="text-muted-foreground">
+                              <span className="font-medium">Steps:</span> {task.steps}
+                            </p>
                           </div>
-                        </div>
-                        <div className="space-y-1 text-sm">
-                          <p className="text-muted-foreground">
-                            <span className="font-medium">Starting URL:</span>{" "}
-                            <span className="break-all">{task.starting_url}</span>
-                          </p>
-                          <p>
-                            <span className="font-medium">Goal:</span> {task.goal}
-                          </p>
-                          <p className="text-muted-foreground">
-                            <span className="font-medium">Steps:</span> {task.steps}
-                          </p>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </CardContent>
             </Card>
           </div>
@@ -489,7 +550,7 @@ export function ScenarioTasksModal({
                       ) : (
                         <>
                           <Play className="w-4 h-4 mr-2" />
-                          Play Selected Tasks
+                          Run Selected Personas
                         </>
                       )}
                     </Button>
@@ -518,7 +579,7 @@ export function ScenarioTasksModal({
                     </>
                   ) : (
                     <>
-                      {mode === 'create' ? `Save Scenario (${selectedTasks.size} tasks)` : `Save Changes (${selectedTasks.size} tasks)`}
+                      {mode === 'create' ? `Save Scenario (${selectedTasks.size} personas)` : `Save Changes (${selectedTasks.size} personas)`}
                     </>
                   )}
                 </Button>
@@ -534,8 +595,8 @@ export function ScenarioTasksModal({
           <DialogHeader>
             <DialogTitle>
               {editingTask && localTasks.find(t => t.number === editingTask.number)
-                ? 'Edit Task'
-                : 'Add New Task'}
+                ? 'Edit Persona'
+                : 'Add New Persona'}
             </DialogTitle>
           </DialogHeader>
           {editingTask && (
@@ -586,7 +647,7 @@ export function ScenarioTasksModal({
                   Cancel
                 </Button>
                 <Button onClick={handleSaveTask}>
-                  {localTasks.find(t => t.number === editingTask.number) ? 'Update Task' : 'Add Task'}
+                  {localTasks.find(t => t.number === editingTask.number) ? 'Update Persona' : 'Add Persona'}
                 </Button>
               </div>
             </div>

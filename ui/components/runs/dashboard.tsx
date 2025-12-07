@@ -225,7 +225,7 @@ export function RunsDashboard() {
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="success">✓ Success</SelectItem>
-                <SelectItem value="failed">✗ Failed</SelectItem>
+                <SelectItem value="failed">✗ Goal Not Met</SelectItem>
                 <SelectItem value="error">⚠ Error</SelectItem>
               </SelectContent>
             </Select>

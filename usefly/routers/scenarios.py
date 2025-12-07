@@ -183,7 +183,7 @@ def update_scenario_tasks(
 
 
 @router.get("/personas")
-def get_available_personas(db: Session = Depends(get_db)):
-    """Get all unique persona types available across scenarios."""
-    return scenarios_handler.get_available_personas(db)
+def get_distinct_personas(db: Session = Depends(get_db)):
+    """Get all unique persona types from persona_runs table."""
+    return scenarios_handler.get_distinct_personas(db)
 

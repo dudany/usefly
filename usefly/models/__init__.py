@@ -12,7 +12,7 @@ from usefly.models.scenario import (
 )
 
 # Agent/Persona run models
-from usefly.models.agent_run import (
+from usefly.models.persona_run import (
     PersonaRun,
     PersonaRunCreate,
     PersonaRunResponse,

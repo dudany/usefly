@@ -206,11 +206,10 @@ export function RunOverviewTab({ run, metrics }: RunOverviewTabProps) {
 
           {/* Verdict and Judgement Details Card */}
           <Card
-            className={`p-4 cursor-pointer transition-colors ${
-              hasWarnings
+            className={`p-4 cursor-pointer transition-colors ${hasWarnings
                 ? "bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/15"
                 : "bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/15"
-            }`}
+              }`}
             onClick={() => setExpandedJudgement(!expandedJudgement)}
           >
             <div className="flex items-start justify-between gap-3">
@@ -220,31 +219,27 @@ export function RunOverviewTab({ run, metrics }: RunOverviewTabProps) {
                     <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
                   )}
                   <p
-                    className={`text-sm font-medium ${
-                      hasWarnings ? "text-amber-600" : "text-blue-600"
-                    }`}
+                    className={`text-sm font-medium ${hasWarnings ? "text-amber-600" : "text-blue-600"
+                      }`}
                   >
                     Verdict & Details
                   </p>
                 </div>
                 {run.judgement_data.verdict !== undefined && (
                   <p
-                    className={`text-sm mt-2 ${
-                      run.judgement_data.verdict
+                    className={`text-sm mt-2 ${run.judgement_data.verdict
                         ? "text-emerald-600"
-                        : "text-red-600"
-                    }`}
+                        : "text-amber-600"
+                      }`}
                   >
-                    {run.judgement_data.verdict ? "✓ Passed" : "✗ Failed"}
+                    {run.judgement_data.verdict ? "✓ Success" : "✗ Goal Not Met"}
                   </p>
                 )}
               </div>
               <ChevronDown
-                className={`w-5 h-5 flex-shrink-0 transition-transform ${
-                  expandedJudgement ? "rotate-180" : ""
-                } ${
-                  hasWarnings ? "text-amber-600" : "text-blue-600"
-                }`}
+                className={`w-5 h-5 flex-shrink-0 transition-transform ${expandedJudgement ? "rotate-180" : ""
+                  } ${hasWarnings ? "text-amber-600" : "text-blue-600"
+                  }`}
               />
             </div>
 
@@ -252,63 +247,54 @@ export function RunOverviewTab({ run, metrics }: RunOverviewTabProps) {
             {expandedJudgement && (
               <div className="mt-4 space-y-3 border-t pt-4">
                 {/* Failure Reason */}
-                <div className={`p-3 rounded-md border ${
-                  run.judgement_data.failure_reason
+                <div className={`p-3 rounded-md border ${run.judgement_data.failure_reason
                     ? "bg-red-500/10 border-red-500/20"
                     : "bg-gray-500/5 border-gray-500/20"
-                }`}>
-                  <p className={`text-xs font-medium mb-1 ${
-                    run.judgement_data.failure_reason
+                  }`}>
+                  <p className={`text-xs font-medium mb-1 ${run.judgement_data.failure_reason
                       ? "text-red-600"
                       : "text-gray-600"
-                  }`}>
+                    }`}>
                     Failure Reason
                   </p>
-                  <p className={`text-sm ${
-                    run.judgement_data.failure_reason
+                  <p className={`text-sm ${run.judgement_data.failure_reason
                       ? "text-red-600/80"
                       : "text-gray-500"
-                  }`}>
+                    }`}>
                     {run.judgement_data.failure_reason || "(none)"}
                   </p>
                 </div>
 
                 {/* Impossible Task */}
-                <div className={`flex items-center gap-2 p-3 rounded-md border ${
-                  run.judgement_data.impossible_task
+                <div className={`flex items-center gap-2 p-3 rounded-md border ${run.judgement_data.impossible_task
                     ? "bg-orange-500/10 border-orange-500/20"
                     : "bg-gray-500/5 border-gray-500/20"
-                }`}>
-                  <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${
-                    run.judgement_data.impossible_task
+                  }`}>
+                  <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${run.judgement_data.impossible_task
                       ? "text-orange-600"
                       : "text-gray-500"
-                  }`} />
-                  <span className={`text-sm font-medium ${
-                    run.judgement_data.impossible_task
+                    }`} />
+                  <span className={`text-sm font-medium ${run.judgement_data.impossible_task
                       ? "text-orange-600"
                       : "text-gray-600"
-                  }`}>
+                    }`}>
                     Task deemed impossible: {run.judgement_data.impossible_task ? "Yes" : "No"}
                   </span>
                 </div>
 
                 {/* Reached CAPTCHA */}
-                <div className={`flex items-center gap-2 p-3 rounded-md border ${
-                  run.judgement_data.reached_captcha
+                <div className={`flex items-center gap-2 p-3 rounded-md border ${run.judgement_data.reached_captcha
                     ? "bg-purple-500/10 border-purple-500/20"
                     : "bg-gray-500/5 border-gray-500/20"
-                }`}>
-                  <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${
-                    run.judgement_data.reached_captcha
+                  }`}>
+                  <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${run.judgement_data.reached_captcha
                       ? "text-purple-600"
                       : "text-gray-500"
-                  }`} />
-                  <span className={`text-sm font-medium ${
-                    run.judgement_data.reached_captcha
+                    }`} />
+                  <span className={`text-sm font-medium ${run.judgement_data.reached_captcha
                       ? "text-purple-600"
                       : "text-gray-600"
-                  }`}>
+                    }`}>
                     CAPTCHA encountered: {run.judgement_data.reached_captcha ? "Yes" : "No"}
                   </span>
                 </div>
