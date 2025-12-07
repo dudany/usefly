@@ -116,8 +116,9 @@ export const personaRecordsApi = {
 export const reportApi = {
   list: () => apiFetch<ReportListItem[]>("/api/reports/list"),
 
-  getAggregate: (reportId: string, filters?: { persona?: string; status?: string; platform?: string }) => {
+  getAggregate: (reportId: string, mode?: string, filters?: { persona?: string; status?: string; platform?: string }) => {
     const params = new URLSearchParams();
+    if (mode && mode !== "compact") params.append("mode", mode);
     if (filters?.persona && filters.persona !== "all") params.append("persona", filters.persona);
     if (filters?.status && filters.status !== "all") params.append("status", filters.status);
     if (filters?.platform && filters.platform !== "all") params.append("platform", filters.platform);

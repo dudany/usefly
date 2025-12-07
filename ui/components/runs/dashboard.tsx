@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { RunFilters } from "./run-filters"
 import { Loader } from "lucide-react"
 import { RunTable } from "./run-table"
@@ -14,9 +14,7 @@ export function RunsDashboard() {
     reportFilter,
     statusFilter,
     personaFilter,
-    platformFilter,
-    dateFrom,
-    dateTo
+    platformFilter
   } = useFilterContext()
 
   // State for data fetching
@@ -75,26 +73,6 @@ export function RunsDashboard() {
     fetchRuns()
   }, [scenarioFilter, reportFilter, statusFilter, personaFilter, platformFilter])
 
-  // Client-side date filtering only (backend doesn't support date filters yet)
-  const filteredRuns = useMemo(() => {
-    return agentRuns.filter((run) => {
-      // Date range filter (client-side only)
-      if (dateFrom) {
-        const runDate = new Date(run.timestamp)
-        const fromDate = new Date(dateFrom)
-        if (runDate < fromDate) return false
-      }
-      if (dateTo) {
-        const runDate = new Date(run.timestamp)
-        const toDate = new Date(dateTo)
-        toDate.setHours(23, 59, 59, 999) // End of day
-        if (runDate > toDate) return false
-      }
-
-      return true
-    })
-  }, [dateFrom, dateTo, agentRuns])
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -120,16 +98,17 @@ export function RunsDashboard() {
         reports={reports}
         availablePersonas={availablePersonas}
         showPlatformFilter={true}
+        showDateFilter={false}
       />
 
       {/* Results Count */}
       <div className="text-sm text-muted-foreground">
-        Showing {filteredRuns.length} of {agentRuns.length} runs
+        Showing {agentRuns.length} runs
       </div>
 
       {/* Table */}
-      {filteredRuns.length > 0 ? (
-        <RunTable runs={filteredRuns} />
+      {agentRuns.length > 0 ? (
+        <RunTable runs={agentRuns} />
       ) : (
         <div className="text-center py-8 text-muted-foreground">
           No agent runs found. Try adjusting your filters.

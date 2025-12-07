@@ -147,7 +147,7 @@ def get_report_aggregate(
     scenario_name = scenario.name if scenario else "Unknown Scenario"
 
     # Calculate metrics summary
-    metrics_summary = _calculate_metrics_summary(runs)
+    metrics_summary = _calculate_metrics_summary(db, report_id, filters)
 
     # Generate Sankey diagram data
     journey_sankey = _generate_sankey_data(runs, mode=sankey_mode)
@@ -163,28 +163,33 @@ def get_report_aggregate(
 
 
 
-def _calculate_metrics_summary(agent_runs: List[PersonaRun]) -> dict:
-    """Calculate aggregated metrics from agent runs."""
-    if not agent_runs:
-        return {}
+def _calculate_metrics_summary(
+    db: Session,
+    report_id: str,
+    filters: Optional[Dict[str, str]] = None
+) -> dict:
+    """Calculate aggregated metrics using _query_persona_runs (single source of truth)."""
+    base_filters = filters.copy() if filters else {}
 
-    completed_count = sum(1 for run in agent_runs if run.is_done)
-    failed_count = sum(1 for run in agent_runs if not run.is_done)
+    # Query each status type separately using _query_persona_runs
+    # This ensures we use the single source of truth for status logic
+    success_runs = _query_persona_runs(db, report_id=report_id, filters={**base_filters, "status": "success"})
+    failed_runs = _query_persona_runs(db, report_id=report_id, filters={**base_filters, "status": "failed"})
+    error_runs = _query_persona_runs(db, report_id=report_id, filters={**base_filters, "status": "error"})
 
-    # Calculate average duration (only for completed runs with duration data)
-    durations = [run.duration_seconds for run in agent_runs if run.duration_seconds is not None]
-    avg_duration = sum(durations) / len(durations) if durations else 0
-
-    # Calculate average steps
-    avg_steps = sum(run.steps_completed for run in agent_runs) / len(agent_runs) if agent_runs else 0
+    success_count = len(success_runs)
+    failed_count = len(failed_runs)
+    error_count = len(error_runs)
+    total_count = success_count + failed_count + error_count
 
     return {
-        "total_runs": len(agent_runs),
-        "completed_runs": completed_count,
+        "total_runs": total_count,
+        "sucessfull_runs": success_count,
         "failed_runs": failed_count,
-        "success_rate": completed_count / len(agent_runs) if agent_runs else 0,
-        "avg_duration_seconds": round(avg_duration, 2),
-        "avg_steps": round(avg_steps, 1),
+        "error_runs": error_count,
+        "success_rate": success_count / total_count if total_count > 0 else 0,
+        "avg_duration_seconds": 0.0,
+        "avg_steps": 0.0,
     }
 
 

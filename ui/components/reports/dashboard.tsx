@@ -1,16 +1,14 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
-import { Loader, X } from "lucide-react"
-import { reportApi, personaRecordsApi, scenarioApi } from "@/lib/api-client"
+import { Loader } from "lucide-react"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { reportApi, scenarioApi } from "@/lib/api-client"
 import { ReportListItem, ReportAggregate, PersonaRun, Scenario } from "@/types/api"
 import { JourneySankey } from "./journey-sankey"
 import { JourneyTable } from "./journey-table"
-import { RunFilters, RunStatus } from "@/components/runs/run-filters"
+import { RunFilters } from "@/components/runs/run-filters"
 
 import { useFilterContext } from "@/contexts/filter-context"
 
@@ -20,9 +18,7 @@ export function ReportsDashboard() {
     reportFilter,
     statusFilter,
     personaFilter,
-    platformFilter,
-    dateFrom,
-    dateTo
+    platformFilter
   } = useFilterContext()
 
   // State for data fetching
@@ -35,6 +31,7 @@ export function ReportsDashboard() {
   const [loading, setLoading] = useState(true)
   const [loadingAggregate, setLoadingAggregate] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sankeyMode, setSankeyMode] = useState<string>("compact")
 
   // Fetch report list, scenarios and personas on mount
   useEffect(() => {
@@ -82,7 +79,7 @@ export function ReportsDashboard() {
         // Fetch aggregated data AND filtered runs in parallel
         // Both use _query_persona_runs on the backend with the same filters
         const [aggregateData, runsData] = await Promise.all([
-          reportApi.getAggregate(reportFilter, filters),
+          reportApi.getAggregate(reportFilter, sankeyMode, filters),
           reportApi.getRuns(reportFilter, filters)
         ])
 
@@ -99,7 +96,7 @@ export function ReportsDashboard() {
     }
 
     fetchReportData()
-  }, [reportFilter, personaFilter, statusFilter, platformFilter])
+  }, [reportFilter, personaFilter, statusFilter, platformFilter, sankeyMode])
 
   if (loading) {
     return (
@@ -138,6 +135,7 @@ export function ReportsDashboard() {
         reports={reportList}
         availablePersonas={availablePersonas}
         showPlatformFilter={true}
+        showDateFilter={false}
       />
 
       {/* Main Content */}
@@ -173,35 +171,27 @@ export function ReportsDashboard() {
             {selectedReportData.run_count === 0 ? (
               <div className="text-center py-8 text-muted-foreground">No data matches the selected filters</div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Runs</p>
                   <p className="text-2xl font-bold text-foreground">{selectedReportData.metrics_summary.total_runs}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Completed</p>
-                  <p className="text-2xl font-bold text-green-600">{selectedReportData.metrics_summary.completed_runs}</p>
+                  <p className="text-2xl font-bold text-green-600">{selectedReportData.metrics_summary.sucessfull_runs}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Goal Not Met</p>
                   <p className="text-2xl font-bold text-amber-600">{selectedReportData.metrics_summary.failed_runs}</p>
                 </div>
                 <div>
+                  <p className="text-sm text-muted-foreground">Error</p>
+                  <p className="text-2xl font-bold text-red-600">{selectedReportData.metrics_summary.error_runs}</p>
+                </div>
+                <div>
                   <p className="text-sm text-muted-foreground">Success Rate</p>
                   <p className="text-2xl font-bold text-foreground">
                     {(selectedReportData.metrics_summary.success_rate * 100).toFixed(1)}%
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Avg Duration</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {selectedReportData.metrics_summary.avg_duration_seconds.toFixed(1)}s
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Avg Steps</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {selectedReportData.metrics_summary.avg_steps.toFixed(1)}
                   </p>
                 </div>
               </div>
@@ -211,7 +201,17 @@ export function ReportsDashboard() {
           {/* Journey Sankey Diagram */}
           {selectedReportData.run_count > 0 && (
             <Card className="p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Journey Flow</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-foreground">Journey Flow</h3>
+                <ToggleGroup type="single" value={sankeyMode} onValueChange={setSankeyMode}>
+                  <ToggleGroupItem value="compact" aria-label="Compact mode">
+                    Compact
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="full" aria-label="Full mode">
+                    Full
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
               <JourneySankey data={selectedReportData.journey_sankey} />
             </Card>
           )}

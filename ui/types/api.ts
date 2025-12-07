@@ -227,8 +227,9 @@ export interface SankeyData {
  */
 export interface MetricsSummary {
   total_runs: number;
-  completed_runs: number;
+  sucessfull_runs: number;
   failed_runs: number;
+  error_runs: number;
   success_rate: number;
   avg_duration_seconds: number;
   avg_steps: number;
