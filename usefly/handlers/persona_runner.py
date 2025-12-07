@@ -355,7 +355,7 @@ def _run_task_in_thread(db_session_factory, scenario_id: str, task: Dict, report
         db.close()
 
 
-async def run_persona_tasks(db_session_factory, persona_id: str, report_id: str, run_id: str, background_tasks=None):
+async def run_persona_tasks(db_session_factory, scenario_id: str, report_id: str, run_id: str, background_tasks=None):
     """
     Run persona tasks using ThreadPoolExecutor for controlled parallelism.
     max_workers is controlled by MAX_BROWSER_WORKERS env var (default: 3).
@@ -363,9 +363,9 @@ async def run_persona_tasks(db_session_factory, persona_id: str, report_id: str,
     db = db_session_factory()
 
     try:
-        scenario = db.query(Scenario).filter(Scenario.id == persona_id).first()
+        scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
         if not scenario:
-            raise ValueError(f"Scenario {persona_id} not found")
+            raise ValueError(f"Scenario {scenario_id} not found")
 
         sys_config = db.query(SystemConfig).filter(SystemConfig.id == 1).first()
         if not sys_config:
@@ -384,7 +384,7 @@ async def run_persona_tasks(db_session_factory, persona_id: str, report_id: str,
             raise ValueError("No tasks to run")
         
         # Initialize run status with correct task count
-        init_run_status(run_id, persona_id, report_id, len(tasks_to_run))
+        init_run_status(run_id, scenario_id, report_id, len(tasks_to_run))
 
         # Submit all tasks to the thread pool for parallel execution
         loop = asyncio.get_event_loop()

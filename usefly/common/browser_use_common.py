@@ -36,10 +36,7 @@ async def run_browser_use_agent(task: str, system_config: SystemConfig, max_step
             llm_timeout=90
         )
 
-        history = await asyncio.wait_for(agent.run(), timeout=600)
-        return history
+        return await agent.run()
 
-    except asyncio.TimeoutError:
-        raise Exception("Task timeout after 600 seconds")
     except Exception as e:
         raise e

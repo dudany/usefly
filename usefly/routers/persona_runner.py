@@ -27,7 +27,7 @@ async def run_persona(
 
     selected_indices = scenario.selected_task_indices or [] #TODO why it selects indices but not runs them?
     task_count = len(selected_indices)
-    await persona_runner.run_persona_tasks(db_session_factory=SessionLocal,persona_id=scenario_id,report_id=report_id,run_id=run_id,background_tasks=background_tasks)
+    await persona_runner.run_persona_tasks(db_session_factory=SessionLocal,scenario_id=scenario_id,report_id=report_id,run_id=run_id,background_tasks=background_tasks)
     
 
     return PersonaExecutionResponse(
