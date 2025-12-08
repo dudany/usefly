@@ -49,3 +49,17 @@ async def get_report_runs(
 
     runs = reports._query_persona_runs(db, report_id=report_id, filters=filters)
     return runs
+
+
+
+@router.get("/{report_id}/friction")
+async def get_report_friction(
+    report_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get friction hotspots for a report.
+    Returns common failure patterns location + reason.
+    """
+    return reports.get_friction_hotspots(db, report_id)
+

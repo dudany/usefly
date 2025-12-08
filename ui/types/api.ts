@@ -323,3 +323,14 @@ export interface GenerateMoreTasksResponse {
   tasks_metadata: TasksMetadata;
   message: string;
 }
+
+/**
+ * Insights and Friction Data
+ */
+export interface FrictionHotspotItem {
+  location: string;
+  reason: string;
+  count: number;
+  impact_percentage: number;
+  example_run_ids: string[];
+}

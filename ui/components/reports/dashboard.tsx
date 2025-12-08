@@ -4,11 +4,10 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Loader } from "lucide-react"
 import { reportApi, scenarioApi } from "@/lib/api-client"
-import { ReportListItem, ReportAggregate, PersonaRun, Scenario } from "@/types/api"
+import { FrictionHotspots } from "@/components/runs/friction-hotspots"
+import { ReportListItem, ReportAggregate, Scenario, FrictionHotspotItem } from "@/types/api"
 import { JourneySankey } from "./journey-sankey"
-import { JourneyTable } from "./journey-table"
 import { RunFilters } from "@/components/runs/run-filters"
-
 import { useFilterContext } from "@/contexts/filter-context"
 
 export function ReportsDashboard() {
@@ -25,10 +24,11 @@ export function ReportsDashboard() {
   const [reportList, setReportList] = useState<ReportListItem[]>([])
   const [selectedReportData, setSelectedReportData] = useState<ReportAggregate | null>(null)
 
-  const [agentRuns, setAgentRuns] = useState<PersonaRun[]>([])
+  const [friction, setFriction] = useState<FrictionHotspotItem[]>([])
   const [availablePersonas, setAvailablePersonas] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingAggregate, setLoadingAggregate] = useState(false)
+  const [frictionLoading, setFrictionLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Fetch report list, scenarios and personas on mount
@@ -59,7 +59,6 @@ export function ReportsDashboard() {
     // If no report selected (or "all" selected), we can't show aggregation
     if (!reportFilter || reportFilter === "all") {
       setSelectedReportData(null)
-      setAgentRuns([])
       return
     }
 
@@ -74,15 +73,15 @@ export function ReportsDashboard() {
           platform: platformFilter
         }
 
-        // Fetch aggregated data AND filtered runs in parallel
-        // Both use _query_persona_runs on the backend with the same filters
-        const [aggregateData, runsData] = await Promise.all([
+        setFrictionLoading(true)
+        // Fetch aggregated data and friction in parallel
+        const [aggregateData, frictionData] = await Promise.all([
           reportApi.getAggregate(reportFilter, "compact", filters),
-          reportApi.getRuns(reportFilter, filters)
+          reportApi.getFriction(reportFilter)
         ])
 
         setSelectedReportData(aggregateData)
-        setAgentRuns(runsData)
+        setFriction(frictionData)
 
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch report data")
@@ -90,6 +89,7 @@ export function ReportsDashboard() {
         // The backend now returns a zero-struct if possible, or 404 if report missing.
       } finally {
         setLoadingAggregate(false)
+        setFrictionLoading(false)
       }
     }
 
@@ -204,19 +204,8 @@ export function ReportsDashboard() {
             </Card>
           )}
 
-          {/* Journey Table */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Journey Details</h3>
-            {agentRuns.length > 0 ? (
-              <JourneyTable
-                runs={agentRuns}
-                groupByPlatform={platformFilter === "all"}
-                groupByPersona={personaFilter === "all"}
-              />
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">No runs match criteria</div>
-            )}
-          </Card>
+          {/* Friction Hotspots */}
+          <FrictionHotspots hotspots={friction} loading={frictionLoading} />
         </>
       ) : (
         <Card className="p-12">

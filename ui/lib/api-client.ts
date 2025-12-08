@@ -20,6 +20,7 @@ import {
   RunStatusResponse,
   GenerateMoreTasksRequest,
   GenerateMoreTasksResponse,
+  FrictionHotspotItem,
 } from "@/types/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -144,6 +145,9 @@ export const reportApi = {
     const query = params.toString() ? `?${params.toString()}` : "";
     return apiFetch<PersonaRun[]>(`/api/reports/${reportId}/runs${query}`);
   },
+
+
+  getFriction: (reportId: string) => apiFetch<FrictionHotspotItem[]>(`/api/reports/${reportId}/friction`),
 };
 
 /**

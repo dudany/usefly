@@ -5,7 +5,7 @@ import { RunFilters } from "./run-filters"
 import { Loader } from "lucide-react"
 import { RunTable } from "./run-table"
 import { personaRecordsApi, reportApi, scenarioApi } from "@/lib/api-client"
-import { Scenario, PersonaRun, ReportListItem } from "@/types/api"
+import { Scenario, PersonaRun, ReportListItem, FrictionHotspotItem } from "@/types/api"
 import { useFilterContext } from "@/contexts/filter-context"
 
 export function RunsDashboard() {
@@ -24,6 +24,9 @@ export function RunsDashboard() {
   const [availablePersonas, setAvailablePersonas] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Insights state
+  const [insightsLoading, setInsightsLoading] = useState(false)
 
   // Fetch initial data (scenarios, reports, personas) on mount
   useEffect(() => {
@@ -61,12 +64,24 @@ export function RunsDashboard() {
         if (platformFilter !== "all") filters.platform = platformFilter
 
         console.log('[RunsDashboard] Fetching runs with filters:', filters)
-        const runsData = await personaRecordsApi.list(filters)
-        console.log('[RunsDashboard] Received', runsData.length, 'runs')
-        setAgentRuns(runsData)
+
+        // Parallel fetch for runs and insights (if report selected)
+        const promises: Promise<any>[] = [personaRecordsApi.list(filters)]
+
+        if (reportFilter !== "all") {
+          setInsightsLoading(true)
+        }
+
+        const results = await Promise.all(promises)
+        setAgentRuns(results[0])
+
       } catch (err) {
         console.error('[RunsDashboard] Error fetching runs:', err)
         setError(err instanceof Error ? err.message : "Failed to fetch runs")
+      } finally {
+        if (reportFilter !== "all") {
+          setInsightsLoading(false)
+        }
       }
     }
 
@@ -100,6 +115,12 @@ export function RunsDashboard() {
         showPlatformFilter={true}
         showDateFilter={false}
       />
+
+      {/* Analytics Section (Only when a specific report is selected) */}
+      {reportFilter !== "all" && (
+        <div className="space-y-6">
+        </div>
+      )}
 
       {/* Results Count */}
       <div className="text-sm text-muted-foreground">

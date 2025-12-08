@@ -417,3 +417,70 @@ def _generate_sankey_data(agent_runs: List[PersonaRun], mode: str = "compact") -
     node_metrics = calculate_node_metrics(all_sequences)
 
     return build_sankey_structure(node_metrics, acyclic_transitions)
+
+
+
+def get_friction_hotspots(
+    db: Session,
+    report_id: str
+) -> List[Dict]:
+    """
+    Identify common failure patterns (friction hotspots).
+    Groups failed runs by failure reason and location (last URL).
+    Only includes "goal not met" runs (is_done=True but verdict!=True).
+    Excludes error runs (is_done=False - crashed/timeout).
+    """
+    # Get only "failed" runs (goal not met) - excludes error runs
+    # Use _query_persona_runs with status="failed" filter for consistency
+    failed_runs = _query_persona_runs(db, report_id=report_id, filters={"status": "failed"})
+
+    if not failed_runs:
+        return []
+
+    # Aggregate by (Location, Reason)
+    hotspots = {}
+
+    for run in failed_runs:
+        # Determine Location (Last URL)
+        last_url = "Unknown Location"
+        if run.events:
+            # Find last event with a URL
+            for event in reversed(run.events):
+                if event.get("url"):
+                    last_url = event.get("url").rstrip('/')
+                    break
+        
+        # Determine Reason
+        reason = "Unknown Error"
+        if run.error_type:
+            reason = run.error_type
+        elif run.judgement_data and run.judgement_data.get("failure_reason"):
+             reason = run.judgement_data.get("failure_reason")
+        
+        # Create unique key
+        key = (last_url, reason)
+        
+        if key not in hotspots:
+            hotspots[key] = {"count": 0, "runs": []}
+        
+        hotspots[key]["count"] += 1
+        hotspots[key]["runs"].append(run.id)
+
+    # Convert to list and sort by impact (count)
+    result = []
+    total_failures = len(failed_runs)
+
+    for (location, reason), data in hotspots.items():
+        result.append({
+            "location": location,
+            "reason": reason,
+            "count": data["count"],
+            "impact_percentage": (data["count"] / total_failures) if total_failures > 0 else 0,
+            "example_run_ids": data["runs"][:3] # Return top 3 example IDs
+        })
+    
+    # Sort by count descending
+    result.sort(key=lambda x: x["count"], reverse=True)
+    
+    return result
+
