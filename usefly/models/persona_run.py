@@ -29,6 +29,10 @@ class PersonaRun(Base):
     final_result = Column(String)  # Final result from agent execution
     judgement_data = Column(JSON, default={})  # Full judgement result from agent (reasoning, verdict, failure_reason, etc.)
     task_description = Column(String)  # Description of the task
+    task_goal = Column(String)  # Goal of the task
+    task_steps = Column(String)  # Steps to complete the task
+    task_url = Column(String)  # Starting URL for the task
+    task_persona = Column(String)  # Persona description
     events = Column(JSON, default=[])
 
     # Relationships
@@ -51,6 +55,10 @@ class PersonaRunCreate(BaseModel):
     final_result: Optional[str] = None
     judgement_data: dict = {}
     task_description: Optional[str] = None
+    task_goal: Optional[str] = None
+    task_steps: Optional[str] = None
+    task_url: Optional[str] = None
+    task_persona: Optional[str] = None
     events: List[dict] = []
 
 
@@ -71,6 +79,10 @@ class PersonaRunResponse(BaseModel):
     final_result: Optional[str]
     judgement_data: dict
     task_description: Optional[str]
+    task_goal: Optional[str]
+    task_steps: Optional[str]
+    task_url: Optional[str]
+    task_persona: Optional[str]
     events: List[dict]
 
     class Config:

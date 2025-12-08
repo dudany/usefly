@@ -179,6 +179,10 @@ export interface PersonaRun {
   final_result?: string;
   judgement_data: any;
   task_description?: string;
+  task_goal?: string;
+  task_steps?: string;
+  task_url?: string;
+  task_persona?: string;
   events: any[];
 }
 

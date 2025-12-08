@@ -290,6 +290,10 @@ async def execute_single_task(
             final_result=history.final_result(),
             judgement_data=history.judgement(),
             task_description=task_description,
+            task_goal=journey_task.goal,
+            task_steps=journey_task.steps,
+            task_url=journey_task.starting_url,
+            task_persona=journey_task.persona,
             events=events
         )
 

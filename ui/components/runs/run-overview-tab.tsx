@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { AlertCircle, CheckCircle2, Clock, Zap, ChevronDown, AlertTriangle } from "lucide-react"
+import { AlertCircle, CheckCircle2, Clock, Zap, ChevronDown, AlertTriangle, ExternalLink } from "lucide-react"
 import type { PersonaRun } from "@/types/api"
 import {
   DerivedMetrics,
@@ -18,6 +18,61 @@ import {
 interface RunOverviewTabProps {
   run: PersonaRun
   metrics: DerivedMetrics
+}
+
+interface CollapsibleSectionProps {
+  title: string
+  icon: React.ReactNode
+  children: React.ReactNode
+  defaultOpen?: boolean
+  colorScheme: "blue" | "purple" | "amber"
+}
+
+function CollapsibleSection({ title, icon, children, defaultOpen = false, colorScheme }: CollapsibleSectionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+
+  const colorMap = {
+    blue: {
+      bg: "bg-blue-50/50",
+      border: "border-blue-200",
+      text: "text-blue-900",
+      icon: "text-blue-600"
+    },
+    purple: {
+      bg: "bg-purple-50/50",
+      border: "border-purple-200",
+      text: "text-purple-900",
+      icon: "text-purple-600"
+    },
+    amber: {
+      bg: "bg-amber-50/50",
+      border: "border-amber-200",
+      text: "text-amber-900",
+      icon: "text-amber-600"
+    }
+  }
+
+  const colors = colorMap[colorScheme]
+
+  return (
+    <div className={`border rounded-lg ${colors.bg} ${colors.border}`}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-3 hover:opacity-80 transition-opacity"
+      >
+        <div className="flex items-center gap-2">
+          <span className={colors.icon}>{icon}</span>
+          <p className={`text-xs font-semibold ${colors.text} uppercase tracking-wide`}>{title}</p>
+        </div>
+        <ChevronDown className={`w-4 h-4 ${colors.icon} transition-transform ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+      {isOpen && (
+        <div className={`px-3 pb-3 ${colors.text}`}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function RunOverviewTab({ run, metrics }: RunOverviewTabProps) {
@@ -116,12 +171,76 @@ export function RunOverviewTab({ run, metrics }: RunOverviewTabProps) {
       )}
 
       {/* Task Description */}
-      {run.task_description && (
+      {(run.task_goal || run.task_steps || run.task_url || run.task_persona) && (
         <Card className="p-4">
-          <p className="text-sm font-medium mb-2">Task Description</p>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {run.task_description}
-          </p>
+          <p className="text-sm font-medium mb-4">Task Description</p>
+          <div className="space-y-3">
+            {/* Goal - Always expanded */}
+            {run.task_goal && (
+              <div className="border rounded-lg p-3 bg-emerald-50/50 border-emerald-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <p className="text-xs font-semibold text-emerald-900 uppercase tracking-wide">Goal</p>
+                </div>
+                <p className="text-sm text-emerald-800 leading-relaxed pl-6">
+                  {run.task_goal}
+                </p>
+              </div>
+            )}
+
+            {/* Steps - Collapsible */}
+            {run.task_steps && (
+              <CollapsibleSection
+                title="Steps"
+                icon={<AlertCircle className="w-4 h-4" />}
+                defaultOpen={false}
+                colorScheme="blue"
+              >
+                <div className="space-y-2">
+                  {run.task_steps.split('\n').filter(s => s.trim()).map((step, idx) => (
+                    <div key={idx} className="flex gap-3 text-sm leading-relaxed">
+                      <span className="text-blue-600 font-medium flex-shrink-0">{idx + 1}.</span>
+                      <span>{step.replace(/^\d+[\.\)]\s*/, '').trim()}</span>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleSection>
+            )}
+
+            {/* URL - Collapsible */}
+            {run.task_url && (
+              <CollapsibleSection
+                title="Starting URL"
+                icon={<ExternalLink className="w-4 h-4" />}
+                defaultOpen={false}
+                colorScheme="purple"
+              >
+                <a
+                  href={run.task_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm hover:underline break-all inline-flex items-center gap-1"
+                >
+                  {run.task_url}
+                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                </a>
+              </CollapsibleSection>
+            )}
+
+            {/* Persona - Collapsible */}
+            {run.task_persona && (
+              <CollapsibleSection
+                title="Persona"
+                icon={<Zap className="w-4 h-4" />}
+                defaultOpen={false}
+                colorScheme="amber"
+              >
+                <p className="text-sm leading-relaxed">
+                  {run.task_persona}
+                </p>
+              </CollapsibleSection>
+            )}
+          </div>
         </Card>
       )}
 
