@@ -16,6 +16,10 @@ interface FrictionHotspotsProps {
 export function FrictionHotspots({ hotspots, loading }: FrictionHotspotsProps) {
     const [selectedRun, setSelectedRun] = useState<PersonaRun | null>(null)
     const [loadingRunDetails, setLoadingRunDetails] = useState(false)
+    const [showAll, setShowAll] = useState(false)
+
+    const ITEMS_PER_PAGE = 5
+    const displayedHotspots = showAll ? hotspots : hotspots.slice(0, ITEMS_PER_PAGE)
 
     const handleHotspotClick = async (runId: string) => {
         try {
@@ -53,7 +57,7 @@ export function FrictionHotspots({ hotspots, loading }: FrictionHotspotsProps) {
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="space-y-3">
-                        {hotspots.slice(0, 5).map((item, index) => (
+                        {displayedHotspots.map((item, index) => (
                             <div
                                 key={index}
                                 onClick={() => item.example_run_ids.length > 0 && handleHotspotClick(item.example_run_ids[0])}
@@ -109,9 +113,18 @@ export function FrictionHotspots({ hotspots, loading }: FrictionHotspotsProps) {
                         ))}
                     </div>
 
-                    {hotspots.length > 5 && (
-                        <div className="text-center text-sm text-muted-foreground mt-4 pt-4 border-t">
-                            + {hotspots.length - 5} more issue{hotspots.length - 5 !== 1 ? 's' : ''} detected
+                    {hotspots.length > ITEMS_PER_PAGE && (
+                        <div className="mt-4 pt-4 border-t">
+                            <button
+                                onClick={() => setShowAll(!showAll)}
+                                className="w-full text-center text-sm text-primary hover:text-primary/80 font-medium transition-colors py-2 hover:bg-accent rounded-md"
+                            >
+                                {showAll ? (
+                                    <>Show Less</>
+                                ) : (
+                                    <>Show {hotspots.length - ITEMS_PER_PAGE} More Issue{hotspots.length - ITEMS_PER_PAGE !== 1 ? 's' : ''}</>
+                                )}
+                            </button>
                         </div>
                     )}
                 </CardContent>

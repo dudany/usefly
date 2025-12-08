@@ -9,6 +9,7 @@ import { ReportListItem, ReportAggregate, Scenario, FrictionHotspotItem } from "
 import { JourneySankey } from "./journey-sankey"
 import { RunFilters } from "@/components/runs/run-filters"
 import { useFilterContext } from "@/contexts/filter-context"
+import { FrictionDetailModal } from "./friction-detail-modal"
 
 export function ReportsDashboard() {
   const {
@@ -30,6 +31,7 @@ export function ReportsDashboard() {
   const [loadingAggregate, setLoadingAggregate] = useState(false)
   const [frictionLoading, setFrictionLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedFrictionNode, setSelectedFrictionNode] = useState<any>(null)
 
   // Fetch report list, scenarios and personas on mount
   useEffect(() => {
@@ -56,8 +58,14 @@ export function ReportsDashboard() {
 
   // Fetch aggregated data (SERVER SIDE FILTERED) and runs when report or filters change
   useEffect(() => {
-    // If no report selected (or "all" selected), we can't show aggregation
-    if (!reportFilter || reportFilter === "all") {
+    // If "all reports" selected but no scenario selected, we can't show aggregation
+    if ((!reportFilter || reportFilter === "all") && scenarioFilter === "all") {
+      setSelectedReportData(null)
+      return
+    }
+
+    // If no report selected at all, return
+    if (!reportFilter) {
       setSelectedReportData(null)
       return
     }
@@ -70,14 +78,15 @@ export function ReportsDashboard() {
         const filters = {
           persona: personaFilter,
           status: statusFilter,
-          platform: platformFilter
+          platform: platformFilter,
+          scenario: scenarioFilter
         }
 
         setFrictionLoading(true)
         // Fetch aggregated data and friction in parallel
         const [aggregateData, frictionData] = await Promise.all([
           reportApi.getAggregate(reportFilter, "compact", filters),
-          reportApi.getFriction(reportFilter)
+          reportApi.getFriction(reportFilter !== "all" ? reportFilter : undefined, scenarioFilter !== "all" ? scenarioFilter : undefined)
         ])
 
         setSelectedReportData(aggregateData)
@@ -94,7 +103,7 @@ export function ReportsDashboard() {
     }
 
     fetchReportData()
-  }, [reportFilter, personaFilter, statusFilter, platformFilter])
+  }, [reportFilter, scenarioFilter, personaFilter, statusFilter, platformFilter])
 
   if (loading) {
     return (
@@ -137,13 +146,12 @@ export function ReportsDashboard() {
       />
 
       {/* Main Content */}
-      {(!reportFilter || reportFilter === "all") ? (
+      {(!reportFilter || reportFilter === "all") && scenarioFilter === "all" ? (
         <Card className="p-12">
           <div className="text-center text-muted-foreground">
-            <p className="text-lg mb-2">Select a report to view journey analysis</p>
+            <p className="text-lg mb-2">Select a scenario to view journey analysis</p>
             <p className="text-sm">
-              {/* Assuming filteredReportsList is defined elsewhere or should be reportList.length */}
-              {reportList.length} reports available
+              {scenarios.length} scenarios available
             </p>
           </div>
         </Card>
@@ -158,7 +166,11 @@ export function ReportsDashboard() {
           <div className="mb-4">
             <h2 className="text-2xl font-bold text-foreground">{selectedReportData.scenario_name}</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Report ID: {selectedReportData.report_id.substring(0, 8)}... •
+              {selectedReportData.report_id && selectedReportData.report_id !== "all" ? (
+                <>Report ID: {selectedReportData.report_id.substring(0, 8)}... • </>
+              ) : (
+                <>All Reports • </>
+              )}
               Analysis based on {selectedReportData.run_count} filtered runs
             </p>
           </div>
@@ -200,7 +212,10 @@ export function ReportsDashboard() {
           {selectedReportData.run_count > 0 && (
             <Card className="p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">Journey Flow</h3>
-              <JourneySankey data={selectedReportData.journey_sankey} />
+              <JourneySankey
+                data={selectedReportData.journey_sankey}
+                onNodeClick={(node) => setSelectedFrictionNode(node)}
+              />
             </Card>
           )}
 
@@ -215,6 +230,12 @@ export function ReportsDashboard() {
           </div>
         </Card>
       )}
+
+      {/* Friction Detail Modal */}
+      <FrictionDetailModal
+        node={selectedFrictionNode}
+        onClose={() => setSelectedFrictionNode(null)}
+      />
     </div>
   )
 }

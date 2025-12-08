@@ -125,15 +125,17 @@ export const personaRecordsApi = {
 export const reportApi = {
   list: () => apiFetch<ReportListItem[]>("/api/reports/list"),
 
-  getAggregate: (reportId: string, mode?: string, filters?: { persona?: string; status?: string; platform?: string }) => {
+  getAggregate: (reportId?: string, mode?: string, filters?: { persona?: string; status?: string; platform?: string; scenario?: string }) => {
     const params = new URLSearchParams();
+    if (reportId && reportId !== "all") params.append("report_id", reportId);
+    if (filters?.scenario && filters.scenario !== "all") params.append("config_id", filters.scenario);
     if (mode && mode !== "compact") params.append("mode", mode);
     if (filters?.persona && filters.persona !== "all") params.append("persona", filters.persona);
     if (filters?.status && filters.status !== "all") params.append("status", filters.status);
     if (filters?.platform && filters.platform !== "all") params.append("platform", filters.platform);
 
     const query = params.toString() ? `?${params.toString()}` : "";
-    return apiFetch<ReportAggregate>(`/api/reports/${reportId}/aggregate${query}`);
+    return apiFetch<ReportAggregate>(`/api/reports/aggregate${query}`);
   },
 
   getRuns: (reportId: string, filters?: { persona?: string; status?: string; platform?: string }) => {
@@ -147,7 +149,14 @@ export const reportApi = {
   },
 
 
-  getFriction: (reportId: string) => apiFetch<FrictionHotspotItem[]>(`/api/reports/${reportId}/friction`),
+  getFriction: (reportId?: string, configId?: string) => {
+    const params = new URLSearchParams();
+    if (reportId && reportId !== "all") params.append("report_id", reportId);
+    if (configId && configId !== "all") params.append("config_id", configId);
+
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiFetch<FrictionHotspotItem[]>(`/api/reports/friction${query}`);
+  },
 };
 
 /**

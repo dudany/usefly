@@ -12,22 +12,23 @@ async def list_reports(db: Session = Depends(get_db)):
     return reports.list_report_summaries(db)
 
 
-@router.get("/{report_id}/aggregate")
+@router.get("/aggregate")
 async def get_report_aggregate(
-    report_id: str,
+    report_id: str = Query(None, description="Filter by report ID (None for all reports)"),
+    config_id: str = Query(None, description="Filter by scenario/config ID"),
     mode: str = Query("compact", description="Sankey mode: 'compact' or 'full'"),
     persona: str = Query(None, description="Filter by persona type"),
     status: str = Query(None, description="Filter by status ('completed' or 'failed')"),
     platform: str = Query(None, description="Filter by platform"),
     db: Session = Depends(get_db)
 ):
-    """Get aggregated data for a specific report_id."""
+    """Get aggregated data for a specific report_id or scenario."""
     filters = {}
     if persona: filters["persona_type"] = persona
     if status: filters["status"] = status
     if platform: filters["platform"] = platform
 
-    result = reports.get_report_aggregate(db, report_id, sankey_mode=mode, filters=filters)
+    result = reports.get_report_aggregate(db, report_id, config_id=config_id, sankey_mode=mode, filters=filters)
     if not result:
         raise HTTPException(status_code=404, detail="Report not found")
     return result
@@ -52,14 +53,15 @@ async def get_report_runs(
 
 
 
-@router.get("/{report_id}/friction")
+@router.get("/friction")
 async def get_report_friction(
-    report_id: str,
+    report_id: str = Query(None, description="Filter by report ID"),
+    config_id: str = Query(None, description="Filter by scenario/config ID"),
     db: Session = Depends(get_db)
 ):
     """
-    Get friction hotspots for a report.
+    Get friction hotspots for a report or scenario.
     Returns common failure patterns location + reason.
     """
-    return reports.get_friction_hotspots(db, report_id)
+    return reports.get_friction_hotspots(db, report_id=report_id, config_id=config_id)
 

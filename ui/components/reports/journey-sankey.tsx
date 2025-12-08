@@ -8,9 +8,10 @@ import type { SankeyData } from "@/types/api"
 
 interface JourneySankeyProps {
   data?: SankeyData
+  onNodeClick?: (node: any) => void
 }
 
-export function JourneySankey({ data }: JourneySankeyProps) {
+export function JourneySankey({ data, onNodeClick }: JourneySankeyProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
 
@@ -46,6 +47,9 @@ export function JourneySankey({ data }: JourneySankeyProps) {
       // Use formatUrl to decode URLs properly (handles UTF-8 characters like Hebrew)
       const displayName = formatUrl(nodeId)
 
+      const frictionCount = (node.friction_count ?? 0)
+      const hasFriction = frictionCount > 0
+
       return {
         id: nodeId,
         displayName, // For tooltip display
@@ -54,16 +58,28 @@ export function JourneySankey({ data }: JourneySankeyProps) {
           ? `${displayName}\n(${selfLoops} interactions)`
           : displayName,
         ...node,
-        selfLoops
+        selfLoops,
+        // Friction metadata
+        hasFriction,
+        frictionSeverity: frictionCount >= 6 ? 'high' : (frictionCount > 0 ? 'medium' : 'none')
       }
     }),
     links: sankeyData.links
       .filter(link => link.source !== link.target) // Remove self-loops
-      .map(link => ({
-        ...link,
-        source: sankeyData.nodes[link.source]?.name || `node-${link.source}`,
-        target: sankeyData.nodes[link.target]?.name || `node-${link.target}`
-      }))
+      .map(link => {
+        const sourceIndex = typeof link.source === 'number' ? link.source : 0
+        const targetIndex = typeof link.target === 'number' ? link.target : 0
+        const sourceNode = sankeyData.nodes[sourceIndex]
+        const targetNode = sankeyData.nodes[targetIndex]
+
+        return {
+          ...link,
+          source: sourceNode?.name ?? `node-${link.source}`,
+          target: targetNode?.name ?? `node-${link.target}`,
+          // Dim links FROM nodes with friction
+          hasFrictionSource: (sourceNode?.friction_count ?? 0) > 0
+        }
+      })
   }
 
   // Theme-aware colors
@@ -78,20 +94,64 @@ export function JourneySankey({ data }: JourneySankeyProps) {
   const colorScheme = isDark ? "dark2" : "category10"
 
   return (
-    <div className="h-[500px] w-full">
+    <div className="h-[500px] w-full relative">
+      <style jsx global>{`
+        /* Friction node styling with animated glow */
+        .sankey-friction-node-high {
+          stroke: #ff0055 !important;
+          stroke-width: 3px !important;
+          filter: drop-shadow(0 0 8px rgba(255, 0, 85, 0.8));
+          animation: pulse-glow-magenta 2s ease-in-out infinite;
+        }
+
+        .sankey-friction-node-medium {
+          stroke: #ff6b00 !important;
+          stroke-width: 3px !important;
+          filter: drop-shadow(0 0 8px rgba(255, 107, 0, 0.8));
+          animation: pulse-glow-orange 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow-magenta {
+          0%, 100% {
+            filter: drop-shadow(0 0 8px rgba(255, 0, 85, 0.8));
+          }
+          50% {
+            filter: drop-shadow(0 0 16px rgba(255, 0, 85, 1)) drop-shadow(0 0 24px rgba(255, 0, 85, 0.6));
+          }
+        }
+
+        @keyframes pulse-glow-orange {
+          0%, 100% {
+            filter: drop-shadow(0 0 8px rgba(255, 107, 0, 0.8));
+          }
+          50% {
+            filter: drop-shadow(0 0 16px rgba(255, 107, 0, 1)) drop-shadow(0 0 24px rgba(255, 107, 0, 0.6));
+          }
+        }
+
+        .sankey-friction-link {
+          opacity: 0.3 !important;
+        }
+      `}</style>
+
       <ResponsiveSankey
         data={transformedData}
-        margin={{ top: 40, right: 200, bottom: 40, left: 50 }}
+        margin={{ top: 60, right: 200, bottom: 40, left: 50 }}
         align="justify"
         colors={{ scheme: colorScheme }}
         nodeOpacity={1}
         nodeHoverOthersOpacity={0.35}
         nodeThickness={18}
         nodeSpacing={24}
-        nodeBorderWidth={isDark ? 1 : 0}
-        nodeBorderColor={isDark ? "#ffffff" : { from: "color", modifiers: [["darker", 0.8]] }}
+        nodeBorderWidth={3}
+        nodeBorderColor={(node: any) => {
+          if (node.hasFriction) {
+            return node.frictionSeverity === 'high' ? '#ff0055' : '#ff6b00'
+          }
+          return isDark ? "#ffffff" : "#000000"
+        }}
         nodeBorderRadius={3}
-        linkOpacity={isDark ? 0.85 : 0.5}
+        linkOpacity={isDark ? 0.7 : 0.5}
         linkHoverOthersOpacity={0.2}
         linkContract={3}
         enableLinkGradient={!isDark}
@@ -105,28 +165,158 @@ export function JourneySankey({ data }: JourneySankeyProps) {
           <div
             style={{
               background: tooltipBg,
-              padding: "12px",
-              border: `1px solid ${tooltipBorder}`,
-              borderRadius: "6px",
+              padding: "16px 20px",
+              border: `2px solid ${tooltipBorder}`,
+              borderRadius: "8px",
               boxShadow: isDark
-                ? "0 4px 12px rgba(0,0,0,0.4)"
-                : "0 2px 8px rgba(0,0,0,0.15)",
-              maxWidth: "300px",
+                ? "0 8px 24px rgba(0,0,0,0.6)"
+                : "0 4px 16px rgba(0,0,0,0.2)",
+              minWidth: "420px",
+              maxWidth: "520px",
               color: tooltipText,
+              position: "relative",
             }}
           >
-            <strong style={{ fontSize: "13px", wordBreak: "break-word" }}>
+            <strong style={{
+              fontSize: "14px",
+              wordBreak: "break-word",
+              display: "block",
+              lineHeight: "1.4"
+            }}>
               {node.displayName || node.id}
             </strong>
-            <div style={{ marginTop: "8px", fontSize: "11px", color: tooltipMuted, wordBreak: "break-all" }}>
+            <div style={{
+              marginTop: "10px",
+              fontSize: "11px",
+              color: tooltipMuted,
+              wordBreak: "break-all",
+              lineHeight: "1.4"
+            }}>
               {node.decodedId}
             </div>
-            <div style={{ marginTop: "8px", fontSize: "12px" }}>
-              <div>Total events: {node.event_count || node.visits}</div>
-              <div>Visits: {node.visits}</div>
+            <div style={{
+              marginTop: "12px",
+              fontSize: "13px",
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "8px"
+            }}>
+              <div>
+                <span style={{ color: tooltipMuted, fontSize: "11px" }}>Total events:</span>
+                <div style={{ fontWeight: 600, marginTop: "2px" }}>{node.event_count || node.visits}</div>
+              </div>
+              <div>
+                <span style={{ color: tooltipMuted, fontSize: "11px" }}>Visits:</span>
+                <div style={{ fontWeight: 600, marginTop: "2px" }}>{node.visits}</div>
+              </div>
             </div>
+
+            {/* Friction Information */}
+            {node.hasFriction && node.friction_count && (
+              <div style={{
+                marginTop: "14px",
+                paddingTop: "14px",
+                borderTop: `2px solid ${tooltipBorder}`,
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  color: node.frictionSeverity === 'high' ? '#ff0055' : '#ff6b00',
+                  fontWeight: 700,
+                  marginBottom: "10px",
+                  fontSize: "13px"
+                }}>
+                  <span style={{ fontSize: "16px" }}>⚠</span>
+                  <span>{node.friction_count} failure{node.friction_count !== 1 ? 's' : ''} at this location</span>
+                </div>
+
+                {node.friction_reasons && node.friction_reasons.length > 0 && (
+                  <div style={{
+                    fontSize: "12px",
+                    color: tooltipText,
+                    marginBottom: "10px"
+                  }}>
+                    <div style={{
+                      marginBottom: "6px",
+                      fontWeight: 600,
+                      color: tooltipMuted,
+                      fontSize: "11px",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px"
+                    }}>
+                      Top reasons
+                    </div>
+                    {node.friction_reasons.slice(0, 2).map((fr: any, idx: number) => (
+                      <div
+                        key={idx}
+                        style={{
+                          marginBottom: "6px",
+                          paddingLeft: "12px",
+                          lineHeight: "1.5",
+                          position: "relative"
+                        }}
+                      >
+                        <span style={{
+                          position: "absolute",
+                          left: "0",
+                          color: node.frictionSeverity === 'high' ? '#ff0055' : '#ff6b00',
+                          fontWeight: 700
+                        }}>•</span>
+                        <span>{fr.reason}</span>
+                        <span style={{
+                          marginLeft: "6px",
+                          padding: "2px 6px",
+                          background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
+                          borderRadius: "4px",
+                          fontSize: "11px",
+                          fontWeight: 600
+                        }}>
+                          {fr.count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {node.friction_impact && (
+                  <div style={{
+                    fontSize: "12px",
+                    color: tooltipMuted,
+                    marginTop: "10px",
+                    padding: "8px 10px",
+                    background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+                    borderRadius: "6px",
+                    fontWeight: 500
+                  }}>
+                    <span style={{ fontWeight: 700, color: node.frictionSeverity === 'high' ? '#ff0055' : '#ff6b00' }}>
+                      {(node.friction_impact * 100).toFixed(0)}%
+                    </span> of all failures
+                  </div>
+                )}
+
+                <div style={{
+                  marginTop: "12px",
+                  fontSize: "12px",
+                  color: "#3b82f6",
+                  fontWeight: 600,
+                  textAlign: "center",
+                  padding: "8px",
+                  background: isDark ? "rgba(59, 130, 246, 0.1)" : "rgba(59, 130, 246, 0.05)",
+                  borderRadius: "6px",
+                  cursor: "pointer"
+                }}>
+                  Click node to view example runs →
+                </div>
+              </div>
+            )}
           </div>
         )}
+        onClick={(node: any) => {
+          if (node.hasFriction && onNodeClick) {
+            onNodeClick(node)
+          }
+        }}
         legends={[
           {
             anchor: "bottom-right",

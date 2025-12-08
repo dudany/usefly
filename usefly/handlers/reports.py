@@ -101,18 +101,19 @@ def _query_persona_runs(
 
 
 def get_report_aggregate(
-    db: Session, 
-    report_id: str, 
-    sankey_mode: str = "compact", 
+    db: Session,
+    report_id: str = None,
+    config_id: str = None,
+    sankey_mode: str = "compact",
     filters: Optional[Dict[str, str]] = None
 ) -> Optional[Dict]:
     """
-    Get aggregated data for a specific report_id with optional filtering.
+    Get aggregated data for a specific report_id or scenario with optional filtering.
 
     Returns metrics summary and journey Sankey diagram data.
     """
-    # Get all runs for this report_id with filters applied
-    runs = _query_persona_runs(db, report_id=report_id, filters=filters)
+    # Get all runs for this report_id and/or config_id with filters applied
+    runs = _query_persona_runs(db, report_id=report_id, config_id=config_id, filters=filters)
 
     if not runs:
         # If filtered runs is empty but report exists (unfiltered check), return empty structure
@@ -147,10 +148,13 @@ def get_report_aggregate(
     scenario_name = scenario.name if scenario else "Unknown Scenario"
 
     # Calculate metrics summary
-    metrics_summary = _calculate_metrics_summary(db, report_id, filters)
+    metrics_summary = _calculate_metrics_summary(db, report_id, config_id, filters)
 
-    # Generate Sankey diagram data
-    journey_sankey = _generate_sankey_data(runs, mode=sankey_mode)
+    # Get friction hotspots for Sankey diagram annotation
+    friction_hotspots = get_friction_hotspots(db, report_id=report_id, config_id=config_id)
+
+    # Generate Sankey diagram data with friction metadata
+    journey_sankey = _generate_sankey_data(runs, mode=sankey_mode, friction_data=friction_hotspots)
 
     return {
         "report_id": report_id,
@@ -165,7 +169,8 @@ def get_report_aggregate(
 
 def _calculate_metrics_summary(
     db: Session,
-    report_id: str,
+    report_id: str = None,
+    config_id: str = None,
     filters: Optional[Dict[str, str]] = None
 ) -> dict:
     """Calculate aggregated metrics using _query_persona_runs (single source of truth)."""
@@ -173,9 +178,9 @@ def _calculate_metrics_summary(
 
     # Query each status type separately using _query_persona_runs
     # This ensures we use the single source of truth for status logic
-    success_runs = _query_persona_runs(db, report_id=report_id, filters={**base_filters, "status": "success"})
-    failed_runs = _query_persona_runs(db, report_id=report_id, filters={**base_filters, "status": "failed"})
-    error_runs = _query_persona_runs(db, report_id=report_id, filters={**base_filters, "status": "error"})
+    success_runs = _query_persona_runs(db, report_id=report_id, config_id=config_id, filters={**base_filters, "status": "success"})
+    failed_runs = _query_persona_runs(db, report_id=report_id, config_id=config_id, filters={**base_filters, "status": "failed"})
+    error_runs = _query_persona_runs(db, report_id=report_id, config_id=config_id, filters={**base_filters, "status": "error"})
 
     success_count = len(success_runs)
     failed_count = len(failed_runs)
@@ -273,17 +278,60 @@ def calculate_node_metrics(sequences: List[List[str]]) -> Dict[str, Dict[str, in
     return metrics
 
 
-def build_sankey_structure(node_metrics: Dict[str, Dict[str, int]], transitions: Dict[tuple, int]) -> dict:
+def build_sankey_structure(
+    node_metrics: Dict[str, Dict[str, int]],
+    transitions: Dict[tuple, int],
+    friction_data: Optional[List[Dict]] = None
+) -> dict:
+    """
+    Build Sankey structure with optional friction metadata per node.
+
+    Args:
+        node_metrics: URL -> {visits, event_count}
+        transitions: (source_url, target_url) -> count
+        friction_data: List of friction hotspots from get_friction_hotspots()
+    """
     urls = sorted(node_metrics.keys())
     url_to_index = {url: idx for idx, url in enumerate(urls)}
 
+    # Map friction data to URLs
+    friction_map = {}
+    if friction_data:
+        for hotspot in friction_data:
+            url = hotspot["location"]
+            if url not in friction_map:
+                friction_map[url] = {
+                    "friction_count": 0,
+                    "friction_reasons": [],
+                    "friction_impact": 0.0,
+                    "example_run_ids": []
+                }
+            friction_map[url]["friction_count"] += hotspot["count"]
+            friction_map[url]["friction_reasons"].append({
+                "reason": hotspot["reason"],
+                "count": hotspot["count"]
+            })
+            friction_map[url]["friction_impact"] += hotspot["impact_percentage"]
+            friction_map[url]["example_run_ids"].extend(hotspot["example_run_ids"][:2])
+
     nodes = []
     for url in urls:
-        nodes.append({
+        node = {
             "name": url,
             "visits": node_metrics[url]["visits"],
             "event_count": node_metrics[url]["event_count"],
-        })
+        }
+
+        # Add friction metadata if available
+        if url in friction_map:
+            node.update({
+                "friction_count": friction_map[url]["friction_count"],
+                "friction_reasons": friction_map[url]["friction_reasons"],
+                "friction_impact": friction_map[url]["friction_impact"],
+                "example_run_ids": list(set(friction_map[url]["example_run_ids"]))[:3]
+            })
+
+        nodes.append(node)
 
     links = []
     for (source, target), count in transitions.items():
@@ -394,35 +442,42 @@ def build_step_based_sankey(sequences: List[List[str]], max_steps: int = 10) -> 
 # Main Entry Point
 # =============================================================================
 
-def _generate_sankey_data(agent_runs: List[PersonaRun], mode: str = "compact") -> dict:
+def _generate_sankey_data(
+    agent_runs: List[PersonaRun],
+    mode: str = "compact",
+    friction_data: Optional[List[Dict]] = None
+) -> dict:
     """
-    Generate Sankey diagram data.
-    
+    Generate Sankey diagram data with optional friction metadata.
+
     Args:
         agent_runs: List of persona runs to analyze
         mode: "compact" (fewer nodes, drops back-edges) or "full" (step-based, no data loss)
+        friction_data: Optional friction hotspot data from get_friction_hotspots()
     """
     if not agent_runs:
         return {"nodes": [], "links": []}
 
     if mode == "full":
         # Step-based: wider diagram, no data loss
+        # Note: Friction data less useful in step-based mode since nodes are duplicated per step
         sequences = extract_raw_sequences_from_runs(agent_runs)
         return build_step_based_sankey(sequences)
-    
+
     # Compact mode (default): fewer nodes, drops cycle-causing edges
     all_sequences = extract_sequences_from_runs(agent_runs)
     transitions = aggregate_transitions(all_sequences)
     acyclic_transitions = remove_back_edges(transitions)
     node_metrics = calculate_node_metrics(all_sequences)
 
-    return build_sankey_structure(node_metrics, acyclic_transitions)
+    return build_sankey_structure(node_metrics, acyclic_transitions, friction_data)
 
 
 
 def get_friction_hotspots(
     db: Session,
-    report_id: str
+    report_id: str = None,
+    config_id: str = None
 ) -> List[Dict]:
     """
     Identify common failure patterns (friction hotspots).
@@ -432,7 +487,7 @@ def get_friction_hotspots(
     """
     # Get only "failed" runs (goal not met) - excludes error runs
     # Use _query_persona_runs with status="failed" filter for consistency
-    failed_runs = _query_persona_runs(db, report_id=report_id, filters={"status": "failed"})
+    failed_runs = _query_persona_runs(db, report_id=report_id, config_id=config_id, filters={"status": "failed"})
 
     if not failed_runs:
         return []

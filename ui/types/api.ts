@@ -206,12 +206,26 @@ export interface CreatePersonaRunRequest {
 }
 
 /**
+ * Friction Reason
+ * Individual friction reason with count
+ */
+export interface FrictionReason {
+  reason: string;
+  count: number;
+}
+
+/**
  * Sankey Node
- * Represents a page in the journey
+ * Represents a page in the journey with optional friction metadata
  */
 export interface SankeyNode {
   name: string;
   visits: number;
+  event_count?: number;
+  friction_count?: number;
+  friction_reasons?: FrictionReason[];
+  friction_impact?: number;
+  example_run_ids?: string[];
 }
 
 /**
