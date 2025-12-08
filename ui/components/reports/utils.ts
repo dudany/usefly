@@ -56,8 +56,12 @@ export function aggregateBySegment(
     const totalRuns = segmentRuns.length
 
     // Calculate goals achieved percentage
-    // A run achieves goals if is_done is true
-    const runsWithGoals = segmentRuns.filter((r) => r.is_done).length
+    // A run achieves goals only if is_done is true AND verdict is true (SUCCESS status)
+    const runsWithGoals = segmentRuns.filter((r) => {
+      const verdict = r.judgement_data?.verdict
+      const failureReason = r.judgement_data?.failure_reason
+      return r.is_done && verdict === true && !failureReason
+    }).length
     const goalsAchievedPercent = (runsWithGoals / totalRuns) * 100
 
     // Calculate errors percentage

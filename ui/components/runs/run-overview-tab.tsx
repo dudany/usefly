@@ -77,7 +77,7 @@ function CollapsibleSection({ title, icon, children, defaultOpen = false, colorS
 
 export function RunOverviewTab({ run, metrics }: RunOverviewTabProps) {
   const statusConfig = getStatusConfig(run)
-  const Icon = run.error_type ? AlertCircle : CheckCircle2
+  const Icon = statusConfig.type === 'SUCCESS' ? CheckCircle2 : AlertCircle
   const [expandedJudgement, setExpandedJudgement] = useState(false)
 
   // Check if there are any warning conditions
