@@ -15,7 +15,7 @@ _active_runs: Dict[str, Dict] = {}
 # Thread pool for parallel browser task execution
 # Configurable via environment variable or defaults to 3
 import os
-MAX_BROWSER_WORKERS = int(os.getenv("MAX_BROWSER_WORKERS", "3"))
+MAX_BROWSER_WORKERS = int(os.getenv("MAX_BROWSER_WORKERS", "5"))
 _browser_executor = ThreadPoolExecutor(max_workers=MAX_BROWSER_WORKERS, thread_name_prefix="browser_task")
 
 

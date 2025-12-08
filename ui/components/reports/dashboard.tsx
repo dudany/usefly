@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Loader } from "lucide-react"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { reportApi, scenarioApi } from "@/lib/api-client"
 import { ReportListItem, ReportAggregate, PersonaRun, Scenario } from "@/types/api"
 import { JourneySankey } from "./journey-sankey"
@@ -31,7 +30,6 @@ export function ReportsDashboard() {
   const [loading, setLoading] = useState(true)
   const [loadingAggregate, setLoadingAggregate] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [sankeyMode, setSankeyMode] = useState<string>("compact")
 
   // Fetch report list, scenarios and personas on mount
   useEffect(() => {
@@ -79,7 +77,7 @@ export function ReportsDashboard() {
         // Fetch aggregated data AND filtered runs in parallel
         // Both use _query_persona_runs on the backend with the same filters
         const [aggregateData, runsData] = await Promise.all([
-          reportApi.getAggregate(reportFilter, sankeyMode, filters),
+          reportApi.getAggregate(reportFilter, "compact", filters),
           reportApi.getRuns(reportFilter, filters)
         ])
 
@@ -96,7 +94,7 @@ export function ReportsDashboard() {
     }
 
     fetchReportData()
-  }, [reportFilter, personaFilter, statusFilter, platformFilter, sankeyMode])
+  }, [reportFilter, personaFilter, statusFilter, platformFilter])
 
   if (loading) {
     return (
@@ -201,17 +199,7 @@ export function ReportsDashboard() {
           {/* Journey Sankey Diagram */}
           {selectedReportData.run_count > 0 && (
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-foreground">Journey Flow</h3>
-                <ToggleGroup type="single" value={sankeyMode} onValueChange={setSankeyMode}>
-                  <ToggleGroupItem value="compact" aria-label="Compact mode">
-                    Compact
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="full" aria-label="Full mode">
-                    Full
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-4">Journey Flow</h3>
               <JourneySankey data={selectedReportData.journey_sankey} />
             </Card>
           )}

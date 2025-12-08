@@ -11,6 +11,14 @@ from usefly.models import (
     CrawlerRun, UserJourneyTask, TaskList
 )
 from usefly.common.browser_use_common import run_browser_use_agent
+from usefly.handlers.task_generation import (
+    load_prompt_template,
+    prepare_generation_context,
+    generate_tasks_with_llm,
+    renumber_tasks,
+    update_generation_metadata,
+    calculate_auto_selected_tasks
+)
 
 
 def list_scenarios(db: Session) -> List[Scenario]:
@@ -285,6 +293,99 @@ def update_scenario_tasks(db: Session, scenario_id: str, request) -> Scenario:
     db.refresh(scenario)
 
     return scenario
+
+
+def generate_more_tasks(db: Session, scenario_id: str, request) -> Dict:
+    """
+    Generate additional tasks for an existing scenario.
+
+    This function orchestrates the task generation process by:
+    1. Loading the scenario and system configuration
+    2. Preparing the prompt and context
+    3. Generating new tasks using LLM
+    4. Renumbering and merging with existing tasks
+    5. Updating metadata and auto-selecting new tasks
+    """
+    # Load required data from database
+    scenario = _get_scenario_or_raise(db, scenario_id)
+    sys_config = _get_system_config_or_raise(db)
+
+    # Prepare prompt and context for generation
+    prompt_template = load_prompt_template(
+        prompt_type=request.prompt_type,
+        num_tasks=request.num_tasks,
+        custom_prompt=request.custom_prompt
+    )
+
+    existing_tasks = scenario.tasks or []
+    existing_summary, crawler_context = prepare_generation_context(
+        existing_tasks=existing_tasks,
+        crawler_result=scenario.crawler_final_result
+    )
+
+    # Generate new tasks using LLM
+    new_task_list = generate_tasks_with_llm(
+        prompt_template=prompt_template,
+        existing_tasks_summary=existing_summary,
+        crawler_context=crawler_context,
+        model_name=sys_config.model_name,
+        api_key=sys_config.api_key
+    )
+
+    # Renumber and merge tasks
+    renumbered_tasks = renumber_tasks(new_task_list.tasks, existing_tasks)
+    all_tasks = existing_tasks + renumbered_tasks
+
+    # Update scenario with new tasks and metadata
+    scenario.tasks = all_tasks
+    scenario.tasks_metadata = update_generation_metadata(
+        current_metadata=scenario.tasks_metadata or {},
+        new_tasks=renumbered_tasks,
+        all_tasks=all_tasks,
+        prompt_type=request.prompt_type,
+        custom_prompt_used=bool(request.custom_prompt)
+    )
+
+    # Auto-select new tasks
+    current_selected = (scenario.tasks_metadata or {}).get("selected_task_numbers", [])
+    new_task_numbers = [t["number"] for t in renumbered_tasks]
+    selected_indices, all_selected = calculate_auto_selected_tasks(
+        all_tasks=all_tasks,
+        current_selected_numbers=current_selected,
+        new_task_numbers=new_task_numbers
+    )
+
+    scenario.selected_task_indices = selected_indices
+    scenario.tasks_metadata["selected_task_numbers"] = all_selected
+    scenario.tasks_metadata["total_selected"] = len(all_selected)
+
+    # Persist changes
+    db.commit()
+    db.refresh(scenario)
+
+    return {
+        "scenario_id": scenario.id,
+        "new_tasks": renumbered_tasks,
+        "total_tasks": len(all_tasks),
+        "tasks_metadata": scenario.tasks_metadata,
+        "message": f"Generated {len(renumbered_tasks)} new tasks using {request.prompt_type} prompt"
+    }
+
+
+def _get_scenario_or_raise(db: Session, scenario_id: str) -> Scenario:
+    """Helper to get scenario or raise clear error."""
+    scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
+    if not scenario:
+        raise ValueError("Scenario not found")
+    return scenario
+
+
+def _get_system_config_or_raise(db: Session) -> SystemConfig:
+    """Helper to get system config or raise clear error."""
+    sys_config = db.query(SystemConfig).filter(SystemConfig.id == 1).first()
+    if not sys_config:
+        raise ValueError("System configuration not found")
+    return sys_config
 
 
 def get_distinct_personas(db: Session) -> dict:

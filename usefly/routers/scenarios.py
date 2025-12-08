@@ -108,6 +108,36 @@ class UpdateScenarioTasksRequest(BaseModel):
         return v
 
 
+class GenerateMoreTasksRequest(BaseModel):
+    """Request to generate additional tasks for existing scenario."""
+    num_tasks: int = 15
+    prompt_type: str = "friction"
+    custom_prompt: Optional[str] = ""
+
+    @field_validator('num_tasks')
+    @classmethod
+    def validate_num_tasks(cls, v):
+        if v < 5 or v > 50:
+            raise ValueError("num_tasks must be between 5 and 50")
+        return v
+
+    @field_validator('prompt_type')
+    @classmethod
+    def validate_prompt_type(cls, v):
+        if v not in ["original", "friction"]:
+            raise ValueError("prompt_type must be 'original' or 'friction'")
+        return v
+
+
+class GenerateMoreTasksResponse(BaseModel):
+    """Response from generating additional tasks."""
+    scenario_id: str
+    new_tasks: List[Dict]
+    total_tasks: int
+    tasks_metadata: Dict
+    message: str
+
+
 # ==================== Endpoints ====================
 
 @router.get("s", response_model=List[ScenarioResponse])
@@ -176,6 +206,21 @@ def update_scenario_tasks(
     """Update selected tasks for an existing scenario."""
     try:
         return scenarios_handler.update_scenario_tasks(db, scenario_id, request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{scenario_id}/generate-tasks", response_model=GenerateMoreTasksResponse)
+def generate_more_tasks(
+    scenario_id: str,
+    request: GenerateMoreTasksRequest,
+    db: Session = Depends(get_db)
+):
+    """Generate additional tasks for an existing scenario."""
+    try:
+        return scenarios_handler.generate_more_tasks(db, scenario_id, request)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

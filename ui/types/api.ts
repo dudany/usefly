@@ -13,6 +13,7 @@ export interface UserJourneyTask {
   goal: string;
   steps: string;
   persona: string;
+  stop?: string;
 }
 
 export interface TasksMetadata {
@@ -22,6 +23,13 @@ export interface TasksMetadata {
   selected_task_numbers?: number[];
   persona_distribution: Record<string, number>;
   generated_at?: string;
+  last_generated?: string;
+  generation_history?: Array<{
+    timestamp: string;
+    prompt_type: string;
+    num_generated: number;
+    custom_prompt_used: boolean;
+  }>;
   error?: string;
 }
 
@@ -292,4 +300,22 @@ export interface ApiListResponse<T> {
   total: number;
   offset: number;
   limit: number;
+}
+
+/**
+ * Generate More Tasks
+ * Request and response for generating additional tasks
+ */
+export interface GenerateMoreTasksRequest {
+  num_tasks: number;
+  prompt_type: "original" | "friction";
+  custom_prompt?: string;
+}
+
+export interface GenerateMoreTasksResponse {
+  scenario_id: string;
+  new_tasks: UserJourneyTask[];
+  total_tasks: number;
+  tasks_metadata: TasksMetadata;
+  message: string;
 }

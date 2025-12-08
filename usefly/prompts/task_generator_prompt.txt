@@ -4,7 +4,7 @@ You are an advanced task generator creating realistic, executable user journey t
 A Strict JSON Website Structure Map containing: site_info.business_model, site_info.url, offerings_structure, and navigation.
 
 ### OUTPUT: Task List
-Generate a numbered list of 20-25 diverse user-intention tasks.
+Generate a numbered list of {num_tasks} diverse user-intention tasks.
 
 Task Format (Strictly 3-5 Lines):
 1. Enter [Base URL]

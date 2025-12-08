@@ -25,6 +25,7 @@ class UserJourneyTask(BaseModel):
     goal: str = Field(description="User's goal/intention (e.g., 'Buy spicy onion jam for dinner party')")
     steps: str = Field(description="Step-by-step actions user takes")
     persona: str = Field(description="User persona category: SHOPPER, USER, RESEARCHER, LOCAL_VISITOR, SUPPORT_SEEKER, or BROWSER")
+    stop: str = Field(description="Completion criteria - when to consider task done", default="")
 
 
 class TaskList(BaseModel):

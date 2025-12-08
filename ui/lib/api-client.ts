@@ -18,6 +18,8 @@ import {
   SaveScenarioResponse,
   PersonaExecutionResponse,
   RunStatusResponse,
+  GenerateMoreTasksRequest,
+  GenerateMoreTasksResponse,
 } from "@/types/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -73,6 +75,12 @@ export const scenarioApi = {
 
   getPersonas: () =>
     apiFetch<{ personas: string[]; counts: Record<string, number> }>("/api/scenario/personas"),
+
+  generateMoreTasks: (scenarioId: string, request: GenerateMoreTasksRequest) =>
+    apiFetch<GenerateMoreTasksResponse>(`/api/scenario/${scenarioId}/generate-tasks`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
 };
 
 /**

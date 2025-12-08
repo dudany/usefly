@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { GenerateTasksDialog } from "./generate-tasks-dialog"
 
 interface Task {
   number: number
@@ -31,6 +32,7 @@ interface Task {
   starting_url: string
   goal: string
   steps: string
+  stop?: string
 }
 
 interface ScenarioTasksModalProps {
@@ -73,6 +75,7 @@ export function ScenarioTasksModal({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false)
   const [personaFilters, setPersonaFilters] = useState<Set<string>>(new Set())
 
   // Task editing state
@@ -304,6 +307,20 @@ export function ScenarioTasksModal({
     }
   }
 
+  const handleTasksGenerated = async () => {
+    if (mode === 'edit' && scenario) {
+      try {
+        const updated = await scenarioApi.get(scenario.id)
+        setLocalTasks((updated.tasks || []) as Task[])
+        const selectedNumbers = updated.tasks_metadata?.selected_task_numbers || []
+        setSelectedTasks(new Set(selectedNumbers))
+        toast.success("Tasks refreshed")
+      } catch (error) {
+        console.error("Failed to refresh tasks:", error)
+      }
+    }
+  }
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -457,10 +474,22 @@ export function ScenarioTasksModal({
                       Selected: {selectedTasks.size} of {localTasks.length}
                     </CardDescription>
                   </div>
-                  <Button onClick={handleAddTask} size="sm" variant="outline">
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Persona
-                  </Button>
+                  <div className="flex gap-2">
+                    {mode === 'edit' && (
+                      <Button
+                        onClick={() => setShowGenerateDialog(true)}
+                        size="sm"
+                        variant="default"
+                      >
+                        <Sparkles className="w-4 h-4 mr-1" />
+                        Generate More Tasks
+                      </Button>
+                    )}
+                    <Button onClick={handleAddTask} size="sm" variant="outline">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Persona
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -523,6 +552,11 @@ export function ScenarioTasksModal({
                             <p className="text-muted-foreground">
                               <span className="font-medium">Steps:</span> {task.steps}
                             </p>
+                            {task.stop && (
+                              <p className="text-muted-foreground">
+                                <span className="font-medium">Stop:</span> {task.stop}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -683,6 +717,16 @@ export function ScenarioTasksModal({
           </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Generate Tasks Dialog */}
+      {mode === 'edit' && scenario && (
+        <GenerateTasksDialog
+          open={showGenerateDialog}
+          onOpenChange={setShowGenerateDialog}
+          scenarioId={scenario.id}
+          onSuccess={handleTasksGenerated}
+        />
+      )}
     </>
   )
 }
