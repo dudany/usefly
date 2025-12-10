@@ -8,32 +8,40 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { crawlerApi } from "@/lib/api-client"
 import { CrawlerAnalysisResponse } from "@/types/api"
 import { ScenarioTasksModal } from "@/components/scenarios/scenario-tasks-modal"
-import { Sparkles, X, Loader2 } from "lucide-react"
+import { Sparkles, Loader2 } from "lucide-react"
 
-const METRIC_OPTIONS = [
-  "Conversion Rate",
-  "Completion Rate",
-  "Drop-off Rate",
-  "Time on Task",
-  "Error Rate",
-  "User Satisfaction",
-  "Click-through Rate",
-  "Bounce Rate",
-  "Engagement Score",
-  "Success Rate",
+// Fun adjectives for auto-generated scenario names
+const ADJECTIVES = [
+  "swift", "bright", "clever", "nimble", "eager", "bold", "keen",
+  "vivid", "zesty", "peppy", "spry", "brisk", "chipper", "zippy"
 ]
+
+// Generate a random scenario name from URL
+const generateScenarioName = (url: string): string => {
+  try {
+    const urlObj = new URL(url)
+    const hostname = urlObj.hostname
+      .replace(/^www\./, '')
+      .replace(/\.[^.]+$/, '') // Remove TLD
+
+    const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
+    return `${hostname} - ${adjective}`
+  } catch {
+    const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
+    return `test - ${adjective}`
+  }
+}
 
 export function NewScenarioForm() {
   const router = useRouter()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [showResultsModal, setShowResultsModal] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<CrawlerAnalysisResponse | null>(null)
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([])
+  const [generatedName, setGeneratedName] = useState<string>("")
 
   const [formData, setFormData] = useState({
     name: "",
@@ -42,24 +50,16 @@ export function NewScenarioForm() {
     email: "",
   })
 
-  const toggleMetric = (metric: string) => {
-    setSelectedMetrics((prev) =>
-      prev.includes(metric) ? prev.filter((m) => m !== metric) : [...prev, metric]
-    )
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.name || !formData.website_url) {
-      toast.error("Please fill in all required fields")
+    if (!formData.website_url) {
+      toast.error("Please enter a website URL")
       return
     }
 
-    if (selectedMetrics.length === 0) {
-      toast.error("Please select at least one metric to track")
-      return
-    }
+    // Auto-generate name if not provided
+    const scenarioName = formData.name || generateScenarioName(formData.website_url)
 
     setIsAnalyzing(true)
 
@@ -67,8 +67,8 @@ export function NewScenarioForm() {
       const result = await crawlerApi.analyze({
         website_url: formData.website_url,
         description: formData.description || "",
-        name: formData.name || "",
-        metrics: selectedMetrics,
+        name: scenarioName,
+        metrics: [], // No longer using metrics
         email: formData.email || "",
       })
 
@@ -80,8 +80,9 @@ export function NewScenarioForm() {
         return
       }
 
-      // Store result and show results modal
+      // Store result and save the generated name
       setAnalysisResult(result)
+      setGeneratedName(scenarioName)
       setShowResultsModal(true)
     } catch (analyzeError) {
       const errorMessage = analyzeError instanceof Error ? analyzeError.message : "Failed to analyze website"
@@ -105,17 +106,17 @@ export function NewScenarioForm() {
         mode="create"
         analysisResult={analysisResult || undefined}
         createFormData={{
-          name: formData.name,
+          name: formData.name || generatedName,
           website_url: formData.website_url,
           description: formData.description,
-          metrics: selectedMetrics,
+          metrics: [],
           email: formData.email,
         }}
-        onSave={(scenarioId) => {
+        onSave={() => {
           // Reset and navigate
           setFormData({ name: "", website_url: "", description: "", email: "" })
-          setSelectedMetrics([])
           setAnalysisResult(null)
+          setGeneratedName("")
           setShowResultsModal(false)
           router.push("/scenarios")
         }}
@@ -132,22 +133,24 @@ export function NewScenarioForm() {
               <CardTitle>Create New Scenario</CardTitle>
             </div>
             <CardDescription>
-              Set up a new test scenario with your website URL and testing focus areas. Our AI agents will test your features and identify friction points.
+              Enter your website URL and let AI agents explore your site to generate test scenarios.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="name">
-                  Scenario Name <span className="text-red-500">*</span>
+                  Scenario Name <span className="text-muted-foreground">(Optional)</span>
                 </Label>
                 <Input
                   id="name"
                   placeholder="e.g., Homepage User Flow"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
                 />
+                <p className="text-sm text-muted-foreground">
+                  Leave blank to auto-generate a name from your website URL
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -178,37 +181,6 @@ export function NewScenarioForm() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={4}
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">
-                  Metrics to Track <span className="text-red-500">*</span>
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  {METRIC_OPTIONS.map((metric) => {
-                    const isSelected = selectedMetrics.includes(metric)
-                    return (
-                      <Badge
-                        key={metric}
-                        variant="outline"
-                        className={`cursor-pointer px-3 py-2 transition-colors ${
-                          isSelected
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "hover:bg-accent hover:text-accent-foreground"
-                        }`}
-                        onClick={() => toggleMetric(metric)}
-                      >
-                        {metric}
-                        {isSelected && <X className="w-3 h-3 ml-1" />}
-                      </Badge>
-                    )
-                  })}
-                </div>
-                {selectedMetrics.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Selected {selectedMetrics.length} metric{selectedMetrics.length !== 1 ? "s" : ""}
-                  </p>
-                )}
               </div>
 
               <div className="space-y-2">
@@ -252,19 +224,6 @@ export function NewScenarioForm() {
                 </Button>
               </div>
             </form>
-
-            {/* Info Card */}
-            <Card className="bg-muted/30 border-muted mt-6">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold">What You'll Get</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground space-y-1">
-                <p>• Detailed user journey analysis</p>
-                <p>• AI agent behavior insights</p>
-                <p>• Friction point identification</p>
-                <p>• Actionable recommendations</p>
-              </CardContent>
-            </Card>
           </CardContent>
         </Card>
       </div>

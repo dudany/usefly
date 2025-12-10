@@ -5,10 +5,110 @@ import { useTheme } from "next-themes"
 import { useSankeyData } from "./use-sankey-data"
 import { formatUrl, getFullDecodedUrl } from "@/components/runs/run-utils"
 import type { SankeyData } from "@/types/api"
+import { Info } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+
+// Custom colors excluding red/orange/magenta to reserve for friction indicators
+const LIGHT_MODE_COLORS = [
+  '#1f77b4', // blue
+  '#2ca02c', // green
+  '#9467bd', // purple
+  '#8c564b', // brown
+  '#17becf', // cyan
+  '#bcbd22', // yellow-green
+  '#7f7f7f', // gray
+  '#e377c2', // pink
+]
+
+const DARK_MODE_COLORS = [
+  '#1b9e77', // teal
+  '#7570b3', // purple
+  '#66a61e', // green
+  '#e6ab02', // yellow
+  '#a6761d', // brown
+  '#17becf', // cyan
+  '#666666', // gray
+]
 
 interface JourneySankeyProps {
   data?: SankeyData
   onNodeClick?: (node: any) => void
+}
+
+function JourneySankeyLegend({ isDark }: { isDark: boolean }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          className="absolute bottom-4 right-4 z-10 shadow-lg"
+          aria-label="Show legend"
+        >
+          <Info className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80" side="top" sideOffset={8}>
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-sm mb-1">Journey Flow Legend</h4>
+            <p className="text-xs text-muted-foreground">Understanding the visualization</p>
+          </div>
+
+          <div className="space-y-3 pt-2 border-t">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Node Types
+            </p>
+
+            <div className="flex items-start gap-3">
+              <div
+                className="mt-0.5 h-4 w-4 rounded border-2 shrink-0"
+                style={{ borderColor: '#ff0055', boxShadow: '0 0 8px rgba(255, 0, 85, 0.5)' }}
+              />
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium" style={{ color: '#ff0055' }}>High</p>
+                <p className="text-xs text-muted-foreground">Friction detected at this step</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div
+                className="mt-0.5 h-4 w-4 rounded border-2 shrink-0"
+                style={{ borderColor: isDark ? '#ffffff' : '#000000' }}
+              />
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Normal</p>
+                <p className="text-xs text-muted-foreground">No friction detected at this step</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-2 border-t">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Interaction</p>
+            <ul className="text-xs text-muted-foreground space-y-1.5">
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Hover over nodes to see detailed metrics</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Click friction nodes to view example runs</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Node width represents traffic volume</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Link thickness shows transition frequency</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 export function JourneySankey({ data, onNodeClick }: JourneySankeyProps) {
@@ -59,9 +159,9 @@ export function JourneySankey({ data, onNodeClick }: JourneySankeyProps) {
           : displayName,
         ...node,
         selfLoops,
-        // Friction metadata
+        // Friction metadata - simplified to binary: high (any friction) or none
         hasFriction,
-        frictionSeverity: frictionCount >= 6 ? 'high' : (frictionCount > 0 ? 'medium' : 'none')
+        frictionSeverity: hasFriction ? 'high' : 'none'
       }
     }),
     links: sankeyData.links
@@ -88,57 +188,44 @@ export function JourneySankey({ data, onNodeClick }: JourneySankeyProps) {
   const tooltipText = isDark ? "#e0e0e0" : "#333333"
   const tooltipMuted = isDark ? "#888888" : "#666666"
   const labelColor = isDark ? "#d0d0d0" : "#333333"
-  const legendColor = isDark ? "#888888" : "#666666"
-
-  // Use brighter color scheme for dark mode
-  const colorScheme = isDark ? "dark2" : "category10"
 
   return (
     <div className="h-[500px] w-full relative">
       <style jsx global>{`
-        /* Friction node styling with animated glow */
-        .sankey-friction-node-high {
-          stroke: #ff0055 !important;
-          stroke-width: 3px !important;
-          filter: drop-shadow(0 0 8px rgba(255, 0, 85, 0.8));
-          animation: pulse-glow-magenta 2s ease-in-out infinite;
-        }
-
-        .sankey-friction-node-medium {
-          stroke: #ff6b00 !important;
-          stroke-width: 3px !important;
-          filter: drop-shadow(0 0 8px rgba(255, 107, 0, 0.8));
-          animation: pulse-glow-orange 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse-glow-magenta {
+        /* Enhanced friction node styling with multi-layer glow */
+        @keyframes pulse-glow {
           0%, 100% {
-            filter: drop-shadow(0 0 8px rgba(255, 0, 85, 0.8));
+            filter:
+              drop-shadow(0 0 3px rgba(255, 0, 85, 0.3))
+              drop-shadow(0 0 2px rgba(255, 0, 85, 0.4));
           }
           50% {
-            filter: drop-shadow(0 0 16px rgba(255, 0, 85, 1)) drop-shadow(0 0 24px rgba(255, 0, 85, 0.6));
+            filter:
+              drop-shadow(0 0 10px rgba(255, 0, 85, 0.5))
+              drop-shadow(0 0 6px rgba(255, 0, 85, 0.4))
+              drop-shadow(0 0 15px rgba(255, 0, 85, 0.2));
           }
         }
 
-        @keyframes pulse-glow-orange {
-          0%, 100% {
-            filter: drop-shadow(0 0 8px rgba(255, 107, 0, 0.8));
-          }
-          50% {
-            filter: drop-shadow(0 0 16px rgba(255, 107, 0, 1)) drop-shadow(0 0 24px rgba(255, 107, 0, 0.6));
-          }
+        /* Apply glow to friction nodes via SVG elements */
+        [data-testid="sankey.node"] rect[fill="#ff0055"],
+        [stroke="#ff0055"] {
+          animation: pulse-glow 1.5s ease-in-out infinite;
         }
 
         .sankey-friction-link {
-          opacity: 0.3 !important;
+          opacity: 0.2 !important;
         }
       `}</style>
 
+      {/* Floating legend button */}
+      <JourneySankeyLegend isDark={isDark} />
+
       <ResponsiveSankey
         data={transformedData}
-        margin={{ top: 60, right: 200, bottom: 40, left: 50 }}
+        margin={{ top: 60, right: 60, bottom: 40, left: 50 }}
         align="justify"
-        colors={{ scheme: colorScheme }}
+        colors={isDark ? DARK_MODE_COLORS : LIGHT_MODE_COLORS}
         nodeOpacity={1}
         nodeHoverOthersOpacity={0.35}
         nodeThickness={18}
@@ -146,7 +233,7 @@ export function JourneySankey({ data, onNodeClick }: JourneySankeyProps) {
         nodeBorderWidth={3}
         nodeBorderColor={(node: any) => {
           if (node.hasFriction) {
-            return node.frictionSeverity === 'high' ? '#ff0055' : '#ff6b00'
+            return '#ff0055'
           }
           return isDark ? "#ffffff" : "#000000"
         }}
@@ -222,7 +309,7 @@ export function JourneySankey({ data, onNodeClick }: JourneySankeyProps) {
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
-                  color: node.frictionSeverity === 'high' ? '#ff0055' : '#ff6b00',
+                  color: '#ff0055',
                   fontWeight: 700,
                   marginBottom: "10px",
                   fontSize: "13px"
@@ -260,7 +347,7 @@ export function JourneySankey({ data, onNodeClick }: JourneySankeyProps) {
                         <span style={{
                           position: "absolute",
                           left: "0",
-                          color: node.frictionSeverity === 'high' ? '#ff0055' : '#ff6b00',
+                          color: '#ff0055',
                           fontWeight: 700
                         }}>•</span>
                         <span>{fr.reason}</span>
@@ -289,7 +376,7 @@ export function JourneySankey({ data, onNodeClick }: JourneySankeyProps) {
                     borderRadius: "6px",
                     fontWeight: 500
                   }}>
-                    <span style={{ fontWeight: 700, color: node.frictionSeverity === 'high' ? '#ff0055' : '#ff6b00' }}>
+                    <span style={{ fontWeight: 700, color: '#ff0055' }}>
                       {(node.friction_impact * 100).toFixed(0)}%
                     </span> of all failures
                   </div>
@@ -317,19 +404,6 @@ export function JourneySankey({ data, onNodeClick }: JourneySankeyProps) {
             onNodeClick(node)
           }
         }}
-        legends={[
-          {
-            anchor: "bottom-right",
-            direction: "column",
-            translateX: 130,
-            itemWidth: 100,
-            itemHeight: 14,
-            itemDirection: "right-to-left",
-            itemsSpacing: 2,
-            itemTextColor: legendColor,
-            symbolSize: 14,
-          },
-        ]}
       />
     </div>
   )

@@ -38,9 +38,18 @@ class Scenario(Base):
 
 class ScenarioCreate(BaseModel):
     """Schema for creating a new scenario."""
-    name: str
+    name: str  # Required - frontend must generate if empty
     website_url: str
     personas: List[str] = []
+    description: str = ""
+    metrics: List[str] = []
+    email: str = ""
+    tasks: List[dict] = []
+    selected_task_indices: List[int] = []
+    tasks_metadata: dict = {}
+    discovered_urls: List[dict] = []
+    crawler_final_result: str = ""
+    crawler_extracted_content: str = ""
 
 
 class ScenarioResponse(BaseModel):

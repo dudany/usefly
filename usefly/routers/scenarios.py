@@ -1,144 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict
-from pydantic import BaseModel, field_validator
+from typing import List
 
 from usefly.database import get_db
-from usefly.models import ScenarioResponse, ScenarioCreate
+from usefly.models import (
+    ScenarioResponse,
+    ScenarioCreate,
+    CrawlerAnalysisRequest,
+    CrawlerAnalysisResponse,
+    UpdateScenarioTasksRequest,
+    GenerateMoreTasksRequest,
+    GenerateMoreTasksResponse,
+)
 from usefly.handlers import scenarios as scenarios_handler
 
 router = APIRouter(prefix="/api/scenario", tags=["Scenario"])
 
-# ==================== Request/Response Models ====================
-
-class CrawlerAnalysisRequest(BaseModel):
-    """Request payload for crawler analysis."""
-    scenario_id: Optional[str] = None
-    website_url: str
-    description: str = ""
-    name: str = ""  # Scenario name
-    metrics: List[str] = []  # Selected metrics
-    email: str = ""  # User email
-
-
-class CrawlerAnalysisResponse(BaseModel):
-    """Response from crawler analysis."""
-    run_id: str
-    scenario_id: str
-    status: str
-    duration: Optional[float] = None
-    steps: Optional[int] = None
-    error: Optional[str] = None
-    crawler_summary: Optional[str] = None  # Crawler final_result
-    crawler_extracted_content: str = ""  # Crawler extracted_content (always a string)
-    tasks: List[Dict] = []  # Generated UserJourneyTask objects
-    tasks_metadata: Optional[Dict] = None  # Task generation metadata
-
-    @field_validator('crawler_extracted_content', mode='before')
-    @classmethod
-    def ensure_string(cls, v):
-        """Ensure crawler_extracted_content is always a string, never a dict"""
-        if isinstance(v, str):
-            return v
-        elif isinstance(v, (dict, list)):
-            return str(v) if v else ""
-        elif v is None:
-            return ""
-        else:
-            return str(v)
-
-
-class SaveScenarioRequest(BaseModel):
-    """Request to save a scenario with selected tasks."""
-    scenario_id: str  # Temporary ID from analyze response
-    name: str
-    website_url: str
-    description: str = ""
-    metrics: List[str] = []
-    email: str = ""
-    selected_task_numbers: List[int] = []  # Task numbers user selected
-    all_tasks: List[Dict] = []  # All generated tasks
-    tasks_metadata: Dict = {}
-    crawler_final_result: Optional[str] = ""  # String from crawler
-    crawler_extracted_content: Optional[str] = ""  # String from crawler
-    discovered_urls: List[Dict] = []
-
-    @field_validator('crawler_extracted_content', mode='before')
-    @classmethod
-    def ensure_extracted_content_string(cls, v):
-        """Ensure crawler_extracted_content is always a string, never a dict"""
-        if isinstance(v, str):
-            return v
-        elif isinstance(v, (dict, list)):
-            return str(v) if v else ""
-        elif v is None:
-            return ""
-        else:
-            return str(v)
-
-    @field_validator('crawler_final_result', mode='before')
-    @classmethod
-    def ensure_final_result_string(cls, v):
-        """Ensure crawler_final_result is always a string, never a dict"""
-        if isinstance(v, str):
-            return v
-        elif isinstance(v, (dict, list)):
-            return str(v) if v else ""
-        elif v is None:
-            return ""
-        else:
-            return str(v)
-
-
-class SaveScenarioResponse(BaseModel):
-    """Response from saving scenario."""
-    scenario_id: str
-    message: str
-
-
-class UpdateScenarioTasksRequest(BaseModel):
-    """Request to update scenario task selection."""
-    selected_task_numbers: List[int] = []
-
-    @field_validator('selected_task_numbers')
-    @classmethod
-    def validate_task_numbers(cls, v):
-        if not v:
-            raise ValueError("At least one task must be selected")
-        return v
-
-
-class GenerateMoreTasksRequest(BaseModel):
-    """Request to generate additional tasks for existing scenario."""
-    num_tasks: int = 15
-    prompt_type: str = "friction"
-    custom_prompt: Optional[str] = ""
-
-    @field_validator('num_tasks')
-    @classmethod
-    def validate_num_tasks(cls, v):
-        if v < 5 or v > 50:
-            raise ValueError("num_tasks must be between 5 and 50")
-        return v
-
-    @field_validator('prompt_type')
-    @classmethod
-    def validate_prompt_type(cls, v):
-        if v not in ["original", "friction"]:
-            raise ValueError("prompt_type must be 'original' or 'friction'")
-        return v
-
-
-class GenerateMoreTasksResponse(BaseModel):
-    """Response from generating additional tasks."""
-    scenario_id: str
-    new_tasks: List[Dict]
-    total_tasks: int
-    tasks_metadata: Dict
-    message: str
-
-
-# ==================== Endpoints ====================
 
 @router.get("s", response_model=List[ScenarioResponse])
 def list_scenarios(db: Session = Depends(get_db)):
@@ -182,18 +59,6 @@ async def analyze_website(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         # Log error here if logging was set up
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/save", response_model=SaveScenarioResponse)
-def save_scenario(
-    request: SaveScenarioRequest,
-    db: Session = Depends(get_db)
-):
-    """Save scenario with selected tasks to database."""
-    try:
-        return scenarios_handler.save_scenario(db, request)
-    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 

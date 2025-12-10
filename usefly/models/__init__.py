@@ -42,6 +42,15 @@ from usefly.models.common import (
     TaskList,
 )
 
+# API schemas (request/response models)
+from usefly.models.schemas import (
+    CrawlerAnalysisRequest,
+    CrawlerAnalysisResponse,
+    UpdateScenarioTasksRequest,
+    GenerateMoreTasksRequest,
+    GenerateMoreTasksResponse,
+)
+
 __all__ = [
     # Scenario
     "Scenario",
@@ -66,4 +75,10 @@ __all__ = [
     "MetricsData",
     "UserJourneyTask",
     "TaskList",
+    # API schemas
+    "CrawlerAnalysisRequest",
+    "CrawlerAnalysisResponse",
+    "UpdateScenarioTasksRequest",
+    "GenerateMoreTasksRequest",
+    "GenerateMoreTasksResponse",
 ]

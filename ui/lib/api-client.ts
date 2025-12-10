@@ -14,8 +14,6 @@ import {
   UpdateSystemConfigRequest,
   CrawlerAnalysisRequest,
   CrawlerAnalysisResponse,
-  SaveScenarioRequest,
-  SaveScenarioResponse,
   PersonaExecutionResponse,
   RunStatusResponse,
   GenerateMoreTasksRequest,
@@ -182,8 +180,8 @@ export const crawlerApi = {
       body: JSON.stringify(data),
     }),
 
-  save: (data: SaveScenarioRequest) =>
-    apiFetch<SaveScenarioResponse>("/api/scenario/save", {
+  save: (data: CreateScenarioRequest) =>
+    apiFetch<Scenario>("/api/scenarios", {
       method: "POST",
       body: JSON.stringify(data),
     }),

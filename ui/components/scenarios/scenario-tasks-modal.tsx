@@ -14,7 +14,7 @@ import { toast } from "sonner"
 import { Loader2, Play, Plus, Pencil, Trash2, Sparkles, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { scenarioApi, crawlerApi } from "@/lib/api-client"
-import { Scenario, CrawlerAnalysisResponse, SaveScenarioRequest } from "@/types/api"
+import { Scenario, CrawlerAnalysisResponse, CreateScenarioRequest } from "@/types/api"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -210,28 +210,30 @@ export function ScenarioTasksModal({
           return
         }
 
-        const saveRequest: SaveScenarioRequest = {
-          scenario_id: analysisResult.scenario_id,
+        const createRequest: CreateScenarioRequest = {
           name: createFormData.name,
           website_url: createFormData.website_url,
           description: createFormData.description || "",
+          personas: ["crawler"],
           metrics: createFormData.metrics,
           email: createFormData.email,
-          selected_task_numbers: Array.from(selectedTasks),
-          all_tasks: localTasks,
+          tasks: localTasks,
+          selected_task_indices: Array.from(selectedTasks).map(taskNum =>
+            localTasks.findIndex(t => t.number === taskNum)
+          ),
           tasks_metadata: analysisResult.tasks_metadata || { total_tasks: 0, persona_distribution: {} },
-          crawler_final_result: analysisResult.crawler_summary || "",
-          crawler_extracted_content: analysisResult.crawler_extracted_content || "",
           discovered_urls: [],
+          crawler_final_result: analysisResult.crawler_summary || "",
+          crawler_extracted_content: analysisResult.crawler_extracted_content || ""
         }
 
-        const response = await crawlerApi.save(saveRequest)
+        const response = await crawlerApi.save(createRequest)
 
         toast.success("Scenario saved successfully!", {
           description: `Created scenario with ${selectedTasks.size} tasks`
         })
 
-        onSave?.(response.scenario_id)
+        onSave?.(response.id)
         onOpenChange(false)
       } else {
         // Update existing scenario

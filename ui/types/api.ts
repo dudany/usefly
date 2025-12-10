@@ -60,6 +60,15 @@ export interface CreateScenarioRequest {
   name: string;
   website_url: string;
   personas?: string[];
+  description?: string;
+  metrics?: string[];
+  email?: string;
+  tasks?: UserJourneyTask[];
+  selected_task_indices?: number[];
+  tasks_metadata?: TasksMetadata;
+  discovered_urls?: DiscoveredUrl[];
+  crawler_final_result?: string;
+  crawler_extracted_content?: string;
 }
 
 /**
@@ -73,6 +82,7 @@ export interface SystemConfig {
   api_key: string;
   use_thinking: boolean;
   max_steps: number;
+  max_browser_workers: number;
   created_at: string; // ISO datetime
   updated_at: string; // ISO datetime
 }
@@ -83,6 +93,7 @@ export interface UpdateSystemConfigRequest {
   api_key: string;
   use_thinking: boolean;
   max_steps: number;
+  max_browser_workers: number;
 }
 
 /**
@@ -110,26 +121,6 @@ export interface CrawlerAnalysisResponse {
   crawler_extracted_content: string;
   tasks?: UserJourneyTask[];
   tasks_metadata?: TasksMetadata;
-}
-
-export interface SaveScenarioRequest {
-  scenario_id: string;
-  name: string;
-  website_url: string;
-  description?: string;
-  metrics: string[];
-  email: string;
-  selected_task_numbers: number[];
-  all_tasks: UserJourneyTask[];
-  tasks_metadata: TasksMetadata;
-  crawler_final_result?: string;
-  crawler_extracted_content?: string;
-  discovered_urls: DiscoveredUrl[];
-}
-
-export interface SaveScenarioResponse {
-  scenario_id: string;
-  message: string;
 }
 
 /**
@@ -172,7 +163,6 @@ export interface PersonaRun {
   timestamp: string; // ISO datetime
   duration_seconds?: number; // seconds
   platform: string;
-  location?: string; // Geographic location (US, UK, CA, etc.)
   error_type?: string; // Error type for failed runs
   steps_completed: number;
   total_steps: number;
@@ -182,7 +172,6 @@ export interface PersonaRun {
   task_goal?: string;
   task_steps?: string;
   task_url?: string;
-  task_persona?: string;
   events: any[];
 }
 
@@ -194,7 +183,6 @@ export interface CreatePersonaRunRequest {
   timestamp: string;
   duration_seconds?: number;
   platform?: string;
-  location?: string;
   error_type?: string;
   steps_completed?: number;
   total_steps?: number;
@@ -202,6 +190,9 @@ export interface CreatePersonaRunRequest {
   final_result?: string;
   judgement_data?: any;
   task_description?: string;
+  task_goal?: string;
+  task_steps?: string;
+  task_url?: string;
   events?: any[];
 }
 

@@ -9,11 +9,7 @@ router = APIRouter(prefix="/api/persona", tags=["Persona Execution"])
 
 
 @router.post("/run/{scenario_id}", response_model=PersonaExecutionResponse)
-async def run_persona(
-    scenario_id: str,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
+async def run_persona(scenario_id: str,db: Session = Depends(get_db)):
     scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
@@ -27,7 +23,7 @@ async def run_persona(
 
     selected_indices = scenario.selected_task_indices or [] #TODO why it selects indices but not runs them?
     task_count = len(selected_indices)
-    await persona_runner.run_persona_tasks(db_session_factory=SessionLocal,scenario_id=scenario_id,report_id=report_id,run_id=run_id,background_tasks=background_tasks)
+    await persona_runner.run_persona_tasks(db_session_factory=SessionLocal,scenario_id=scenario_id,report_id=report_id,run_id=run_id)
     
 
     return PersonaExecutionResponse(

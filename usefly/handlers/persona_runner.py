@@ -13,10 +13,8 @@ from usefly.handlers.persona_runs import create_persona_run
 _active_runs: Dict[str, Dict] = {}
 
 # Thread pool for parallel browser task execution
-# Configurable via environment variable or defaults to 3
-import os
-MAX_BROWSER_WORKERS = int(os.getenv("MAX_BROWSER_WORKERS", "5"))
-_browser_executor = ThreadPoolExecutor(max_workers=MAX_BROWSER_WORKERS, thread_name_prefix="browser_task")
+# Will be initialized with max_workers from SystemConfig
+_browser_executor: Optional[ThreadPoolExecutor] = None
 
 
 def init_run_status(run_id: str, scenario_id: str, report_id: str, task_count: int):
@@ -283,7 +281,6 @@ async def execute_single_task(
             timestamp=start_time,
             duration_seconds=history.total_duration_seconds(),
             platform="web",
-            location=None,
             error_type="",#TODO add error
             steps_completed=history.number_of_steps(),
             total_steps=max_steps,
@@ -293,7 +290,6 @@ async def execute_single_task(
             task_goal=journey_task.goal,
             task_steps=journey_task.steps,
             task_url=journey_task.starting_url,
-            task_persona=journey_task.persona,
             events=events
         )
 
@@ -305,6 +301,7 @@ async def execute_single_task(
         return persona_run.id
 
     except Exception as e:
+        # Extract task fields properly from the task dict
         persona_run_data = PersonaRunCreate(
             config_id=scenario.id,
             report_id=report_id,
@@ -313,14 +310,15 @@ async def execute_single_task(
             timestamp=datetime.now(),
             duration_seconds=0,
             platform="web",
-            location=None,
             error_type=str(e),
             steps_completed=0,
             total_steps=30,
-            journey_path=[],
             final_result=f"ERROR: {str(e)}",
             judgement_data={},
             task_description=task.get("goal", "UNKNOWN"),
+            task_goal=task.get("goal"),
+            task_steps=task.get("steps"),
+            task_url=task.get("starting_url"),
             events=[]
         )
 
@@ -329,7 +327,7 @@ async def execute_single_task(
         return persona_run.id
 
 
-def _run_task_in_thread(db_session_factory, scenario_id: str, task: Dict, report_id: str, run_id: str, system_config_dict: Dict):
+def _run_task_in_thread(db_session_factory, scenario_id: str, task: Dict, report_id: str, run_id: str):
     """
     Run a single task in a thread with its own event loop and DB session.
     This allows parallel execution of browser tasks.
@@ -359,11 +357,12 @@ def _run_task_in_thread(db_session_factory, scenario_id: str, task: Dict, report
         db.close()
 
 
-async def run_persona_tasks(db_session_factory, scenario_id: str, report_id: str, run_id: str, background_tasks=None):
+async def run_persona_tasks(db_session_factory, scenario_id: str, report_id: str, run_id: str):
     """
     Run persona tasks using ThreadPoolExecutor for controlled parallelism.
-    max_workers is controlled by MAX_BROWSER_WORKERS env var (default: 3).
+    max_workers is controlled by SystemConfig.max_browser_workers (default: 3).
     """
+    global _browser_executor
     db = db_session_factory()
 
     try:
@@ -374,6 +373,13 @@ async def run_persona_tasks(db_session_factory, scenario_id: str, report_id: str
         sys_config = db.query(SystemConfig).filter(SystemConfig.id == 1).first()
         if not sys_config:
             raise ValueError("System configuration not found")
+
+        # Initialize or recreate thread pool with current config
+        max_workers = sys_config.max_browser_workers
+        if _browser_executor is None or _browser_executor._max_workers != max_workers:
+            if _browser_executor is not None:
+                _browser_executor.shutdown(wait=False)
+            _browser_executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="browser_task")
 
         all_tasks = scenario.tasks or []
         selected_indices = scenario.selected_task_indices or list(range(len(all_tasks)))
@@ -386,11 +392,9 @@ async def run_persona_tasks(db_session_factory, scenario_id: str, report_id: str
 
         if not tasks_to_run:
             raise ValueError("No tasks to run")
-        
-        # Initialize run status with correct task count
+
         init_run_status(run_id, scenario_id, report_id, len(tasks_to_run))
 
-        # Submit all tasks to the thread pool for parallel execution
         loop = asyncio.get_event_loop()
         futures = []
         for task in tasks_to_run:
@@ -401,13 +405,10 @@ async def run_persona_tasks(db_session_factory, scenario_id: str, report_id: str
                 scenario.id,
                 task,
                 report_id,
-                run_id,
-                {}  # SystemConfig will be re-fetched in thread
+                run_id
             )
             futures.append(future)
-        
-        # Wait for all tasks to complete (non-blocking)
-        # This happens in background, caller doesn't wait
+
         asyncio.create_task(_wait_for_completion(futures, run_id))
 
     except Exception as e:

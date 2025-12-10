@@ -3,18 +3,14 @@ from typing import List, Optional, Dict
 import uuid
 from datetime import datetime
 from urllib.parse import urlparse, unquote
-from langchain_openai import ChatOpenAI as LangchainChatOpenAI
-import json
 
 from usefly.models import (
     Scenario, SystemConfig, ScenarioCreate,
-    CrawlerRun, UserJourneyTask, TaskList
+    CrawlerRun, TaskList
 )
 from usefly.common.browser_use_common import run_browser_use_agent
 from usefly.handlers.task_generation import (
-    load_prompt_template,
-    prepare_generation_context,
-    generate_tasks_with_llm,
+    generate_tasks,
     renumber_tasks,
     update_generation_metadata,
     calculate_auto_selected_tasks
@@ -31,7 +27,16 @@ def create_scenario(db: Session, scenario: ScenarioCreate) -> Scenario:
         id=str(uuid.uuid4()),
         name=scenario.name,
         website_url=scenario.website_url,
-        personas=scenario.personas,
+        personas=scenario.personas or ["crawler"],
+        description=scenario.description,
+        metrics=scenario.metrics,
+        email=scenario.email,
+        tasks=scenario.tasks,
+        selected_task_indices=scenario.selected_task_indices,
+        tasks_metadata=scenario.tasks_metadata,
+        discovered_urls=scenario.discovered_urls,
+        crawler_final_result=scenario.crawler_final_result,
+        crawler_extracted_content=scenario.crawler_extracted_content
     )
     db.add(db_scenario)
     db.commit()
@@ -43,11 +48,18 @@ def get_scenario(db: Session, scenario_id: str) -> Optional[Scenario]:
     return db.query(Scenario).filter(Scenario.id == scenario_id).first()
 
 def delete_scenario(db: Session, scenario_id: str) -> bool:
-    """Delete a test scenario."""
+    """Delete a test scenario and all related records."""
+    from usefly.models import PersonaRun, CrawlerRun
+
     scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
     if not scenario:
         return False
 
+    # Delete related records first to avoid foreign key constraint violations
+    db.query(PersonaRun).filter(PersonaRun.config_id == scenario_id).delete()
+    db.query(CrawlerRun).filter(CrawlerRun.scenario_id == scenario_id).delete()
+
+    # Now delete the scenario
     db.delete(scenario)
     db.commit()
     return True
@@ -82,53 +94,11 @@ def process_urls(urls: List[str]) -> List[Dict[str, str]]:
     return result
 
 
-def generate_tasks_from_crawler_result(
-    crawler_final_result: Dict,
-    website_url: str,
-    model_name: str,
-    api_key: Optional[str] = None
-) -> TaskList:
-    with open("usefly/prompts/task_generator_prompt.txt") as f:
-        task_generator_prompt = f.read()
-
-    # Initialize LLM
-    llm = LangchainChatOpenAI(model=model_name, api_key=api_key)
-
-    # Create agent with structured output
-    agent = llm.with_structured_output(TaskList)
-
-    # Format input - convert crawler result to string for LLM
-    
-    crawler_content = json.dumps(crawler_final_result, indent=2) if isinstance(crawler_final_result, dict) else str(crawler_final_result)
-
-    input_text = (
-        f"{task_generator_prompt}\n\n"
-        f"Here's the website structure content, generate the response from it:\n"
-        f"{crawler_content}"
-    )
-
-    # Generate tasks
-    tasks = agent.invoke(input_text)
-
-    # Calculate total_tasks if not provided
-    if tasks.total_tasks == 0:
-        tasks.total_tasks = len(tasks.tasks)
-
-    tasks.website_url = website_url
-
-    return tasks
-
 async def analyze_website(db: Session, request) -> Dict:
-    """
-    Run crawler analysis on a website.
-    Returns a dictionary with run details and results.
-    """
-    # Get SystemConfig
     sys_config = db.query(SystemConfig).filter(SystemConfig.id == 1).first()
     if not sys_config:
         raise ValueError("System configuration not found. Please configure settings first at /settings")
 
-    # Create temporary scenario (not saved to database)
     hostname = urlparse(request.website_url).netloc or request.website_url
     scenario = Scenario(
         id=str(uuid.uuid4()),
@@ -147,7 +117,6 @@ async def analyze_website(db: Session, request) -> Dict:
 
     history = await run_browser_use_agent(task=task, system_config=sys_config, max_steps=30)
 
-    # Extract data from history object
     raw_urls = history.urls()
     processed_urls = process_urls(raw_urls)
     final_result = history.final_result()
@@ -162,13 +131,14 @@ async def analyze_website(db: Session, request) -> Dict:
     scenario.crawler_final_result = final_result
     scenario.crawler_extracted_content = extracted_content
 
-    # Generate tasks from crawler results
-    task_list = generate_tasks_from_crawler_result(
-        crawler_final_result=final_result,
-        website_url=request.website_url,
-        model_name=sys_config.model_name,
-        api_key=sys_config.api_key
-    )
+    task_list = generate_tasks(
+            crawler_result=final_result,
+            existing_tasks=[],
+            model_name=sys_config.model_name,
+            api_key=sys_config.api_key
+        )
+
+    task_list.website_url = request.website_url
 
     # Calculate persona distribution
     persona_counts = {}
@@ -225,46 +195,6 @@ async def analyze_website(db: Session, request) -> Dict:
         "tasks_metadata": tasks_metadata if tasks_metadata else None
     }
 
-def save_scenario(db: Session, request) -> Dict:
-    all_tasks = request.all_tasks
-
-    selected_indices = [
-        i for i, task in enumerate(all_tasks)
-        if task.get("number") in request.selected_task_numbers
-    ]
-
-    updated_metadata = {
-        **request.tasks_metadata,
-        "total_generated": len(all_tasks),
-        "total_selected": len(selected_indices),
-        "selected_task_numbers": request.selected_task_numbers
-    }
-
-    db_scenario = Scenario(
-        id=str(uuid.uuid4()),
-        name=request.name,
-        website_url=request.website_url,
-        personas=["crawler"],
-        description=request.description,
-        metrics=request.metrics,
-        email=request.email,
-        tasks=all_tasks,
-        selected_task_indices=selected_indices,
-        tasks_metadata=updated_metadata,
-        discovered_urls=request.discovered_urls,
-        crawler_final_result=request.crawler_final_result,
-        crawler_extracted_content=request.crawler_extracted_content
-    )
-
-    db.add(db_scenario)
-    db.commit()
-    db.refresh(db_scenario)
-
-    return {
-        "scenario_id": db_scenario.id,
-        "message": f"Scenario '{request.name}' saved successfully with {len(selected_indices)} tasks"
-    }
-
 def update_scenario_tasks(db: Session, scenario_id: str, request) -> Scenario:
     scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
     if not scenario:
@@ -301,35 +231,24 @@ def generate_more_tasks(db: Session, scenario_id: str, request) -> Dict:
 
     This function orchestrates the task generation process by:
     1. Loading the scenario and system configuration
-    2. Preparing the prompt and context
-    3. Generating new tasks using LLM
-    4. Renumbering and merging with existing tasks
-    5. Updating metadata and auto-selecting new tasks
+    2. Generating new tasks using unified task generation
+    3. Renumbering and merging with existing tasks
+    4. Updating metadata and auto-selecting new tasks
     """
     # Load required data from database
     scenario = _get_scenario_or_raise(db, scenario_id)
     sys_config = _get_system_config_or_raise(db)
 
-    # Prepare prompt and context for generation
-    prompt_template = load_prompt_template(
-        prompt_type=request.prompt_type,
+    existing_tasks = scenario.tasks or []
+
+    # Generate new tasks using unified task generation (always use friction prompt)
+    new_task_list = generate_tasks(
+        crawler_result=scenario.crawler_final_result,
+        existing_tasks=existing_tasks,
+        model_name=sys_config.model_name,
+        api_key=sys_config.api_key,
         num_tasks=request.num_tasks,
         custom_prompt=request.custom_prompt
-    )
-
-    existing_tasks = scenario.tasks or []
-    existing_summary, crawler_context = prepare_generation_context(
-        existing_tasks=existing_tasks,
-        crawler_result=scenario.crawler_final_result
-    )
-
-    # Generate new tasks using LLM
-    new_task_list = generate_tasks_with_llm(
-        prompt_template=prompt_template,
-        existing_tasks_summary=existing_summary,
-        crawler_context=crawler_context,
-        model_name=sys_config.model_name,
-        api_key=sys_config.api_key
     )
 
     # Renumber and merge tasks
@@ -342,7 +261,6 @@ def generate_more_tasks(db: Session, scenario_id: str, request) -> Dict:
         current_metadata=scenario.tasks_metadata or {},
         new_tasks=renumbered_tasks,
         all_tasks=all_tasks,
-        prompt_type=request.prompt_type,
         custom_prompt_used=bool(request.custom_prompt)
     )
 
@@ -368,7 +286,7 @@ def generate_more_tasks(db: Session, scenario_id: str, request) -> Dict:
         "new_tasks": renumbered_tasks,
         "total_tasks": len(all_tasks),
         "tasks_metadata": scenario.tasks_metadata,
-        "message": f"Generated {len(renumbered_tasks)} new tasks using {request.prompt_type} prompt"
+        "message": f"Generated {len(renumbered_tasks)} new tasks using friction prompt"
     }
 
 

@@ -59,7 +59,6 @@ def create_persona_run(db: Session, run: PersonaRunCreate) -> PersonaRun:
         timestamp=run.timestamp,
         duration_seconds=run.duration_seconds,
         platform=run.platform,
-        location=run.location,
         error_type=run.error_type,
         steps_completed=run.steps_completed,
         total_steps=run.total_steps,
@@ -67,6 +66,9 @@ def create_persona_run(db: Session, run: PersonaRunCreate) -> PersonaRun:
         judgement_data=run.judgement_data,
         task_description=run.task_description,
         events=run.events,
+        task_goal = run.task_goal,
+        task_steps = run.task_steps,
+        task_url = run.task_url
     )
     db.add(db_run)
     db.commit()

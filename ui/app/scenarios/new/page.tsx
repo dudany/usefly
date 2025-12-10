@@ -17,13 +17,12 @@ export default function NewScenarioPage() {
 
         {/* Hero Section */}
         <div className="mb-12">
-          <div className="max-w-4xl mx-auto text-center mb-8">
+          <div className="max-w-3xl mx-auto text-center mb-8">
             <h1 className="text-4xl font-bold text-foreground mb-4">
               Create Your Test Scenario
             </h1>
-            <p className="text-lg text-muted-foreground mb-6">
-              Set up a new test scenario with your website URL, testing focus areas, and personas to analyze.
-              Our AI agents will test your features and identify friction points.
+            <p className="text-lg text-muted-foreground">
+              AI agents test your website and identify friction points—so you can ship with confidence.
             </p>
           </div>
 
@@ -35,9 +34,9 @@ export default function NewScenarioPage() {
                   <div className="p-3 rounded-lg bg-primary/10">
                     <Zap className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-lg">Fast QA Testing</h3>
+                  <h3 className="font-semibold text-lg">Ship Faster</h3>
                   <p className="text-sm text-muted-foreground">
-                    AI agents test your feature's core functionality in hours, not days
+                    Test core user flows in hours, not days. No manual testing needed.
                   </p>
                 </div>
               </CardContent>
@@ -49,9 +48,9 @@ export default function NewScenarioPage() {
                   <div className="p-3 rounded-lg bg-primary/10">
                     <Target className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-lg">Identify Friction Points</h3>
+                  <h3 className="font-semibold text-lg">Catch Issues Early</h3>
                   <p className="text-sm text-muted-foreground">
-                    Catch UX issues and errors before they impact real users
+                    Find UX friction and errors before your users do.
                   </p>
                 </div>
               </CardContent>
@@ -63,9 +62,9 @@ export default function NewScenarioPage() {
                   <div className="p-3 rounded-lg bg-primary/10">
                     <LineChart className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-lg">Know What to Measure</h3>
+                  <h3 className="font-semibold text-lg">Understand Behavior</h3>
                   <p className="text-sm text-muted-foreground">
-                    Get recommended metrics to track when your feature goes live
+                    See how users navigate and where they struggle.
                   </p>
                 </div>
               </CardContent>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { RunFilters } from "./run-filters"
 import { Loader } from "lucide-react"
 import { RunTable } from "./run-table"
+import { Card } from "@/components/ui/card"
 import { personaRecordsApi, reportApi, scenarioApi } from "@/lib/api-client"
 import { Scenario, PersonaRun, ReportListItem, FrictionHotspotItem } from "@/types/api"
 import { useFilterContext } from "@/contexts/filter-context"
@@ -53,6 +54,12 @@ export function RunsDashboard() {
 
   // Fetch runs whenever filters change (backend filtering)
   useEffect(() => {
+    // Don't fetch runs when "all scenarios" is selected
+    if (scenarioFilter === "all") {
+      setAgentRuns([])
+      return
+    }
+
     const fetchRuns = async () => {
       try {
         const filters: any = { limit: 1000 }
@@ -116,24 +123,38 @@ export function RunsDashboard() {
         showDateFilter={false}
       />
 
-      {/* Analytics Section (Only when a specific report is selected) */}
-      {reportFilter !== "all" && (
-        <div className="space-y-6">
-        </div>
-      )}
-
-      {/* Results Count */}
-      <div className="text-sm text-muted-foreground">
-        Showing {agentRuns.length} runs
-      </div>
-
-      {/* Table */}
-      {agentRuns.length > 0 ? (
-        <RunTable runs={agentRuns} />
+      {/* Show message when no scenario selected */}
+      {scenarioFilter === "all" ? (
+        <Card className="p-12">
+          <div className="text-center text-muted-foreground">
+            <p className="text-lg mb-2">Select a scenario to view runs</p>
+            <p className="text-sm">
+              {scenarios.length} scenarios available
+            </p>
+          </div>
+        </Card>
       ) : (
-        <div className="text-center py-8 text-muted-foreground">
-          No agent runs found. Try adjusting your filters.
-        </div>
+        <>
+          {/* Analytics Section (Only when a specific report is selected) */}
+          {reportFilter !== "all" && (
+            <div className="space-y-6">
+            </div>
+          )}
+
+          {/* Results Count */}
+          <div className="text-sm text-muted-foreground">
+            Showing {agentRuns.length} runs
+          </div>
+
+          {/* Table */}
+          {agentRuns.length > 0 ? (
+            <RunTable runs={agentRuns} />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No agent runs found. Try adjusting your filters.
+            </div>
+          )}
+        </>
       )}
     </div>
   )

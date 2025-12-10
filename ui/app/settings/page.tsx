@@ -23,6 +23,7 @@ const formSchema = z.object({
   api_key: z.string().min(1, "API key is required"),
   use_thinking: z.boolean(),
   max_steps: z.number().min(10).max(100),
+  max_browser_workers: z.number().min(1).max(10),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -53,6 +54,7 @@ export default function SettingsPage() {
       api_key: "",
       use_thinking: true,
       max_steps: 30,
+      max_browser_workers: 3,
     },
   })
 
@@ -71,6 +73,7 @@ export default function SettingsPage() {
         setValue("api_key", data.api_key)
         setValue("use_thinking", data.use_thinking)
         setValue("max_steps", data.max_steps || 30)
+        setValue("max_browser_workers", data.max_browser_workers || 3)
       } catch (error) {
         // Config doesn't exist yet, use defaults
         console.log("No existing config found, using defaults")
@@ -234,6 +237,28 @@ export default function SettingsPage() {
               )}
               <p className="text-xs text-muted-foreground">
                 Maximum number of steps the browser agent can take (10-100)
+              </p>
+            </div>
+
+            {/* Max Browser Workers */}
+            <div className="space-y-2">
+              <Label htmlFor="max_browser_workers" className="text-sm font-semibold">
+                Max Parallel Browser Workers <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="max_browser_workers"
+                type="number"
+                placeholder="3"
+                min="1"
+                max="10"
+                {...register("max_browser_workers", { valueAsNumber: true })}
+                className={errors.max_browser_workers ? "border-destructive" : ""}
+              />
+              {errors.max_browser_workers && (
+                <p className="text-sm text-destructive">{errors.max_browser_workers.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Number of browser tasks to run in parallel (1-10)
               </p>
             </div>
 

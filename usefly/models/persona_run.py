@@ -22,17 +22,15 @@ class PersonaRun(Base):
     timestamp = Column(DateTime, nullable=False, index=True)
     duration_seconds = Column(Integer)  # seconds
     platform = Column(String, default="web")
-    location = Column(String)  # Geographic location (US, UK, CA, DE, FR, etc.)
     error_type = Column(String)  # Error type for failed runs
     steps_completed = Column(Integer, default=0)
     total_steps = Column(Integer, default=0)
-    final_result = Column(String)  # Final result from agent execution
+    final_result = Column(String, nullable=False)  # Final result from agent execution
     judgement_data = Column(JSON, default={})  # Full judgement result from agent (reasoning, verdict, failure_reason, etc.)
-    task_description = Column(String)  # Description of the task
-    task_goal = Column(String)  # Goal of the task
-    task_steps = Column(String)  # Steps to complete the task
-    task_url = Column(String)  # Starting URL for the task
-    task_persona = Column(String)  # Persona description
+    task_description = Column(String, nullable=False)  # Description of the task
+    task_goal = Column(String, nullable=False)  # Goal of the task
+    task_steps = Column(String, nullable=False)  # Steps to complete the task
+    task_url = Column(String, nullable=False)  # Starting URL for the task
     events = Column(JSON, default=[])
 
     # Relationships
@@ -42,23 +40,23 @@ class PersonaRun(Base):
 class PersonaRunCreate(BaseModel):
     """Schema for creating a new persona run."""
     config_id: str
-    report_id: Optional[str] = None
+    task_description: str
+    task_goal: str
+    task_steps: str
+    task_url: str
+    final_result: str
     persona_type: str
+    report_id: Optional[str] = None
     is_done: bool = False
     timestamp: datetime
     duration_seconds: Optional[float] = None
     platform: str = "web"
-    location: Optional[str] = None
     error_type: Optional[str] = None
     steps_completed: int = 0
     total_steps: int = 0
-    final_result: Optional[str] = None
+    
     judgement_data: dict = {}
-    task_description: Optional[str] = None
-    task_goal: Optional[str] = None
-    task_steps: Optional[str] = None
-    task_url: Optional[str] = None
-    task_persona: Optional[str] = None
+  
     events: List[dict] = []
 
 
@@ -72,7 +70,6 @@ class PersonaRunResponse(BaseModel):
     timestamp: datetime
     duration_seconds: Optional[float]
     platform: str
-    location: Optional[str]
     error_type: Optional[str]
     steps_completed: int
     total_steps: int
@@ -82,7 +79,6 @@ class PersonaRunResponse(BaseModel):
     task_goal: Optional[str]
     task_steps: Optional[str]
     task_url: Optional[str]
-    task_persona: Optional[str]
     events: List[dict]
 
     class Config:

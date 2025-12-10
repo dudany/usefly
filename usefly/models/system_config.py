@@ -19,6 +19,7 @@ class SystemConfig(Base):
     api_key = Column(String, nullable=False)
     use_thinking = Column(Boolean, nullable=False, default=True)
     max_steps = Column(Integer, nullable=False, default=30)
+    max_browser_workers = Column(Integer, nullable=False, default=3)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -30,6 +31,7 @@ class SystemConfigCreate(BaseModel):
     api_key: str
     use_thinking: bool = True
     max_steps: int = 30
+    max_browser_workers: int = 3
 
 
 class SystemConfigResponse(BaseModel):
@@ -40,6 +42,7 @@ class SystemConfigResponse(BaseModel):
     api_key: str
     use_thinking: bool
     max_steps: int
+    max_browser_workers: int
     created_at: datetime
     updated_at: datetime
 
