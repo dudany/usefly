@@ -1,46 +1,47 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState, useEffect } from "react"
+import { RunFilters } from "./run-filters"
 import { Loader } from "lucide-react"
 import { RunTable } from "./run-table"
-import { agentRunApi, reportApi, configApi } from "@/lib/api-client"
-import { TestConfig, AgentRun, Report } from "@/types/api"
-import { getPersonaLabel } from "./mock-data"
+import { Card } from "@/components/ui/card"
+import { personaRecordsApi, reportApi, scenarioApi } from "@/lib/api-client"
+import { Scenario, PersonaRun, ReportListItem, FrictionHotspotItem } from "@/types/api"
+import { useFilterContext } from "@/contexts/filter-context"
 
-const METRIC_CATEGORIES = ["Conversion", "Friction", "Activation", "Engagement"]
-const PERSONAS = ["new-shopper", "returning-user", "admin-user", "premium-user", "guest"]
-
-export function AgentRunsDashboard() {
-  const searchParams = useSearchParams()
+export function RunsDashboard() {
+  const {
+    scenarioFilter,
+    reportFilter,
+    statusFilter,
+    personaFilter,
+    platformFilter
+  } = useFilterContext()
 
   // State for data fetching
-  const [configs, setConfigs] = useState<TestConfig[]>([])
-  const [agentRuns, setAgentRuns] = useState<AgentRun[]>([])
-  const [reports, setReports] = useState<Report[]>([])
+  const [scenarios, setScenarios] = useState<Scenario[]>([])
+  const [agentRuns, setAgentRuns] = useState<PersonaRun[]>([])
+  const [reports, setReports] = useState<ReportListItem[]>([])
+  const [availablePersonas, setAvailablePersonas] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Initialize filters from URL query parameters or defaults
-  const [configFilter, setConfigFilter] = useState<string>("all")
-  const [reportFilter, setReportFilter] = useState<string>("all")
-  const [categoryFilter, setCategoryFilter] = useState<string>("all")
-  const [personaFilter, setPersonaFilter] = useState<string>("all")
+  // Insights state
+  const [insightsLoading, setInsightsLoading] = useState(false)
 
-  // Fetch data on mount
+  // Fetch initial data (scenarios, reports, personas) on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [configsData, runsData, reportsData] = await Promise.all([
-          configApi.list(),
-          agentRunApi.list({ limit: 100 }),
-          reportApi.list({ limit: 100 }),
+        const [scenariosData, reportsData, personasData] = await Promise.all([
+          scenarioApi.list(),
+          reportApi.list(),
+          scenarioApi.getPersonas(),
         ])
-        setConfigs(configsData)
-        setAgentRuns(runsData)
+        setScenarios(scenariosData)
         setReports(reportsData)
+        setAvailablePersonas(personasData.personas.sort())
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch data")
       } finally {
@@ -51,58 +52,48 @@ export function AgentRunsDashboard() {
     fetchData()
   }, [])
 
-  // Apply URL query parameters on mount
+  // Fetch runs whenever filters change (backend filtering)
   useEffect(() => {
-    const reportId = searchParams.get("reportId")
-    const persona = searchParams.get("persona")
-    const category = searchParams.get("category")
+    // Don't fetch runs when "all scenarios" is selected
+    if (scenarioFilter === "all") {
+      setAgentRuns([])
+      return
+    }
 
-    if (reportId) {
-      const report = reports.find((r) => r.id === reportId)
-      if (report) {
-        setConfigFilter(report.config_id)
-        setReportFilter(reportId)
+    const fetchRuns = async () => {
+      try {
+        const filters: any = { limit: 1000 }
+
+        if (scenarioFilter !== "all") filters.configId = scenarioFilter
+        if (reportFilter !== "all") filters.reportId = reportFilter
+        if (statusFilter !== "all") filters.status = statusFilter
+        if (personaFilter !== "all") filters.personaType = personaFilter
+        if (platformFilter !== "all") filters.platform = platformFilter
+
+        console.log('[RunsDashboard] Fetching runs with filters:', filters)
+
+        // Parallel fetch for runs and insights (if report selected)
+        const promises: Promise<any>[] = [personaRecordsApi.list(filters)]
+
+        if (reportFilter !== "all") {
+          setInsightsLoading(true)
+        }
+
+        const results = await Promise.all(promises)
+        setAgentRuns(results[0])
+
+      } catch (err) {
+        console.error('[RunsDashboard] Error fetching runs:', err)
+        setError(err instanceof Error ? err.message : "Failed to fetch runs")
+      } finally {
+        if (reportFilter !== "all") {
+          setInsightsLoading(false)
+        }
       }
     }
-    if (persona) {
-      setPersonaFilter(persona)
-    }
-    if (category) {
-      setCategoryFilter(category)
-    }
-  }, [searchParams, reports])
 
-  // Get available reports for selected config
-  const availableReports = useMemo(() => {
-    if (configFilter === "all") return reports
-    return reports.filter((r) => r.config_id === configFilter)
-  }, [configFilter, reports])
-
-  // Update report filter when config changes
-  const handleConfigChange = (configId: string) => {
-    setConfigFilter(configId)
-    if (configId !== "all") {
-      const configReports = reports.filter((r) => r.config_id === configId)
-      if (configReports.length > 0) {
-        setReportFilter(configReports[0].id)
-      }
-    } else {
-      setReportFilter("all")
-    }
-  }
-
-  // Filter runs based on all criteria
-  const filteredRuns = useMemo(() => {
-    return agentRuns.filter((run) => {
-      // Config filter
-      if (configFilter !== "all" && run.config_id !== configFilter) return false
-
-      // Persona filter
-      if (personaFilter !== "all" && run.persona_type !== personaFilter) return false
-
-      return true
-    })
-  }, [configFilter, personaFilter, agentRuns])
+    fetchRuns()
+  }, [scenarioFilter, reportFilter, statusFilter, personaFilter, platformFilter])
 
   if (loading) {
     return (
@@ -124,90 +115,46 @@ export function AgentRunsDashboard() {
   return (
     <div className="space-y-6">
       {/* Filters Section */}
-      <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Test Config</label>
-            <Select value={configFilter} onValueChange={handleConfigChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select config" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Configs</SelectItem>
-                {configs.map((config) => (
-                  <SelectItem key={config.id} value={config.id}>
-                    {config.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <RunFilters
+        scenarios={scenarios}
+        reports={reports}
+        availablePersonas={availablePersonas}
+        showPlatformFilter={true}
+        showDateFilter={false}
+      />
+
+      {/* Show message when no scenario selected */}
+      {scenarioFilter === "all" ? (
+        <Card className="p-12">
+          <div className="text-center text-muted-foreground">
+            <p className="text-lg mb-2">Select a scenario to view runs</p>
+            <p className="text-sm">
+              {scenarios.length} scenarios available
+            </p>
           </div>
-
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Report</label>
-            <Select value={reportFilter} onValueChange={setReportFilter}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select report" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Reports</SelectItem>
-                {availableReports.map((report) => (
-                  <SelectItem key={report.id} value={report.id}>
-                    {report.name} ({new Date(report.created_at).toLocaleDateString()})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Metric Category</label>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {METRIC_CATEGORIES.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-foreground mb-2 block">Persona</label>
-          <Select value={personaFilter} onValueChange={setPersonaFilter}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Filter by persona" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Personas</SelectItem>
-              {PERSONAS.map((persona) => (
-                <SelectItem key={persona} value={persona}>
-                  {getPersonaLabel(persona)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Results */}
-      <div className="text-sm text-muted-foreground">
-        Showing {filteredRuns.length} of {agentRuns.length} runs
-      </div>
-
-      {/* Table */}
-      {filteredRuns.length > 0 ? (
-        <RunTable runs={filteredRuns} />
+        </Card>
       ) : (
-        <div className="text-center py-8 text-muted-foreground">
-          No agent runs found. Try adjusting your filters.
-        </div>
+        <>
+          {/* Analytics Section (Only when a specific report is selected) */}
+          {reportFilter !== "all" && (
+            <div className="space-y-6">
+            </div>
+          )}
+
+          {/* Results Count */}
+          <div className="text-sm text-muted-foreground">
+            Showing {agentRuns.length} runs
+          </div>
+
+          {/* Table */}
+          {agentRuns.length > 0 ? (
+            <RunTable runs={agentRuns} />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No agent runs found. Try adjusting your filters.
+            </div>
+          )}
+        </>
       )}
     </div>
   )

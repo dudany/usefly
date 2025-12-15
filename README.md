@@ -1,6 +1,10 @@
 # Usefly
 
-Agentic UX Analytics - Test your app with AI agents and visualize how they interact with your application.
+AI-powered UX testing platform. Deploy browser agents to simulate real user journeys on your web app and identify friction points, broken flows, and usability issues.
+
+## What It Does
+
+Usefly uses AI browser agents to test your application like a real user would. Create test scenarios, generate tasks automatically, and get detailed reports on where users struggle.
 
 ## Requirements
 
@@ -10,31 +14,33 @@ Agentic UX Analytics - Test your app with AI agents and visualize how they inter
 ## Quick Start
 
 ```bash
-# 1. Build UI
-cd ui
-pnpm install
-pnpm build
-
-# 2. Install Python package
-cd ..
+# 1. Install
 pip install -e .
+cd ui && pnpm install && pnpm build && cd ..
 
-# 3. Run
-python -m uvicorn usefly.server:app --port 8080
+# 2. Run
+usefly
 ```
 
-Visit http://localhost:8080
+Open http://localhost:8080
 
-## Development
+## How to Use
+
+1. **Settings** - Configure your OpenAI API key and model settings (Settings → System Settings)
+2. **Scenarios** - Create test scenarios with a target URL and description. Generate tasks automatically from your site structure
+3. **Runs** - Execute scenarios and watch AI agents interact with your app in real-time
+4. **Reports** - View analytics, friction hotspots, and detailed step-by-step agent interactions
+
+## CLI Options
 
 ```bash
-# UI dev server (with hot reload)
-cd ui && pnpm dev
-
-# Python server
-python -m uvicorn usefly.server:app --reload --port 8080
+usefly                 # Start on port 8080
+usefly --port 3000     # Custom port
+usefly --reload        # Auto-reload for dev
 ```
 
-## License
+## Architecture
 
-MIT
+- **Backend:** FastAPI (`usefly/`)
+- **Frontend:** Next.js React built as static files, served by FastAPI
+- **Database:** SQLite (auto-created)

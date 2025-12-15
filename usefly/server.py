@@ -9,10 +9,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
-
 from usefly.database import init_db
-from usefly.routes import router as api_router
+from usefly.routers.persona_runs import router as persona_runs_router
+from usefly.routers.reports import router as reports_router
+from usefly.routers.system_config import router as system_config_router
+from usefly.routers.scenarios import router as scenario_router
+from usefly.routers.persona_runner import router as persona_runner_router
 
 # Initialize database
 init_db()
@@ -32,7 +34,11 @@ app.add_middleware(
 static_dir = Path(__file__).parent / "static"
 
 # Include API routes
-app.include_router(api_router)
+app.include_router(persona_runs_router)
+app.include_router(reports_router)
+app.include_router(system_config_router)
+app.include_router(scenario_router)
+app.include_router(persona_runner_router)
 
 
 # API Routes

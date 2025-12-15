@@ -1,14 +1,16 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { BarChart3, FileText, Zap, Sparkles } from "lucide-react"
+import { BarChart3, FileText, Sparkles, Settings, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { href: "/config", label: "Config", icon: Sparkles },
+  { href: "/scenarios", label: "Scenarios", icon: Sparkles },
   { href: "/reports", label: "Reports", icon: FileText },
-  { href: "/runs", label: "Runs", icon: Zap },
+  { href: "/runs", label: "Runs", icon: Activity },
+  { href: "/settings", label: "Settings", icon: Settings },
 ]
 
 const wipItems = [
@@ -24,9 +26,13 @@ export function Sidebar() {
       {/* Logo */}
       <div className="px-6 pb-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl text-sidebar-foreground">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-            <Zap className="w-4 h-4 text-primary-foreground" />
-          </div>
+          <Image
+            src="/favicon.png"
+            alt="Usefly Logo"
+            width={32}
+            height={32}
+            className="w-8 h-8 rounded-lg"
+          />
           Usefly
         </Link>
       </div>
@@ -64,16 +70,17 @@ export function Sidebar() {
           {wipItems.map((item) => {
             const Icon = item.icon
             return (
-              <div
+              <Link
                 key={item.href}
+                href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium cursor-not-allowed",
-                  "text-muted-foreground/50"
+                  "flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium",
+                  "text-muted-foreground/50 hover:text-muted-foreground hover:bg-sidebar-accent/30"
                 )}
               >
                 <Icon className="w-5 h-5" />
                 {item.label}
-              </div>
+              </Link>
             )
           })}
         </div>

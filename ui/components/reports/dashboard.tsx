@@ -1,43 +1,53 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Loader } from "lucide-react"
-import { reportApi, agentRunApi } from "@/lib/api-client"
-import { Report, AgentRun } from "@/types/api"
-import { useSegments } from "@/components/providers/segments-provider"
-import { SegmentsFilter } from "@/components/filters/segments-filter"
+import { reportApi, scenarioApi } from "@/lib/api-client"
+import { FrictionHotspots } from "@/components/runs/friction-hotspots"
+import { ReportListItem, ReportAggregate, Scenario, FrictionHotspotItem } from "@/types/api"
 import { JourneySankey } from "./journey-sankey"
-import { JourneyTable } from "./journey-table"
-import { getPersonaLabel } from "@/components/runs/mock-data"
+import { RunFilters } from "@/components/runs/run-filters"
+import { useFilterContext } from "@/contexts/filter-context"
+import { FrictionDetailModal } from "./friction-detail-modal"
 
 export function ReportsDashboard() {
-  const { selectedSegments } = useSegments()
+  const {
+    scenarioFilter,
+    reportFilter,
+    statusFilter,
+    personaFilter,
+    platformFilter
+  } = useFilterContext()
 
   // State for data fetching
-  const [reports, setReports] = useState<Report[]>([])
-  const [agentRuns, setAgentRuns] = useState<AgentRun[]>([])
+  const [scenarios, setScenarios] = useState<Scenario[]>([])
+  const [reportList, setReportList] = useState<ReportListItem[]>([])
+  const [selectedReportData, setSelectedReportData] = useState<ReportAggregate | null>(null)
+
+  const [friction, setFriction] = useState<FrictionHotspotItem[]>([])
+  const [availablePersonas, setAvailablePersonas] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingAggregate, setLoadingAggregate] = useState(false)
+  const [frictionLoading, setFrictionLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedFrictionNode, setSelectedFrictionNode] = useState<any>(null)
 
-  // Filters
-  const [selectedReportId, setSelectedReportId] = useState<string>("")
-  const [personaFilter, setPersonaFilter] = useState<string>("all")
-
-  // Fetch data on mount
+  // Fetch report list, scenarios and personas on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [reportsData, runsData] = await Promise.all([
-          reportApi.list({ limit: 100 }),
-          agentRunApi.list({ limit: 100 }),
+        const [reportsData, scenariosData, personasData] = await Promise.all([
+          reportApi.list(),
+          scenarioApi.list(),
+          scenarioApi.getPersonas(),
         ])
-        setReports(reportsData)
-        setAgentRuns(runsData)
+        setReportList(reportsData)
+        setScenarios(scenariosData)
+        setAvailablePersonas(personasData.personas.sort())
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch data")
+        setError(err instanceof Error ? err.message : "Failed to fetch reports")
       } finally {
         setLoading(false)
       }
@@ -46,47 +56,54 @@ export function ReportsDashboard() {
     fetchData()
   }, [])
 
-  // Get unique personas from agent runs
-  const availablePersonas = useMemo(() => {
-    const personas = new Set(agentRuns.map((run) => run.persona_type))
-    return Array.from(personas).sort()
-  }, [agentRuns])
+  // Fetch aggregated data (SERVER SIDE FILTERED) and runs when report or filters change
+  useEffect(() => {
+    // If "all reports" selected but no scenario selected, we can't show aggregation
+    if ((!reportFilter || reportFilter === "all") && scenarioFilter === "all") {
+      setSelectedReportData(null)
+      return
+    }
 
-  // Filter runs for selected report and additional filters (AND logic)
-  const filteredRuns = useMemo(() => {
-    if (!selectedReportId) return []
+    // If no report selected at all, return
+    if (!reportFilter) {
+      setSelectedReportData(null)
+      return
+    }
 
-    const selectedReport = reports.find((r) => r.id === selectedReportId)
-    if (!selectedReport) return []
+    const fetchReportData = async () => {
+      try {
+        setLoadingAggregate(true)
 
-    // Get run IDs associated with this report
-    const reportRunIds = new Set(
-      agentRuns
-        .filter((run) => run.config_id === selectedReport.config_id)
-        .map((run) => run.id)
-    )
-
-    return agentRuns.filter((run) => {
-      // Report filter (runs associated with selected report's config)
-      if (!reportRunIds.has(run.id)) return false
-
-      // Segment filters - AND logic (must match all selected segments)
-      if (selectedSegments.length > 0) {
-        for (const segment of selectedSegments) {
-          if (segment.type === "platform" && run.platform !== segment.value) return false
-          if (segment.type === "status" && run.status !== segment.value) return false
+        // Prepare filters for API
+        const filters = {
+          persona: personaFilter,
+          status: statusFilter,
+          platform: platformFilter,
+          scenario: scenarioFilter
         }
+
+        setFrictionLoading(true)
+        // Fetch aggregated data and friction in parallel
+        const [aggregateData, frictionData] = await Promise.all([
+          reportApi.getAggregate(reportFilter, "compact", filters),
+          reportApi.getFriction(reportFilter !== "all" ? reportFilter : undefined, scenarioFilter !== "all" ? scenarioFilter : undefined)
+        ])
+
+        setSelectedReportData(aggregateData)
+        setFriction(frictionData)
+
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch report data")
+        // Even if aggregate fails (e.g. 404 from empty filters?), we should handle gracefully
+        // The backend now returns a zero-struct if possible, or 404 if report missing.
+      } finally {
+        setLoadingAggregate(false)
+        setFrictionLoading(false)
       }
+    }
 
-      // Persona filter
-      if (personaFilter !== "all" && run.persona_type !== personaFilter) return false
-
-      return true
-    })
-  }, [selectedReportId, reports, agentRuns, selectedSegments, personaFilter])
-
-  // Get selected report
-  const selectedReport = reports.find((r) => r.id === selectedReportId)
+    fetchReportData()
+  }, [reportFilter, scenarioFilter, personaFilter, statusFilter, platformFilter])
 
   if (loading) {
     return (
@@ -105,89 +122,121 @@ export function ReportsDashboard() {
     )
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Filters Section */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Filters</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Report ID Filter */}
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Report</label>
-            <Select value={selectedReportId} onValueChange={setSelectedReportId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a report" />
-              </SelectTrigger>
-              <SelectContent>
-                {reports.map((report) => (
-                  <SelectItem key={report.id} value={report.id}>
-                    {report.name} - {new Date(report.created_at).toLocaleDateString()}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Unified Segment Multi-Select */}
-          <SegmentsFilter />
-
-          {/* Persona Filter */}
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Persona</label>
-            <Select value={personaFilter} onValueChange={setPersonaFilter}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="All Personas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Personas</SelectItem>
-                {availablePersonas.map((persona) => (
-                  <SelectItem key={persona} value={persona}>
-                    {getPersonaLabel(persona)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+  if (reportList.length === 0) {
+    return (
+      <Card className="p-12">
+        <div className="text-center text-muted-foreground">
+          <p className="text-lg mb-2">No reports found</p>
+          <p className="text-sm">Run some persona tests to generate reports</p>
         </div>
       </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+
+      {/* Unified Filters */}
+      <RunFilters
+        scenarios={scenarios}
+        reports={reportList}
+        availablePersonas={availablePersonas}
+        showPlatformFilter={true}
+        showDateFilter={false}
+      />
 
       {/* Main Content */}
-      {!selectedReportId ? (
+      {(!reportFilter || reportFilter === "all") && scenarioFilter === "all" ? (
         <Card className="p-12">
           <div className="text-center text-muted-foreground">
-            <p className="text-lg mb-2">Select a report to view journey analysis</p>
-            <p className="text-sm">Use the filters above to choose a report and optionally filter by segment and persona</p>
+            <p className="text-lg mb-2">Select a scenario to view journey analysis</p>
+            <p className="text-sm">
+              {scenarios.length} scenarios available
+            </p>
           </div>
         </Card>
-      ) : (
+      ) : loadingAggregate ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader className="w-6 h-6 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Loading analysis...</span>
+        </div>
+      ) : selectedReportData ? (
         <>
           {/* Report Header */}
-          {selectedReport && (
-            <div className="mb-4">
-              <h2 className="text-2xl font-bold text-foreground">{selectedReport.name}</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Report from {new Date(selectedReport.created_at).toLocaleDateString()} • {filteredRuns.length} runs
-              </p>
-            </div>
-          )}
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold text-foreground">{selectedReportData.scenario_name}</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {selectedReportData.report_id && selectedReportData.report_id !== "all" ? (
+                <>Report ID: {selectedReportData.report_id.substring(0, 8)}... • </>
+              ) : (
+                <>All Reports • </>
+              )}
+              Analysis based on {selectedReportData.run_count} filtered runs
+            </p>
+          </div>
+
+          {/* Metrics Summary */}
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Metrics Summary</h3>
+            {selectedReportData.run_count === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">No data matches the selected filters</div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Runs</p>
+                  <p className="text-2xl font-bold text-foreground">{selectedReportData.metrics_summary.total_runs}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Completed</p>
+                  <p className="text-2xl font-bold text-green-600">{selectedReportData.metrics_summary.sucessfull_runs}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Goal Not Met</p>
+                  <p className="text-2xl font-bold text-amber-600">{selectedReportData.metrics_summary.failed_runs}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Error</p>
+                  <p className="text-2xl font-bold text-red-600">{selectedReportData.metrics_summary.error_runs}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Success Rate</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {(selectedReportData.metrics_summary.success_rate * 100).toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            )}
+          </Card>
 
           {/* Journey Sankey Diagram */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Journey Flow</h3>
-            <JourneySankey data={selectedReport?.journey_sankey} />
-          </Card>
+          {selectedReportData.run_count > 0 && (
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Journey Flow</h3>
+              <JourneySankey
+                data={selectedReportData.journey_sankey}
+                onNodeClick={(node) => setSelectedFrictionNode(node)}
+              />
+            </Card>
+          )}
 
-          {/* Journey Table */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Journey Metrics</h3>
-            <JourneyTable
-              runs={filteredRuns}
-              groupByPlatform={!selectedSegments.some((s) => s.type === "platform")}
-              groupByPersona={personaFilter === "all"}
-            />
-          </Card>
+          {/* Friction Hotspots */}
+          <FrictionHotspots hotspots={friction} loading={frictionLoading} />
         </>
+      ) : (
+        <Card className="p-12">
+          <div className="text-center text-muted-foreground">
+            <p className="text-lg mb-2">Report not found</p>
+            <p className="text-sm">The selected report could not be loaded</p>
+          </div>
+        </Card>
       )}
+
+      {/* Friction Detail Modal */}
+      <FrictionDetailModal
+        node={selectedFrictionNode}
+        onClose={() => setSelectedFrictionNode(null)}
+      />
     </div>
   )
 }
+

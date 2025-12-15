@@ -4,22 +4,123 @@
  */
 
 /**
- * Test Configuration
+ * Test Scenario
  * Defines test setup and personas
  */
-export interface TestConfig {
+export interface UserJourneyTask {
+  number: number;
+  starting_url: string;
+  goal: string;
+  steps: string;
+  persona: string;
+  stop?: string;
+}
+
+export interface TasksMetadata {
+  total_tasks: number;
+  total_generated?: number;
+  total_selected?: number;
+  selected_task_numbers?: number[];
+  persona_distribution: Record<string, number>;
+  generated_at?: string;
+  last_generated?: string;
+  generation_history?: Array<{
+    timestamp: string;
+    prompt_type: string;
+    num_generated: number;
+    custom_prompt_used: boolean;
+  }>;
+  error?: string;
+}
+
+export interface DiscoveredUrl {
+  url: string;
+  url_decoded?: string;
+}
+
+export interface Scenario {
   id: string;
   name: string;
   website_url: string;
   personas: string[];
   created_at: string; // ISO datetime
   updated_at: string; // ISO datetime
+  description?: string;
+  metrics?: string[];
+  email?: string;
+  tasks?: UserJourneyTask[];
+  tasks_metadata?: TasksMetadata;
+  discovered_urls?: DiscoveredUrl[];
+  crawler_final_result?: any;
+  crawler_extracted_content?: any;
+  selected_task_indices?: number[];
 }
 
-export interface CreateTestConfigRequest {
+export interface CreateScenarioRequest {
   name: string;
   website_url: string;
   personas?: string[];
+  description?: string;
+  metrics?: string[];
+  email?: string;
+  tasks?: UserJourneyTask[];
+  selected_task_indices?: number[];
+  tasks_metadata?: TasksMetadata;
+  discovered_urls?: DiscoveredUrl[];
+  crawler_final_result?: string;
+  crawler_extracted_content?: string;
+}
+
+/**
+ * System Configuration
+ * Global settings for the application
+ */
+export interface SystemConfig {
+  id: number;
+  provider: string;
+  model_name: string;
+  api_key: string;
+  use_thinking: boolean;
+  max_steps: number;
+  max_browser_workers: number;
+  created_at: string; // ISO datetime
+  updated_at: string; // ISO datetime
+}
+
+export interface UpdateSystemConfigRequest {
+  provider: string;
+  model_name: string;
+  api_key: string;
+  use_thinking: boolean;
+  max_steps: number;
+  max_browser_workers: number;
+}
+
+/**
+ * Crawler Analysis
+ * Website crawling and analysis
+ */
+export interface CrawlerAnalysisRequest {
+  scenario_id?: string;
+  website_url: string;
+  description?: string;
+  name?: string;
+  metrics?: string[];
+  email?: string;
+}
+
+export interface CrawlerAnalysisResponse {
+  run_id: string;
+  scenario_id: string;
+  output_path?: string;
+  status: string;
+  duration?: number;
+  steps?: number;
+  error?: string;
+  crawler_summary?: string;
+  crawler_extracted_content: string;
+  tasks?: UserJourneyTask[];
+  tasks_metadata?: TasksMetadata;
 }
 
 /**
@@ -50,56 +151,72 @@ export interface MetricsData {
 }
 
 /**
- * Agent Run
- * Represents a single agent execution
+ * Persona Run
+ * Represents a single persona execution
  */
-export interface AgentRun {
+export interface PersonaRun {
   id: string;
   config_id: string;
   report_id?: string;
   persona_type: string;
-  status: "success" | "error" | "anomaly" | "in-progress";
+  is_done: boolean;
   timestamp: string; // ISO datetime
-  duration?: number; // seconds
+  duration_seconds?: number; // seconds
   platform: string;
-  location?: string; // Geographic location (US, UK, CA, etc.)
   error_type?: string; // Error type for failed runs
   steps_completed: number;
   total_steps: number;
-  journey_path: string[];
-  goals_achieved: string[];
-  friction_points: FrictionPoint[];
-  metrics: MetricsData;
-  created_at: string; // ISO datetime
-  updated_at: string; // ISO datetime
+  final_result?: string;
+  judgement_data: any;
+  task_description?: string;
+  task_goal?: string;
+  task_steps?: string;
+  task_url?: string;
+  events: any[];
 }
 
-export interface CreateAgentRunRequest {
+export interface CreatePersonaRunRequest {
   config_id: string;
   report_id?: string;
   persona_type: string;
-  status: string;
+  is_done?: boolean;
   timestamp: string;
-  duration?: number;
+  duration_seconds?: number;
   platform?: string;
-  location?: string;
   error_type?: string;
   steps_completed?: number;
   total_steps?: number;
   journey_path?: string[];
-  goals_achieved?: string[];
-  friction_points?: FrictionPoint[];
-  metrics?: MetricsData;
+  final_result?: string;
+  judgement_data?: any;
+  task_description?: string;
+  task_goal?: string;
+  task_steps?: string;
+  task_url?: string;
+  events?: any[];
+}
+
+/**
+ * Friction Reason
+ * Individual friction reason with count
+ */
+export interface FrictionReason {
+  reason: string;
+  count: number;
 }
 
 /**
  * Sankey Node
- * Represents a page in the journey
+ * Represents a page in the journey with optional friction metadata
  */
 export interface SankeyNode {
   name: string;
   visits: number;
-  errors: number;
+  event_count?: number;
+  friction_count?: number;
+  friction_reasons?: FrictionReason[];
+  friction_impact?: number;
+  example_run_ids?: string[];
 }
 
 /**
@@ -127,35 +244,56 @@ export interface SankeyData {
  */
 export interface MetricsSummary {
   total_runs: number;
-  success_count: number;
-  error_count: number;
-  anomaly_count: number;
+  sucessfull_runs: number;
+  failed_runs: number;
+  error_runs: number;
   success_rate: number;
-  avg_duration: number;
-  avg_completion: number;
+  avg_duration_seconds: number;
+  avg_steps: number;
 }
 
 /**
- * Report
- * Aggregated results from multiple agent runs
+ * Report List Item
+ * Summary of a report for the report selector
  */
-export interface Report {
-  id: string;
-  config_id: string;
-  name: string;
-  description?: string;
-  is_baseline: boolean;
-  metrics_summary: MetricsSummary;
-  journey_sankey: SankeyData;
-  created_at: string; // ISO datetime
-  updated_at: string; // ISO datetime
+export interface ReportListItem {
+  report_id: string;
+  scenario_id: string;
+  scenario_name: string;
+  run_count: number;
+  first_run: string;  // ISO datetime
+  last_run: string;   // ISO datetime
 }
 
-export interface CreateReportRequest {
-  config_id: string;
-  name: string;
-  description?: string;
-  is_baseline?: boolean;
+/**
+ * Report Aggregate
+ * Full aggregated data for a specific report
+ */
+export interface ReportAggregate {
+  report_id: string;
+  scenario_id: string;
+  scenario_name: string;
+  run_count: number;
+  metrics_summary: MetricsSummary;
+  journey_sankey: SankeyData;
+}
+
+export interface PersonaExecutionResponse {
+  run_id: string;
+  scenario_id: string;
+  report_id: string;
+  task_count: number;
+  status: string;
+  message: string;
+}
+
+export interface RunStatusResponse {
+  run_id: string;
+  status: "in_progress" | "completed" | "partial_failure" | "failed";
+  total_tasks: number;
+  completed_tasks: number;
+  failed_tasks: number;
+  agent_run_ids: string[];
 }
 
 /**
@@ -171,4 +309,29 @@ export interface ApiListResponse<T> {
   total: number;
   offset: number;
   limit: number;
+}
+
+export interface GenerateMoreTasksRequest {
+  num_tasks: number;
+  prompt_type: "original" | "friction";
+  custom_prompt?: string;
+}
+
+export interface GenerateMoreTasksResponse {
+  scenario_id: string;
+  new_tasks: UserJourneyTask[];
+  total_tasks: number;
+  tasks_metadata: TasksMetadata;
+  message: string;
+}
+
+/**
+ * Insights and Friction Data
+ */
+export interface FrictionHotspotItem {
+  location: string;
+  reason: string;
+  count: number;
+  impact_percentage: number;
+  example_run_ids: string[];
 }

@@ -4,6 +4,7 @@ node_modules
 .claude
 ui/.next/
 ui/out/
+*.tsbuildinfo
 
 # Environment variables
 *.env*
@@ -42,3 +43,5 @@ env/
 usefly/data/*
 usefly/static/
 *.gif*
+*.db*
+*.log*

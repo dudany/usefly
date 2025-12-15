@@ -1,22 +1,28 @@
+import Link from "next/link"
 import { Suspense } from "react"
 import { AppLayout } from "@/components/layout/app-layout"
-import { NewReportForm } from "@/components/reports/new-report-form"
+import { NewScenarioForm } from "@/components/scenarios/new-scenario-form"
 import { Card, CardContent } from "@/components/ui/card"
-import { Zap, Target, LineChart } from "lucide-react"
+import { Zap, Target, LineChart, ChevronLeft } from "lucide-react"
 
-export default function ConfigPage() {
+export default function NewScenarioPage() {
   return (
     <AppLayout>
       <div className="p-6">
+        {/* Back Button */}
+        <Link href="/scenarios" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+          <ChevronLeft className="w-4 h-4" />
+          Back to Scenarios
+        </Link>
+
         {/* Hero Section */}
         <div className="mb-12">
-          <div className="max-w-4xl mx-auto text-center mb-8">
+          <div className="max-w-3xl mx-auto text-center mb-8">
             <h1 className="text-4xl font-bold text-foreground mb-4">
-              Ship Features Faster with AI-Powered QA
+              Create Your Test Scenario
             </h1>
-            <p className="text-lg text-muted-foreground mb-6">
-              Speed up your GTM by running AI agents on your new features to understand friction points,
-              catch errors before real users do, and know exactly what to measure when you launch.
+            <p className="text-lg text-muted-foreground">
+              AI agents test your website and identify friction points—so you can ship with confidence.
             </p>
           </div>
 
@@ -28,9 +34,9 @@ export default function ConfigPage() {
                   <div className="p-3 rounded-lg bg-primary/10">
                     <Zap className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-lg">Fast QA Testing</h3>
+                  <h3 className="font-semibold text-lg">Ship Faster</h3>
                   <p className="text-sm text-muted-foreground">
-                    AI agents test your feature's core functionality in hours, not days
+                    Test core user flows in hours, not days. No manual testing needed.
                   </p>
                 </div>
               </CardContent>
@@ -42,9 +48,9 @@ export default function ConfigPage() {
                   <div className="p-3 rounded-lg bg-primary/10">
                     <Target className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-lg">Identify Friction Points</h3>
+                  <h3 className="font-semibold text-lg">Catch Issues Early</h3>
                   <p className="text-sm text-muted-foreground">
-                    Catch UX issues and errors before they impact real users
+                    Find UX friction and errors before your users do.
                   </p>
                 </div>
               </CardContent>
@@ -56,9 +62,9 @@ export default function ConfigPage() {
                   <div className="p-3 rounded-lg bg-primary/10">
                     <LineChart className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-lg">Know What to Measure</h3>
+                  <h3 className="font-semibold text-lg">Understand Behavior</h3>
                   <p className="text-sm text-muted-foreground">
-                    Get recommended metrics to track when your feature goes live
+                    See how users navigate and where they struggle.
                   </p>
                 </div>
               </CardContent>
@@ -68,7 +74,7 @@ export default function ConfigPage() {
 
         {/* Form */}
         <Suspense fallback={<div className="text-muted-foreground">Loading...</div>}>
-          <NewReportForm />
+          <NewScenarioForm />
         </Suspense>
       </div>
     </AppLayout>

@@ -1,4 +1,4 @@
-import type { AgentRun } from "@/types/api"
+import type { PersonaRun } from "@/types/api"
 
 export interface JourneyAggregation {
   segment: string
@@ -14,7 +14,7 @@ export interface JourneyAggregation {
  * Aggregate runs by segment (platform and/or persona) for journey table
  */
 export function aggregateBySegment(
-  runs: AgentRun[],
+  runs: PersonaRun[],
   groupByPlatform: boolean,
   groupByPersona: boolean
 ): JourneyAggregation[] {
@@ -23,7 +23,7 @@ export function aggregateBySegment(
   }
 
   // Create grouping key based on what we're grouping by
-  const groupMap = new Map<string, AgentRun[]>()
+  const groupMap = new Map<string, PersonaRun[]>()
 
   runs.forEach((run) => {
     let key = ""
@@ -56,16 +56,21 @@ export function aggregateBySegment(
     const totalRuns = segmentRuns.length
 
     // Calculate goals achieved percentage
-    // A run achieves goals if it has at least one goal achieved
-    const runsWithGoals = segmentRuns.filter((r) => r.goals_achieved.length > 0).length
+    // A run achieves goals only if is_done is true AND verdict is true (SUCCESS status)
+    const runsWithGoals = segmentRuns.filter((r) => {
+      const verdict = r.judgement_data?.verdict
+      const failureReason = r.judgement_data?.failure_reason
+      return r.is_done && verdict === true && !failureReason
+    }).length
     const goalsAchievedPercent = (runsWithGoals / totalRuns) * 100
 
     // Calculate errors percentage
-    const runsWithErrors = segmentRuns.filter((r) => r.status === "error").length
+    const runsWithErrors = segmentRuns.filter((r) => r.error_type && r.error_type !== "").length
     const errorsPercent = (runsWithErrors / totalRuns) * 100
 
     // Calculate friction percentage
-    const runsWithFriction = segmentRuns.filter((r) => r.friction_points.length > 0).length
+    // Friction is when steps_completed < total_steps
+    const runsWithFriction = segmentRuns.filter((r) => r.total_steps > 0 && r.steps_completed < r.total_steps).length
     const frictionPercent = (runsWithFriction / totalRuns) * 100
 
     // Build segment label

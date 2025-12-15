@@ -30,7 +30,7 @@ dependencies = [
     "click>=8.1.0",
 
     # Agent dependencies
-    "browser-use>=0.9.6",
+    "browser-use>=0.10.1",
     "python-dotenv==1.0.1",
     "pillow>=10.0.0",
     "imageio[ffmpeg]>=2.34.0",

@@ -4,12 +4,21 @@
  */
 
 import {
-  TestConfig,
-  CreateTestConfigRequest,
-  AgentRun,
-  CreateAgentRunRequest,
-  Report,
-  CreateReportRequest,
+  Scenario,
+  CreateScenarioRequest,
+  PersonaRun,
+  CreatePersonaRunRequest,
+  ReportListItem,
+  ReportAggregate,
+  SystemConfig,
+  UpdateSystemConfigRequest,
+  CrawlerAnalysisRequest,
+  CrawlerAnalysisResponse,
+  PersonaExecutionResponse,
+  RunStatusResponse,
+  GenerateMoreTasksRequest,
+  GenerateMoreTasksResponse,
+  FrictionHotspotItem,
 } from "@/types/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -39,46 +48,76 @@ async function apiFetch<T>(
 }
 
 /**
- * Test Config API methods
+ * Scenario API methods
  */
-export const configApi = {
-  list: () => apiFetch<TestConfig[]>("/api/configs"),
+export const scenarioApi = {
+  list: () => apiFetch<Scenario[]>("/api/scenarios"),
 
-  get: (id: string) => apiFetch<TestConfig>(`/api/configs/${id}`),
+  get: (id: string) => apiFetch<Scenario>(`/api/scenarios/${id}`),
 
-  create: (data: CreateTestConfigRequest) =>
-    apiFetch<TestConfig>("/api/configs", {
+  create: (data: CreateScenarioRequest) =>
+    apiFetch<Scenario>("/api/scenarios", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+
+  updateTasks: (id: string, selectedTaskNumbers: number[]) =>
+    apiFetch<Scenario>(`/api/scenario/${id}/tasks`, {
+      method: "PATCH",
+      body: JSON.stringify({ selected_task_numbers: selectedTaskNumbers }),
+    }),
+
+  updateTasksFull: (id: string, tasks: Array<Record<string, unknown>>, selectedTaskNumbers: number[]) =>
+    apiFetch<Scenario>(`/api/scenario/${id}/tasks`, {
+      method: "PUT",
+      body: JSON.stringify({ tasks, selected_task_numbers: selectedTaskNumbers }),
+    }),
+
+  delete: (id: string) =>
+    apiFetch<void>(`/api/scenarios/${id}`, {
+      method: "DELETE",
+    }),
+
+  getPersonas: () =>
+    apiFetch<{ personas: string[]; counts: Record<string, number> }>("/api/scenario/personas"),
+
+  generateMoreTasks: (scenarioId: string, request: GenerateMoreTasksRequest) =>
+    apiFetch<GenerateMoreTasksResponse>(`/api/scenario/${scenarioId}/generate-tasks`, {
+      method: "POST",
+      body: JSON.stringify(request),
     }),
 };
 
 /**
- * Agent Run API methods
+ * Persona Run Records API methods
  */
-export const agentRunApi = {
+export const personaRecordsApi = {
   list: (filters?: {
     configId?: string;
     personaType?: string;
+    reportId?: string;
     status?: string;
+    platform?: string;
     limit?: number;
     offset?: number;
   }) => {
     const params = new URLSearchParams();
     if (filters?.configId) params.append("config_id", filters.configId);
     if (filters?.personaType) params.append("persona_type", filters.personaType);
+    if (filters?.reportId) params.append("report_id", filters.reportId);
     if (filters?.status) params.append("status", filters.status);
+    if (filters?.platform) params.append("platform", filters.platform);
     if (filters?.limit) params.append("limit", filters.limit.toString());
     if (filters?.offset) params.append("offset", filters.offset.toString());
 
     const query = params.toString() ? `?${params.toString()}` : "";
-    return apiFetch<AgentRun[]>(`/api/agent-runs${query}`);
+    return apiFetch<PersonaRun[]>(`/api/persona-runs${query}`);
   },
 
-  get: (id: string) => apiFetch<AgentRun>(`/api/agent-runs/${id}`),
+  get: (id: string) => apiFetch<PersonaRun>(`/api/persona-runs/${id}`),
 
-  create: (data: CreateAgentRunRequest) =>
-    apiFetch<AgentRun>("/api/agent-runs", {
+  create: (data: CreatePersonaRunRequest) =>
+    apiFetch<PersonaRun>("/api/persona-runs", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -88,28 +127,86 @@ export const agentRunApi = {
  * Report API methods
  */
 export const reportApi = {
-  list: (filters?: {
-    configId?: string;
-    isBaseline?: boolean;
-    limit?: number;
-    offset?: number;
-  }) => {
+  list: () => apiFetch<ReportListItem[]>("/api/reports/list"),
+
+  getAggregate: (reportId?: string, mode?: string, filters?: { persona?: string; status?: string; platform?: string; scenario?: string }) => {
     const params = new URLSearchParams();
-    if (filters?.configId) params.append("config_id", filters.configId);
-    if (filters?.isBaseline !== undefined)
-      params.append("is_baseline", filters.isBaseline.toString());
-    if (filters?.limit) params.append("limit", filters.limit.toString());
-    if (filters?.offset) params.append("offset", filters.offset.toString());
+    if (reportId && reportId !== "all") params.append("report_id", reportId);
+    if (filters?.scenario && filters.scenario !== "all") params.append("config_id", filters.scenario);
+    if (mode && mode !== "compact") params.append("mode", mode);
+    if (filters?.persona && filters.persona !== "all") params.append("persona", filters.persona);
+    if (filters?.status && filters.status !== "all") params.append("status", filters.status);
+    if (filters?.platform && filters.platform !== "all") params.append("platform", filters.platform);
 
     const query = params.toString() ? `?${params.toString()}` : "";
-    return apiFetch<Report[]>(`/api/reports${query}`);
+    return apiFetch<ReportAggregate>(`/api/reports/aggregate${query}`);
   },
 
-  get: (id: string) => apiFetch<Report>(`/api/reports/${id}`),
+  getRuns: (reportId: string, filters?: { persona?: string; status?: string; platform?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.persona && filters.persona !== "all") params.append("persona", filters.persona);
+    if (filters?.status && filters.status !== "all") params.append("status", filters.status);
+    if (filters?.platform && filters.platform !== "all") params.append("platform", filters.platform);
 
-  create: (data: CreateReportRequest) =>
-    apiFetch<Report>("/api/reports", {
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiFetch<PersonaRun[]>(`/api/reports/${reportId}/runs${query}`);
+  },
+
+
+  getFriction: (reportId?: string, configId?: string) => {
+    const params = new URLSearchParams();
+    if (reportId && reportId !== "all") params.append("report_id", reportId);
+    if (configId && configId !== "all") params.append("config_id", configId);
+
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiFetch<FrictionHotspotItem[]>(`/api/reports/friction${query}`);
+  },
+};
+
+/**
+ * System Config API methods
+ */
+export const systemConfigApi = {
+  get: () => apiFetch<SystemConfig>("/api/system-config"),
+
+  update: (data: UpdateSystemConfigRequest) =>
+    apiFetch<SystemConfig>("/api/system-config", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+};
+
+/**
+ * Crawler API methods
+ */
+export const crawlerApi = {
+  analyze: (data: CrawlerAnalysisRequest) =>
+    apiFetch<CrawlerAnalysisResponse>("/api/scenario/analyze", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+
+  save: (data: CreateScenarioRequest) =>
+    apiFetch<Scenario>("/api/scenarios", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
+
+/**
+ * Persona Execution API methods
+ */
+export const personaExecutionApi = {
+  run: (scenarioId: string) =>
+    apiFetch<PersonaExecutionResponse>(`/api/persona/run/${scenarioId}`, {
+      method: "POST",
+    }),
+
+  getStatus: (runId: string) =>
+    apiFetch<RunStatusResponse>(`/api/persona/run/${runId}/status`),
+
+  acknowledgeCompletion: (runId: string) =>
+    apiFetch<void>(`/api/persona/run/${runId}`, {
+      method: "DELETE",
     }),
 };

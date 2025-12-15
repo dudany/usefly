@@ -1,23 +1,6 @@
 import sankeyDataJson from "./sankey-data.json"
-
-export interface SankeyNode {
-  id: string
-  totalVisits?: number
-  errorCount?: number
-  frictionCount?: number
-}
-
-export interface SankeyLink {
-  source: string
-  target: string
-  value: number
-}
-
-export interface SankeyData {
-  nodes: SankeyNode[]
-  links: SankeyLink[]
-}
+import type { SankeyData } from "@/types/api"
 
 export function useSankeyData(): SankeyData {
-  return sankeyDataJson
+  return sankeyDataJson as SankeyData
 }

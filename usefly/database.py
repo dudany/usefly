@@ -38,6 +38,8 @@ def get_db():
 
 def init_db():
     """Initialize the database by creating all tables."""
+    # Import models to register them with Base
+    from usefly import models  # noqa: F401
     Base.metadata.create_all(bind=engine)
 
 
