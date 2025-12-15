@@ -54,12 +54,11 @@ class UpdateScenarioTasksRequest(BaseModel):
     """Request to update scenario task selection."""
     selected_task_numbers: List[int] = []
 
-    @field_validator('selected_task_numbers')
-    @classmethod
-    def validate_task_numbers(cls, v):
-        if not v:
-            raise ValueError("At least one task must be selected")
-        return v
+
+class UpdateScenarioTasksFullRequest(BaseModel):
+    """Request to update scenario tasks array and selection (for task deletions/edits)."""
+    tasks: List[Dict]
+    selected_task_numbers: List[int] = []
 
 
 # ==================== Generate More Tasks ====================
@@ -73,8 +72,8 @@ class GenerateMoreTasksRequest(BaseModel):
     @field_validator('num_tasks')
     @classmethod
     def validate_num_tasks(cls, v):
-        if v < 5 or v > 50:
-            raise ValueError("num_tasks must be between 5 and 50")
+        if v < 1:
+            raise ValueError("num_tasks must be at least 1")
         return v
 
     @field_validator('prompt_type')

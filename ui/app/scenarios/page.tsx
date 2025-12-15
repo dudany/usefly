@@ -192,9 +192,9 @@ export default function ScenariosPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Test Scenarios</h1>
+              <h1 className="text-3xl font-bold text-foreground">Scenarios</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Manage your test scenarios and create new ones
+                Manage your scenarios and create new ones
               </p>
             </div>
             <Button onClick={() => router.push("/scenarios/new")} className="gap-2">
@@ -245,22 +245,6 @@ export default function ScenariosPage() {
                         {scenario.website_url}
                       </p>
                     </div>
-
-                    {scenario.personas && scenario.personas.length > 0 && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Personas:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {scenario.personas.map((persona, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-block px-2 py-1 text-xs bg-primary/10 text-primary rounded"
-                            >
-                              {persona}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
 
                     <p className="text-xs text-muted-foreground">
                       Created {new Date(scenario.created_at).toLocaleDateString()}

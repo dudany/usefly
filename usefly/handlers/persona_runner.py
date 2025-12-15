@@ -423,7 +423,15 @@ async def run_persona_tasks(db_session_factory, scenario_id: str, report_id: str
 async def _wait_for_completion(futures, run_id: str):
     """Wait for all futures to complete and update final status."""
     try:
-        await asyncio.gather(*futures, return_exceptions=True)
+        await asyncio.wait_for(
+            asyncio.gather(*futures, return_exceptions=True),
+            timeout=600  # 10 minutes
+        )
+    except asyncio.TimeoutError:
+        print(f"Timeout (10 min) for run: {run_id}")
+        if run_id in _active_runs:
+            _active_runs[run_id]["status"] = "failed"
+            _active_runs[run_id]["error"] = "Timeout: 10 minutes exceeded"
     except Exception as e:
         print(f"Error waiting for tasks: {e}")
         if run_id in _active_runs:

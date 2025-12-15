@@ -31,9 +31,11 @@ export function GenerateTasksDialog({
   const [isGenerating, setIsGenerating] = useState(false)
 
   const handleGenerate = async () => {
+    console.log("handleGenerate called", { scenarioId, numTasks, promptType, customPrompt })
+
     // Validation
-    if (numTasks < 5 || numTasks > 50) {
-      toast.error("Number of tasks must be between 5 and 50")
+    if (numTasks < 1) {
+      toast.error("Number of tasks must be at least 1")
       return
     }
 
@@ -85,49 +87,18 @@ export function GenerateTasksDialog({
           {/* Number of Tasks */}
           <div className="space-y-2">
             <Label htmlFor="num-tasks">
-              Number of Tasks (5-50)
+              Number of Tasks
             </Label>
             <Input
               id="num-tasks"
               type="number"
-              min={5}
-              max={50}
+              min={1}
               value={numTasks}
-              onChange={(e) => setNumTasks(parseInt(e.target.value) || 15)}
+              onChange={(e) => setNumTasks(parseInt(e.target.value) || 5)}
             />
             <p className="text-sm text-muted-foreground">
-              Recommended: 10-15 tasks for focused testing
+              Recommended: 3-8 tasks for focused testing
             </p>
-          </div>
-
-          {/* Prompt Type Selection */}
-          <div className="space-y-3">
-            <Label>Task Generation Strategy</Label>
-            <RadioGroup value={promptType} onValueChange={(v) => setPromptType(v as "original" | "friction")}>
-              <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4">
-                <RadioGroupItem value="original" id="original" />
-                <div className="space-y-1 leading-none">
-                  <Label htmlFor="original" className="font-medium cursor-pointer">
-                    Original Strategy
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Generate standard user journey tasks focusing on conversions, research, and typical user flows
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4 border-primary bg-primary/5">
-                <RadioGroupItem value="friction" id="friction" />
-                <div className="space-y-1 leading-none">
-                  <Label htmlFor="friction" className="font-medium cursor-pointer">
-                    Friction-Focused Strategy (Recommended)
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Generate tasks targeting edge cases, error handling, accessibility issues, and performance problems
-                  </p>
-                </div>
-              </div>
-            </RadioGroup>
           </div>
 
           {/* Custom Prompt */}
@@ -152,7 +123,7 @@ export function GenerateTasksDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isGenerating}>
             Cancel
           </Button>
-          <Button onClick={handleGenerate} disabled={isGenerating}>
+          <Button type="button" onClick={handleGenerate} disabled={isGenerating}>
             {isGenerating ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />

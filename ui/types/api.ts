@@ -311,10 +311,6 @@ export interface ApiListResponse<T> {
   limit: number;
 }
 
-/**
- * Generate More Tasks
- * Request and response for generating additional tasks
- */
 export interface GenerateMoreTasksRequest {
   num_tasks: number;
   prompt_type: "original" | "friction";

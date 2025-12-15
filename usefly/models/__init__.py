@@ -47,6 +47,7 @@ from usefly.models.schemas import (
     CrawlerAnalysisRequest,
     CrawlerAnalysisResponse,
     UpdateScenarioTasksRequest,
+    UpdateScenarioTasksFullRequest,
     GenerateMoreTasksRequest,
     GenerateMoreTasksResponse,
 )
@@ -79,6 +80,7 @@ __all__ = [
     "CrawlerAnalysisRequest",
     "CrawlerAnalysisResponse",
     "UpdateScenarioTasksRequest",
+    "UpdateScenarioTasksFullRequest",
     "GenerateMoreTasksRequest",
     "GenerateMoreTasksResponse",
 ]

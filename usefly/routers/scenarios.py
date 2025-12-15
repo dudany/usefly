@@ -9,6 +9,7 @@ from usefly.models import (
     CrawlerAnalysisRequest,
     CrawlerAnalysisResponse,
     UpdateScenarioTasksRequest,
+    UpdateScenarioTasksFullRequest,
     GenerateMoreTasksRequest,
     GenerateMoreTasksResponse,
 )
@@ -71,6 +72,21 @@ def update_scenario_tasks(
     """Update selected tasks for an existing scenario."""
     try:
         return scenarios_handler.update_scenario_tasks(db, scenario_id, request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{scenario_id}/tasks")
+def update_scenario_tasks_full(
+    scenario_id: str,
+    request: UpdateScenarioTasksFullRequest,
+    db: Session = Depends(get_db)
+):
+    """Update tasks array and selection for an existing scenario (for deletions/edits)."""
+    try:
+        return scenarios_handler.update_scenario_tasks_full(db, scenario_id, request)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

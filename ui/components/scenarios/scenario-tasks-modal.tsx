@@ -7,11 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Loader2, Play, Plus, Pencil, Trash2, Sparkles, X } from "lucide-react"
+import { Loader2, Play, Plus, Pencil, Trash2, Sparkles, X, Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { scenarioApi, crawlerApi } from "@/lib/api-client"
 import { Scenario, CrawlerAnalysisResponse, CreateScenarioRequest } from "@/types/api"
@@ -25,6 +26,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { GenerateTasksDialog } from "./generate-tasks-dialog"
+
+// Available personas for e-commerce and SaaS contexts
+const AVAILABLE_PERSONAS = [
+  "First-time Visitor",
+  "Web Shopper",
+  "Mobile Shopper",
+  "Power User",
+  "Free Trial User",
+  "Demo Requester",,
+  "Subscription Manager",
+  "Support Seeker",
+  "Feature Explorer",
+]
 
 interface Task {
   number: number
@@ -71,6 +85,7 @@ export function ScenarioTasksModal({
   // State
   const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set())
   const [localTasks, setLocalTasks] = useState<Task[]>([])
+  const [tasksModified, setTasksModified] = useState(false)  // Track if tasks array changed
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
@@ -81,25 +96,7 @@ export function ScenarioTasksModal({
   // Task editing state
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [showTaskEditor, setShowTaskEditor] = useState(false)
-  const [availablePersonas, setAvailablePersonas] = useState<string[]>([])
-
-  // Fetch available personas
-  useEffect(() => {
-    async function fetchPersonas() {
-      try {
-        const data = await scenarioApi.getPersonas()
-        if (data.personas && data.personas.length > 0) {
-          setAvailablePersonas(data.personas)
-        }
-      } catch (err) {
-        // Fall back to defaults
-        console.error("Failed to fetch personas:", err)
-      }
-    }
-    if (open) {
-      fetchPersonas()
-    }
-  }, [open])
+  const [personaPopoverOpen, setPersonaPopoverOpen] = useState(false)
 
   // Initialize tasks and selection
   useEffect(() => {
@@ -108,10 +105,12 @@ export function ScenarioTasksModal({
     if (mode === 'create' && analysisResult?.tasks) {
       setLocalTasks(analysisResult.tasks as Task[])
       setSelectedTasks(new Set(analysisResult.tasks.map((t: any) => t.number)))
+      setTasksModified(false)
     } else if (mode === 'edit' && scenario) {
       setLocalTasks((scenario.tasks || []) as Task[])
       const selectedNumbers = scenario.tasks_metadata?.selected_task_numbers || []
       setSelectedTasks(new Set(selectedNumbers))
+      setTasksModified(false)
     }
   }, [open, mode, analysisResult, scenario])
 
@@ -143,7 +142,7 @@ export function ScenarioTasksModal({
 
     setEditingTask({
       number: newTaskNumber,
-      persona: availablePersonas[0] || "Explorer",
+      persona: AVAILABLE_PERSONAS[0] || "Explorer",
       starting_url: scenario?.website_url || createFormData?.website_url || "",
       goal: "",
       steps: ""
@@ -167,6 +166,7 @@ export function ScenarioTasksModal({
       next.delete(taskNumber)
       return next
     })
+    setTasksModified(true)
     toast.success("Persona deleted")
   }
 
@@ -190,16 +190,13 @@ export function ScenarioTasksModal({
       ))
     }
 
+    setTasksModified(true)
     setShowTaskEditor(false)
     setEditingTask(null)
     toast.success(isNew ? "Persona added" : "Persona updated")
   }
 
   const handleSave = async () => {
-    if (selectedTasks.size === 0) {
-      toast.error("Please select at least one task")
-      return
-    }
 
     setIsSaving(true)
     try {
@@ -242,7 +239,13 @@ export function ScenarioTasksModal({
           return
         }
 
-        await scenarioApi.updateTasks(scenario.id, Array.from(selectedTasks))
+        if (tasksModified) {
+          // Tasks were added, edited, or deleted - use full update
+          await scenarioApi.updateTasksFull(scenario.id, localTasks, Array.from(selectedTasks))
+        } else {
+          // Only selection changed - use simple update
+          await scenarioApi.updateTasks(scenario.id, Array.from(selectedTasks))
+        }
 
         toast.success("Scenario updated successfully!", {
           description: `Updated with ${selectedTasks.size} selected tasks`
@@ -269,12 +272,16 @@ export function ScenarioTasksModal({
       const currentSelected = scenario.tasks_metadata?.selected_task_numbers || []
       const newSelected = Array.from(selectedTasks)
 
-      const hasChanged = currentSelected.length !== newSelected.length ||
+      const hasSelectionChanged = currentSelected.length !== newSelected.length ||
         !currentSelected.every(n => newSelected.includes(n))
 
-      if (hasChanged) {
+      if (tasksModified || hasSelectionChanged) {
         toast.info("Saving changes before running...")
-        await scenarioApi.updateTasks(scenario.id, newSelected)
+        if (tasksModified) {
+          await scenarioApi.updateTasksFull(scenario.id, localTasks, newSelected)
+        } else {
+          await scenarioApi.updateTasks(scenario.id, newSelected)
+        }
       }
 
       await onRun(scenario)
@@ -606,7 +613,7 @@ export function ScenarioTasksModal({
                 </Button>
                 <Button
                   onClick={handleSave}
-                  disabled={isSaving || selectedTasks.size === 0 || isRunning}
+                  disabled={isSaving || isRunning}
                 >
                   {isSaving ? (
                     <>
@@ -639,19 +646,51 @@ export function ScenarioTasksModal({
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Persona</label>
-                <Select
-                  value={editingTask.persona}
-                  onValueChange={(v) => setEditingTask({ ...editingTask, persona: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availablePersonas.map((p) => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={personaPopoverOpen} onOpenChange={setPersonaPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <div className="relative">
+                      <Input
+                        value={editingTask.persona}
+                        onChange={(e) => setEditingTask({ ...editingTask, persona: e.target.value })}
+                        onFocus={() => setPersonaPopoverOpen(true)}
+                        placeholder="Type or select a persona..."
+                        className="pr-8"
+                      />
+                      <ChevronsUpDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                    <Command>
+                      <CommandList className="max-h-48 overflow-y-auto">
+                        <CommandGroup heading="Suggested Personas">
+                          {AVAILABLE_PERSONAS
+                            .filter((p) => p.toLowerCase().includes(editingTask.persona.toLowerCase()))
+                            .map((p) => (
+                            <CommandItem
+                              key={p}
+                              value={p}
+                              onSelect={() => {
+                                setEditingTask({ ...editingTask, persona: p })
+                                setPersonaPopoverOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  editingTask.persona === p ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {p}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Select from suggestions or type your own custom persona
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Starting URL</label>

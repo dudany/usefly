@@ -44,8 +44,6 @@ def list_persona_runs(
     return runs[offset:offset + limit] if limit else runs[offset:]
 
 def create_persona_run(db: Session, run: PersonaRunCreate) -> PersonaRun:
-    """Create a new persona run."""
-    # Verify scenario exists
     scenario = db.query(Scenario).filter(Scenario.id == run.config_id).first()
     if not scenario:
         raise ValueError("Scenario not found")

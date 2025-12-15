@@ -207,9 +207,6 @@ def update_scenario_tasks(db: Session, scenario_id: str, request) -> Scenario:
         if task.get("number") in request.selected_task_numbers
     ]
 
-    if not selected_indices:
-        raise ValueError("No tasks match the provided task numbers")
-
     scenario.selected_task_indices = selected_indices
 
     current_metadata = scenario.tasks_metadata or {}
@@ -217,6 +214,49 @@ def update_scenario_tasks(db: Session, scenario_id: str, request) -> Scenario:
         **current_metadata,
         "total_selected": len(selected_indices),
         "selected_task_numbers": request.selected_task_numbers,
+    }
+
+    db.commit()
+    db.refresh(scenario)
+
+    return scenario
+
+
+def update_scenario_tasks_full(db: Session, scenario_id: str, request) -> Scenario:
+    """
+    Update scenario tasks array and selection.
+    Used when tasks are deleted, edited, or added in the UI.
+    """
+    scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
+    if not scenario:
+        raise ValueError("Scenario not found")
+
+    # Update the tasks array
+    scenario.tasks = request.tasks
+
+    # Calculate selected indices from task numbers
+    selected_indices = [
+        i for i, task in enumerate(request.tasks)
+        if task.get("number") in request.selected_task_numbers
+    ]
+
+    scenario.selected_task_indices = selected_indices
+
+    # Update metadata
+    current_metadata = scenario.tasks_metadata or {}
+
+    # Recalculate persona distribution
+    persona_counts = {}
+    for task in request.tasks:
+        persona = task.get("persona", "Unknown")
+        persona_counts[persona] = persona_counts.get(persona, 0) + 1
+
+    scenario.tasks_metadata = {
+        **current_metadata,
+        "total_tasks": len(request.tasks),
+        "total_selected": len(selected_indices),
+        "selected_task_numbers": request.selected_task_numbers,
+        "persona_distribution": persona_counts,
     }
 
     db.commit()

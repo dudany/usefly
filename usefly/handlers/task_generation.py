@@ -57,20 +57,16 @@ def generate_tasks(
     num_tasks: int = 10,
     custom_prompt: Optional[str] = None
 ) -> TaskList:
-    """Generate tasks using the friction task generator prompt."""
-    # Load prompt template
     prompt_template = load_prompt_template(
         num_tasks=num_tasks,
         custom_prompt=custom_prompt
     )
 
-    # Prepare context
     existing_summary, crawler_context = prepare_generation_context(
         existing_tasks=existing_tasks,
         crawler_result=crawler_result
     )
 
-    # Generate tasks using LLM
     task_list = generate_tasks_with_llm(
         prompt_template=prompt_template,
         existing_tasks_summary=existing_summary,
