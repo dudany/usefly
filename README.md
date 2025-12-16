@@ -61,7 +61,7 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 2. Configure your AI provider:
    - Select a provider (OpenAI, Claude, Groq, or Google)
    - Enter your API key
-   - Choose a model (e.g., `gpt-4o`, `claude-sonnet-4-20250514`)
+   - Choose a model (e.g., `gpt-5.2`, `claude-opus-4.5`)
 3. Optionally adjust:
    - **Max Steps** - Maximum actions per task (default: 30)
    - **Max Browser Workers** - Parallel browser count (default: 3)
@@ -123,6 +123,7 @@ usefly/
 **Backend:**
 - [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
 - [SQLAlchemy](https://www.sqlalchemy.org/) - Database ORM
+- [SQLite](https://sqlite.org/) - In process db
 - [browser-use](https://github.com/browser-use/browser-use) - AI browser automation
 - [LangChain](https://www.langchain.com/) - LLM orchestration
 
@@ -132,28 +133,14 @@ usefly/
 - [shadcn/ui](https://ui.shadcn.com/) - UI components
 - [Recharts](https://recharts.org/) - Data visualization
 
-## Configuration
-
-### Environment Variables
-
-Create a `.env` file in the project root (optional):
-
-```env
-# Default port (can also use --port flag)
-USEFLY_PORT=8080
-
-# Database location (default: usefly/data/usefly.db)
-USEFLY_DB_PATH=/path/to/database.db
-```
-
 ### Supported AI Providers
 
-| Provider | Models | Notes |
-|----------|--------|-------|
-| OpenAI | gpt-4o, gpt-4-turbo, gpt-3.5-turbo | Recommended for best results |
-| Anthropic | claude-sonnet-4-20250514, claude-opus-4-5 | Excellent vision capabilities |
-| Google | gemini-pro, gemini-pro-vision | Good balance of cost/performance |
-| Groq | llama-3.1-70b, mixtral-8x7b | Fast inference, lower cost |
+| Provider | 
+|----------|
+| OpenAI | 
+| Anthropic | 
+| Google | 
+| Groq | 
 
 ## Development
 
