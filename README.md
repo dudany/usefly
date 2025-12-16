@@ -61,7 +61,7 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 2. Configure your AI provider:
    - Select a provider (OpenAI, Claude, Groq, or Google)
    - Enter your API key
-   - Choose a model (e.g., `gpt-4o`, `claude-sonnet-4-20250514`)
+   - Choose a model (e.g., `gpt-5.2`, `claude-opus-4.5`)
 3. Optionally adjust:
    - **Max Steps** - Maximum actions per task (default: 30)
    - **Max Browser Workers** - Parallel browser count (default: 3)
