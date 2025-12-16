@@ -3,8 +3,8 @@ from sqlalchemy import desc
 from typing import List, Optional
 import uuid
 
-from usefly.models import PersonaRun, Scenario, PersonaRunCreate
-from usefly.handlers.reports import _query_persona_runs
+from src.models import PersonaRun, Scenario, PersonaRunCreate
+from src.handlers.reports import _query_persona_runs
 
 def list_persona_runs(
     db: Session,

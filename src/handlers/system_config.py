@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from usefly.models import SystemConfig, SystemConfigCreate
+from src.models import SystemConfig, SystemConfigCreate
 
 def get_system_config(db: Session) -> Optional[SystemConfig]:
     """Get system configuration (singleton)."""

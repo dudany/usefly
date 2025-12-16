@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from usefly.database import get_db
-from usefly.handlers import reports
+from src.database import get_db
+from src.handlers import reports
 
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
 

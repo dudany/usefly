@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
-from usefly.database import get_db
-from usefly.models import (
+from src.database import get_db
+from src.models import (
     ScenarioResponse,
     ScenarioCreate,
     CrawlerAnalysisRequest,
@@ -13,7 +13,7 @@ from usefly.models import (
     GenerateMoreTasksRequest,
     GenerateMoreTasksResponse,
 )
-from usefly.handlers import scenarios as scenarios_handler
+from src.handlers import scenarios as scenarios_handler
 
 router = APIRouter(prefix="/api/scenario", tags=["Scenario"])
 

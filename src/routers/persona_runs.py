@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
-from usefly.database import get_db
-from usefly.models import PersonaRunResponse, PersonaRunCreate
-from usefly.handlers import persona_runs as persona_runs_handler
+from src.database import get_db
+from src.models import PersonaRunResponse, PersonaRunCreate
+from src.handlers import persona_runs as persona_runs_handler
 
 router = APIRouter(prefix="/api/persona-runs", tags=["Persona Runs"])
 

@@ -4,12 +4,12 @@ import uuid
 from datetime import datetime
 from urllib.parse import urlparse, unquote
 
-from usefly.models import (
+from src.models import (
     Scenario, SystemConfig, ScenarioCreate,
     CrawlerRun, TaskList
 )
-from usefly.common.browser_use_common import run_browser_use_agent
-from usefly.handlers.task_generation import (
+from src.common.browser_use_common import run_browser_use_agent
+from src.handlers.task_generation import (
     generate_tasks,
     renumber_tasks,
     update_generation_metadata,
@@ -49,7 +49,7 @@ def get_scenario(db: Session, scenario_id: str) -> Optional[Scenario]:
 
 def delete_scenario(db: Session, scenario_id: str) -> bool:
     """Delete a test scenario and all related records."""
-    from usefly.models import PersonaRun, CrawlerRun
+    from src.models import PersonaRun, CrawlerRun
 
     scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
     if not scenario:
@@ -110,7 +110,7 @@ async def analyze_website(db: Session, request) -> Dict:
         email=request.email
     )
 
-    with open('usefly/prompts/website_crawler_prompt.txt', 'r') as f:
+    with open('src/prompts/website_crawler_prompt.txt', 'r') as f:
         task = f.read()
         task = task.replace('{website}', scenario.website_url)
         task = task.replace('{description}', scenario.description)

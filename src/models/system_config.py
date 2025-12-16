@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.sql import func
 from pydantic import BaseModel
-from usefly.database import Base
+from src.database import Base
 
 
 class SystemConfig(Base):

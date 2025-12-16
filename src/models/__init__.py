@@ -5,14 +5,14 @@ Exports all SQLAlchemy models and Pydantic schemas for easy importing.
 """
 
 # Scenario models
-from usefly.models.scenario import (
+from src.models.scenario import (
     Scenario,
     ScenarioCreate,
     ScenarioResponse,
 )
 
 # Agent/Persona run models
-from usefly.models.persona_run import (
+from src.models.persona_run import (
     PersonaRun,
     PersonaRunCreate,
     PersonaRunResponse,
@@ -21,21 +21,21 @@ from usefly.models.persona_run import (
 )
 
 # Crawler run models
-from usefly.models.crawler_run import (
+from src.models.crawler_run import (
     CrawlerRun,
     CrawlerRunCreate,
     CrawlerRunResponse,
 )
 
 # System config models
-from usefly.models.system_config import (
+from src.models.system_config import (
     SystemConfig,
     SystemConfigCreate,
     SystemConfigResponse,
 )
 
 # Common models
-from usefly.models.common import (
+from src.models.common import (
     FrictionPoint,
     MetricsData,
     UserJourneyTask,
@@ -43,7 +43,7 @@ from usefly.models.common import (
 )
 
 # API schemas (request/response models)
-from usefly.models.schemas import (
+from src.models.schemas import (
     CrawlerAnalysisRequest,
     CrawlerAnalysisResponse,
     UpdateScenarioTasksRequest,

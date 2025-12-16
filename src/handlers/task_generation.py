@@ -3,12 +3,12 @@ import json
 from datetime import datetime
 from langchain_openai import ChatOpenAI as LangchainChatOpenAI
 
-from usefly.models import TaskList
+from src.models import TaskList
 
 
 def load_prompt_template(num_tasks: int, custom_prompt: Optional[str] = None) -> str:
     """Load the friction task generator prompt template."""
-    prompt_file = "usefly/prompts/task_generator_prompt.txt"
+    prompt_file = "src/prompts/task_generator_prompt.txt"
 
     with open(prompt_file) as f:
         task_prompt = f.read()

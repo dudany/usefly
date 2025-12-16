@@ -6,9 +6,9 @@ from datetime import datetime
 from typing import Dict, Optional, List
 from browser_use import AgentHistoryList
 from sqlalchemy.orm import Session
-from usefly.common.browser_use_common import run_browser_use_agent
-from usefly.models import Scenario, SystemConfig, UserJourneyTask, PersonaRunCreate
-from usefly.handlers.persona_runs import create_persona_run
+from src.common.browser_use_common import run_browser_use_agent
+from src.models import Scenario, SystemConfig, UserJourneyTask, PersonaRunCreate
+from src.handlers.persona_runs import create_persona_run
 
 _active_runs: Dict[str, Dict] = {}
 

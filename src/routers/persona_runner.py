@@ -1,9 +1,9 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
-from usefly.database import get_db, SessionLocal
-from usefly.models import Scenario, PersonaExecutionResponse, RunStatusResponse
-from usefly.handlers import persona_runner
+from src.database import get_db, SessionLocal
+from src.models import Scenario, PersonaExecutionResponse, RunStatusResponse
+from src.handlers import persona_runner
 
 router = APIRouter(prefix="/api/persona", tags=["Persona Execution"])
 

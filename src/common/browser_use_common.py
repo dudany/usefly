@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from browser_use import Agent, ChatGoogle, ChatOpenAI, ChatGroq
 from langchain_anthropic import ChatAnthropic
-from usefly.models import SystemConfig, UserJourneyTask
+from src.models import SystemConfig, UserJourneyTask
 
 
 async def run_browser_use_agent(task: str, system_config: SystemConfig, max_steps: int | None = None):

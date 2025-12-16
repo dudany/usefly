@@ -7,7 +7,7 @@ from typing import Optional, List
 from sqlalchemy import Column, String, Integer, DateTime, JSON, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from pydantic import BaseModel
-from usefly.database import Base
+from src.database import Base
 
 
 class PersonaRun(Base):

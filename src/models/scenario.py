@@ -8,7 +8,7 @@ from sqlalchemy import Column, String, JSON, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from pydantic import BaseModel
-from usefly.database import Base
+from src.database import Base
 
 
 class Scenario(Base):

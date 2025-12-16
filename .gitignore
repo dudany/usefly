@@ -40,8 +40,8 @@ env/
 # IDE
 .vscode/
 .idea/
-usefly/data/*
-usefly/static/
+src/data/*
+src/static/
 *.gif*
 *.db*
 *.log*

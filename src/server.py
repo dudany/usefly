@@ -9,12 +9,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from usefly.database import init_db
-from usefly.routers.persona_runs import router as persona_runs_router
-from usefly.routers.reports import router as reports_router
-from usefly.routers.system_config import router as system_config_router
-from usefly.routers.scenarios import router as scenario_router
-from usefly.routers.persona_runner import router as persona_runner_router
+from src.database import init_db
+from src.routers.persona_runs import router as persona_runs_router
+from src.routers.reports import router as reports_router
+from src.routers.system_config import router as system_config_router
+from src.routers.scenarios import router as scenario_router
+from src.routers.persona_runner import router as persona_runner_router
 
 # Initialize database
 init_db()
@@ -113,7 +113,7 @@ else:
                     <h1>⚠️ Build Required</h1>
                     <p>The UI has not been built yet. Please run:</p>
                     <pre style="background: #f5f5f5; padding: 1rem; border-radius: 4px;">cd ui && pnpm install && pnpm build</pre>
-                    <p>This will generate the static files in <code>usefly/static/</code></p>
+                    <p>This will generate the static files in <code>src/static/</code></p>
                 </body>
             </html>
             """,

@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from datetime import datetime
-from usefly.src.scenario.routes import CrawlerAnalysisRequest
+from src.models import CrawlerAnalysisRequest
 
 
 @pytest.mark.asyncio
@@ -11,11 +11,11 @@ async def test_analyze_website_success(mock_system_config, mock_agent_history, t
     """Test successful website analysis."""
 
     # Mock the required dependencies and functions
-    with patch('usefly.src.scenario.routes.get_db') as mock_get_db, \
-         patch('usefly.src.scenario.routes.Agent') as mock_agent_class, \
-         patch('usefly.src.scenario.routes.ChatOpenAI') as mock_llm_class, \
-         patch('usefly.src.scenario.routes.process_urls') as mock_process_urls, \
-         patch('usefly.src.scenario.routes.generate_tasks_from_crawler_result') as mock_task_gen, \
+    with patch('src.handlers.scenarios.get_db') as mock_get_db, \
+         patch('src.handlers.scenarios.Agent') as mock_agent_class, \
+         patch('src.handlers.scenarios.ChatOpenAI') as mock_llm_class, \
+         patch('src.handlers.scenarios.process_urls') as mock_process_urls, \
+         patch('src.handlers.scenarios.generate_tasks') as mock_task_gen, \
          patch('builtins.open'):
 
         # Setup mocks
@@ -50,7 +50,7 @@ async def test_analyze_website_success(mock_system_config, mock_agent_history, t
         )
 
         # Call the endpoint
-        from usefly.src.scenario.routes import analyze_website
+        from src.handlers.scenarios import analyze_website
         response = await analyze_website(request=request, db=test_db)
 
         # Verify response

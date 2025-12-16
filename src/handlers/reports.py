@@ -3,7 +3,7 @@ from sqlalchemy import func
 from typing import List, Optional, Dict
 from datetime import datetime
 
-from usefly.models import PersonaRun, Scenario
+from src.models import PersonaRun, Scenario
 
 
 def list_report_summaries(db: Session) -> List[Dict]:
