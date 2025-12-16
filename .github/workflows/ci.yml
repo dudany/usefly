@@ -39,7 +39,7 @@ jobs:
           echo "Static files check passed."
 
       - name: Run tests
-        run: pytest tests/ -v --tb=short || echo "No tests found or tests failed"
+        run: pytest tests/ -v --tb=short
 
   lint:
     runs-on: ubuntu-latest
