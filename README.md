@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Node.js 18+](https://img.shields.io/badge/node-18+-green.svg)](https://nodejs.org/)
+[![CI](https://github.com/dudany/usefly/actions/workflows/ci.yml/badge.svg)](https://github.com/dudany/usefly/actions/workflows/ci.yml)
 
 **AI-powered UX testing platform.** Deploy browser agents to simulate real user journeys on your web app and identify friction points, broken flows, and usability issues.
 
@@ -24,30 +24,54 @@ Usefly uses AI browser agents to test your application like a real user would. I
 - **Detailed Reports** - View step-by-step agent interactions, screenshots, and success/failure analysis
 - **Multi-Provider Support** - Works with OpenAI, Anthropic Claude, Google, and Groq models
 
-## Quick Start
+## Installation
 
-### Prerequisites
+Choose the method that works best for you:
 
-- Python 3.12 or higher
-- Node.js 18+ with pnpm
-- An API key from OpenAI, Anthropic, Google, or Groq
+### Option 1: Docker (Simplest)
 
-### Installation
+No Python or Node.js required. Just Docker.
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/usefly.git
-cd usefly
+docker run -p 8080:8080 ghcr.io/dudany/usefly
+```
 
-# Create and activate virtual environment
-python -m venv .venv
+Open [http://localhost:8080](http://localhost:8080) in your browser.
+
+### Option 2: Using uv (Recommended)
+
+[uv](https://github.com/astral-sh/uv) is a fast Python package manager. Requires Python 3.12+.
+
+```bash
+# Install uv if you don't have it
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create virtual environment and install (requires Python 3.12+)
+uv venv --python 3.12
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install usefly
+
+# Install browser for AI agents
+playwright install chromium
+
+# Start the server
+usefly
+```
+
+### Option 3: Using pip
+
+Requires Python 3.12+.
+
+```bash
+# Create virtual environment (requires Python 3.12+)
+python3.12 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install Python package
-pip install -e .
+# Install from PyPI
+pip install usefly
 
-# Build the UI
-cd ui && pnpm install && pnpm build && cd ..
+# Install browser for AI agents
+playwright install chromium
 
 # Start the server
 usefly
@@ -61,7 +85,7 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 2. Configure your AI provider:
    - Select a provider (OpenAI, Claude, Groq, or Google)
    - Enter your API key
-   - Choose a model (e.g., `gpt-5.2`, `claude-opus-4.5`)
+   - Choose a model (e.g., `claude-sonnet-4-20250514`, `claude-opus-4-20250514`, `claude-haiku-4-20250514`)
 3. Optionally adjust:
    - **Max Steps** - Maximum actions per task (default: 30)
    - **Max Browser Workers** - Parallel browser count (default: 3)
@@ -97,109 +121,30 @@ usefly --reload           # Enable auto-reload for development
 usefly --help             # Show all options
 ```
 
-## Architecture
+## Supported AI Providers
 
-```
-usefly/
-├── usefly/               # Python backend (FastAPI)
-│   ├── cli.py           # CLI entry point
-│   ├── server.py        # FastAPI application
-│   ├── database.py      # SQLite + SQLAlchemy
-│   ├── models/          # Data models & schemas
-│   ├── handlers/        # Business logic
-│   ├── routers/         # API endpoints
-│   ├── prompts/         # AI prompt templates
-│   └── static/          # Built UI files
-├── ui/                   # Next.js frontend
-│   ├── app/             # Pages & routes
-│   ├── components/      # React components
-│   └── lib/             # Utilities
-├── tests/               # Test suite
-└── pyproject.toml       # Package configuration
-```
-
-### Tech Stack
-
-**Backend:**
-- [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
-- [SQLAlchemy](https://www.sqlalchemy.org/) - Database ORM
-- [SQLite](https://sqlite.org/) - In process db
-- [browser-use](https://github.com/browser-use/browser-use) - AI browser automation
-- [LangChain](https://www.langchain.com/) - LLM orchestration
-
-**Frontend:**
-- [Next.js](https://nextjs.org/) 16 - React framework
-- [Tailwind CSS](https://tailwindcss.com/) - Styling
-- [shadcn/ui](https://ui.shadcn.com/) - UI components
-- [Recharts](https://recharts.org/) - Data visualization
-
-### Supported AI Providers
-
-| Provider | 
+| Provider |
 |----------|
-| OpenAI | 
-| Anthropic | 
-| Google | 
-| Groq | 
-
-## Development
-
-### Running in Development Mode
-
-```bash
-# Terminal 1: Backend with auto-reload
-source .venv/bin/activate
-usefly --reload
-
-# Terminal 2: Frontend dev server (optional, for UI development)
-cd ui && pnpm dev
-```
-
-### Running Tests
-
-```bash
-source .venv/bin/activate
-pytest
-```
-
-### Building for Production
-
-```bash
-# Build optimized UI
-cd ui && pnpm build && cd ..
-
-# The static files are automatically served by FastAPI
-```
+| OpenAI |
+| Anthropic |
+| Google |
+| Groq |
 
 ## Troubleshooting
 
 ### Common Issues
-
-**"No module named 'usefly'"**
-- Make sure you've installed the package: `pip install -e .`
-- Ensure your virtual environment is activated
 
 **Browser agents fail to start**
 - Check that your API key is correctly configured in Settings
 - Ensure you have sufficient API credits
 
 **UI shows blank page**
-- Rebuild the UI: `cd ui && pnpm build`
 - Clear browser cache and refresh
 
-**Database errors**
-- Delete `usefly/data/usefly.db` to reset (this clears all data)
-- The database is auto-created on first run
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 ## License
 

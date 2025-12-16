@@ -5,8 +5,8 @@ from datetime import datetime
 from unittest.mock import Mock, MagicMock, AsyncMock, patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from usefly.database import Base
-from usefly.models import SystemConfig, CrawlerRun
+from src.database import Base
+from src.models import SystemConfig, CrawlerRun
 
 
 @pytest.fixture

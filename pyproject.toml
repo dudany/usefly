@@ -37,17 +37,29 @@ dependencies = [
     "langchain>=1.0.7",
     "langchain-openai>=1.0.3",
     "langchain-core>=1.0.5",
+    "langchain-anthropic>=1.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.1.0",
 ]
 
 [project.scripts]
-usefly = "usefly.cli:main"
+usefly = "src.cli:main"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["usefly*"]
+include = ["src*"]
 
 [tool.setuptools.package-data]
-usefly = ["static/**/*", "prompts/**/*"]
+src = ["static/**/*", "prompts/**/*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
