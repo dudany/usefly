@@ -41,7 +41,6 @@ env/
 .vscode/
 .idea/
 src/data/*
-src/static/
 *.gif*
 *.db*
 *.log*

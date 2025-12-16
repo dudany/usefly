@@ -8,11 +8,11 @@ import uvicorn
 def main(port: int, reload: bool):
     """Start the Usefly server."""
     uvicorn.run(
-        "usefly.server:app",
+        "src.server:app",
         host="0.0.0.0",
         port=port,
         reload=reload,
-        reload_dirs=["usefly"] if reload else None
+        reload_dirs=["src"] if reload else None
     )
 
 
