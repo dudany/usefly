@@ -9,8 +9,12 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 # Base class for all models
 Base = declarative_base()
 
-# Database file path
-DB_PATH = Path(__file__).parent / "data" / "usefly.db"
+# Database file path - use fixed path in Docker, relative path otherwise
+import os
+if os.environ.get("IN_DOCKER"):
+    DB_PATH = Path("/app/src/data/usefly.db")
+else:
+    DB_PATH = Path(__file__).parent / "data" / "usefly.db"
 
 # Create data directory if it doesn't exist
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
