@@ -9,7 +9,7 @@
 **AI-powered UX testing platform.** Deploy browser agents to simulate real user journeys on your web app and identify friction points, broken flows, and usability issues.
 
 <p align="center">
-  <img src="ui/public/usefly-logo.png" alt="Usefly Logo" width="120">
+  <img src="https://raw.githubusercontent.com/dudany/usefly/main/ui/public/usefly-logo.png" alt="Usefly Logo" width="120">
 </p>
 
 ## What It Does
