@@ -19,10 +19,8 @@ Usefly uses AI browser agents to test your application like a real user would. I
 - **Automated Website Analysis** - AI crawls your site to understand its structure, navigation, and available features
 - **Smart Task Generation** - Automatically generates realistic user journey tasks based on your site's capabilities
 - **AI Browser Agents** - Executes tasks using vision-enabled AI agents that interact with your app like real users
-- **Parallel Execution** - Run multiple browser agents simultaneously for faster testing
 - **Friction Detection** - Identifies UX issues, confusing flows, and broken functionality
 - **Detailed Reports** - View step-by-step agent interactions, screenshots, and success/failure analysis
-- **Multi-Provider Support** - Works with OpenAI, Anthropic Claude, Google, and Groq models
 
 ## Installation
 
@@ -33,10 +31,12 @@ Choose the method that works best for you:
 No Python or Node.js required. Just Docker.
 
 ```bash
-docker run -p 8080:8080 ghcr.io/dudany/usefly
+docker run -p 8080:8080 -v usefly-data:/app/src/data ghcr.io/dudany/usefly
 ```
 
 Open [http://localhost:8080](http://localhost:8080) in your browser.
+
+> **Note:** The `-v usefly-data:/app/src/data` flag persists your data between container restarts.
 
 ### Option 2: Using uv (Recommended)
 
