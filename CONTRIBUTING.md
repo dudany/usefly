@@ -92,3 +92,22 @@ This outputs static files to `src/static/` which are served by FastAPI. **Import
 6. Commit your changes (`git commit -m 'Add amazing feature'`)
 7. Push to the branch (`git push origin feature/amazing-feature`)
 8. Open a Pull Request
+
+## Releasing
+
+Releases are automated via GitHub Actions. To create a new release:
+
+1. Merge your changes to `main`
+2. Create and push a version tag:
+   ```bash
+   git checkout main
+   git pull
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+
+This triggers two workflows:
+- **Release** - Builds and publishes the package to PyPI
+- **Docker** - Builds and pushes the Docker image to `ghcr.io/dudany/usefly`
+
+Tags must follow semver format: `v0.1.0`, `v1.0.0`, etc.
