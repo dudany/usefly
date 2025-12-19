@@ -4,6 +4,8 @@ node_modules
 .claude
 ui/.next/
 ui/out/
+
+src/static/
 *.tsbuildinfo
 
 # Environment variables

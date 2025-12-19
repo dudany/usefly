@@ -11,11 +11,13 @@ import {
   ReportListItem,
   ReportAggregate,
   SystemConfig,
+  SystemConfigStatus,
   UpdateSystemConfigRequest,
   CrawlerAnalysisRequest,
   CrawlerAnalysisResponse,
   PersonaExecutionResponse,
   RunStatusResponse,
+  ActiveExecutionsResponse,
   GenerateMoreTasksRequest,
   GenerateMoreTasksResponse,
   FrictionHotspotItem,
@@ -174,6 +176,8 @@ export const systemConfigApi = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  getStatus: () => apiFetch<SystemConfigStatus>("/api/system-config/status"),
 };
 
 /**
@@ -209,4 +213,7 @@ export const personaExecutionApi = {
     apiFetch<void>(`/api/persona/run/${runId}`, {
       method: "DELETE",
     }),
+
+  getActiveExecutions: () =>
+    apiFetch<ActiveExecutionsResponse>(`/api/executions/active`),
 };

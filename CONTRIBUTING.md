@@ -5,7 +5,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Prerequisites
 
 - Python 3.12+
-- Node.js 18+ with pnpm (only if modifying the UI)
+- Node.js 20+ with pnpm (only if modifying the UI)
 
 ## Development Setup
 
@@ -40,7 +40,7 @@ usefly/
 │   ├── handlers/        # Business logic
 │   ├── routers/         # API endpoints
 │   ├── prompts/         # AI prompt templates
-│   └── static/          # Built UI files (pre-built, committed)
+│   └── static/          # Built UI files (gitignored, built at release/deploy)
 ├── ui/                   # Next.js frontend source
 │   ├── app/             # Pages & routes
 │   ├── components/      # React components
@@ -80,7 +80,7 @@ If you make changes to the frontend (`ui/` directory), you need to rebuild:
 cd ui && pnpm install && pnpm build
 ```
 
-This outputs static files to `src/static/` which are served by FastAPI. **Important:** The built files are committed to the repo so users don't need Node.js to run Usefly.
+This outputs static files to `src/static/` which are served by FastAPI. **Note:** The built files are NOT committed to the repo, so you must build them locally to run the server.
 
 ## Development Workflow
 

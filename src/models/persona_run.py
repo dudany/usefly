@@ -94,10 +94,36 @@ class PersonaExecutionResponse(BaseModel):
     message: str
 
 
+class TaskProgressStatus(BaseModel):
+    """Progress status for a single task within a run."""
+    task_index: int
+    persona: str
+    status: str  # "pending" | "running" | "completed" | "failed"
+    current_step: int = 0
+    max_steps: int = 30
+    current_action: Optional[str] = None  # e.g., "click_element", "input", "navigate"
+    current_url: Optional[str] = None
+    started_at: Optional[str] = None
+    error: Optional[str] = None
+
+
 class RunStatusResponse(BaseModel):
+    """Enhanced run status with per-task progress."""
     run_id: str
-    status: str
+    scenario_id: str
+    scenario_name: Optional[str] = None
+    run_type: str = "persona_run"  # "persona_run" | "scenario_analysis"
+    status: str  # "in_progress" | "completed" | "partial_failure" | "failed"
     total_tasks: int
     completed_tasks: int
     failed_tasks: int
     agent_run_ids: List[str]
+    task_progress: List[TaskProgressStatus] = []
+    started_at: Optional[str] = None
+    logs: List[str] = []  # Recent log entries
+
+
+class ActiveExecutionsResponse(BaseModel):
+    """Response containing all active executions."""
+    executions: List[RunStatusResponse]
+    total_count: int

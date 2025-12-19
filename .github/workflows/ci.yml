@@ -24,19 +24,23 @@ jobs:
           pip install -e ".[dev]" || pip install -e .
           pip install pytest
 
-      - name: Check static files exist
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Build UI
         run: |
-          if [ ! -f "src/static/index.html" ]; then
-            echo "ERROR: src/static/index.html not found!"
-            echo "Please run 'cd ui && pnpm build' before committing."
-            exit 1
-          fi
-          if [ ! -d "src/static/_next" ]; then
-            echo "ERROR: src/static/_next/ directory not found!"
-            echo "Please run 'cd ui && pnpm build' before committing."
-            exit 1
-          fi
-          echo "Static files check passed."
+          cd ui
+          pnpm install
+          pnpm build
+          cd ..
+          rm -rf src/static
+          mkdir -p src/static
+          cp -r ui/out/* src/static/
 
       - name: Run tests
         run: pytest tests/ -v --tb=short

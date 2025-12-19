@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',           // Enable static export
-  distDir: '../src/static', // Output to src/static/
+  distDir: 'out',             // Output to ui/out/
   typescript: {
     ignoreBuildErrors: true,
   },

@@ -1,62 +1,180 @@
 from pathlib import Path
 import uuid
 import asyncio
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Callable
 from browser_use import AgentHistoryList
 from sqlalchemy.orm import Session
-from src.common.browser_use_common import run_browser_use_agent
+from src.common.browser_use_common import run_browser_use_agent_with_hooks
 from src.models import Scenario, SystemConfig, UserJourneyTask, PersonaRunCreate
 from src.handlers.persona_runs import create_persona_run
 
+# Enhanced structure for tracking active runs with per-task progress
 _active_runs: Dict[str, Dict] = {}
 
 # Thread pool for parallel browser task execution
 # Will be initialized with max_workers from SystemConfig
 _browser_executor: Optional[ThreadPoolExecutor] = None
 
+# Maximum log entries to keep per run
+MAX_LOG_ENTRIES = 50
 
-def init_run_status(run_id: str, scenario_id: str, report_id: str, task_count: int):
+
+def init_run_status(
+    run_id: str,
+    scenario_id: str,
+    scenario_name: str,
+    report_id: str,
+    task_count: int,
+    tasks: List[Dict],
+    run_type: str = "persona_run"
+):
+    """Initialize run status with per-task progress tracking."""
+    task_progress = []
+    for idx, task in enumerate(tasks):
+        task_progress.append({
+            "task_index": idx,
+            "persona": task.get("persona", "unknown"),
+            "status": "pending",
+            "current_step": 0,
+            "max_steps": 30,
+            "current_action": None,
+            "current_url": task.get("starting_url"),
+            "started_at": None,
+            "error": None
+        })
+
     _active_runs[run_id] = {
         "run_id": run_id,
         "scenario_id": scenario_id,
+        "scenario_name": scenario_name,
         "report_id": report_id,
+        "run_type": run_type,
         "status": "in_progress",
         "total_tasks": task_count,
         "completed_tasks": 0,
         "failed_tasks": 0,
         "agent_run_ids": [],
-        "started_at": datetime.now().isoformat()
+        "task_progress": task_progress,
+        "started_at": datetime.now().isoformat(),
+        "logs": deque(maxlen=MAX_LOG_ENTRIES)
     }
+    _add_log(run_id, f"Started {run_type} with {task_count} tasks")
 
 
-def update_run_status(run_id: str, completed: int = 0, failed: int = 0, agent_run_id: Optional[str] = None):
+def _add_log(run_id: str, message: str):
+    """Add a log entry to the run."""
     if run_id in _active_runs:
-        _active_runs[run_id]["completed_tasks"] += completed
-        _active_runs[run_id]["failed_tasks"] += failed
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        _active_runs[run_id]["logs"].append(f"[{timestamp}] {message}")
 
-        if agent_run_id:
-            _active_runs[run_id]["agent_run_ids"].append(agent_run_id)
 
-        run = _active_runs[run_id]
-        total_done = run["completed_tasks"] + run["failed_tasks"]
+def update_task_progress(
+    run_id: str,
+    task_index: int,
+    status: Optional[str] = None,
+    current_step: Optional[int] = None,
+    current_action: Optional[str] = None,
+    current_url: Optional[str] = None,
+    error: Optional[str] = None
+):
+    """Update progress for a specific task."""
+    if run_id not in _active_runs:
+        return
 
-        if total_done >= run["total_tasks"]:
-            if run["failed_tasks"] == 0:
-                run["status"] = "completed"
-            elif run["failed_tasks"] == run["total_tasks"]:
-                run["status"] = "failed"
-            else:
-                run["status"] = "partial_failure"
-            run["completed_at"] = datetime.now().isoformat()
+    run = _active_runs[run_id]
+    if task_index >= len(run["task_progress"]):
+        return
+
+    progress = run["task_progress"][task_index]
+    persona = progress["persona"]
+
+    if status:
+        progress["status"] = status
+        if status == "running" and not progress["started_at"]:
+            progress["started_at"] = datetime.now().isoformat()
+            _add_log(run_id, f"{persona}: Started")
+
+    if current_step is not None:
+        progress["current_step"] = current_step
+
+    if current_action:
+        progress["current_action"] = current_action
+        action_display = current_action.replace("_", " ").title()
+        _add_log(run_id, f"{persona}: Step {progress['current_step']} - {action_display}")
+
+    if current_url:
+        progress["current_url"] = current_url
+
+    if error:
+        progress["error"] = error
+        _add_log(run_id, f"{persona}: Error - {error[:50]}")
+
+
+def update_run_status(run_id: str, completed: int = 0, failed: int = 0, agent_run_id: Optional[str] = None, task_index: Optional[int] = None):
+    """Update overall run status and optionally mark a task complete/failed."""
+    if run_id not in _active_runs:
+        return
+
+    run = _active_runs[run_id]
+    run["completed_tasks"] += completed
+    run["failed_tasks"] += failed
+
+    if agent_run_id:
+        run["agent_run_ids"].append(agent_run_id)
+
+    # Update task status
+    if task_index is not None and task_index < len(run["task_progress"]):
+        progress = run["task_progress"][task_index]
+        if completed > 0:
+            progress["status"] = "completed"
+            _add_log(run_id, f"{progress['persona']}: Completed")
+        elif failed > 0:
+            progress["status"] = "failed"
+            _add_log(run_id, f"{progress['persona']}: Failed")
+
+    total_done = run["completed_tasks"] + run["failed_tasks"]
+
+    if total_done >= run["total_tasks"]:
+        if run["failed_tasks"] == 0:
+            run["status"] = "completed"
+            _add_log(run_id, "All tasks completed successfully")
+        elif run["failed_tasks"] == run["total_tasks"]:
+            run["status"] = "failed"
+            _add_log(run_id, "All tasks failed")
+        else:
+            run["status"] = "partial_failure"
+            _add_log(run_id, f"Completed with {run['failed_tasks']} failures")
+        run["completed_at"] = datetime.now().isoformat()
 
 
 def get_run_status(run_id: str) -> Optional[Dict]:
-    return _active_runs.get(run_id)
+    """Get status for a specific run, converting deque to list for JSON serialization."""
+    run = _active_runs.get(run_id)
+    if not run:
+        return None
+
+    # Convert deque to list for JSON serialization
+    result = {**run}
+    result["logs"] = list(run["logs"])
+    return result
+
+
+def get_all_active_runs() -> List[Dict]:
+    """Get all active runs for the status bar."""
+    active = []
+    for run_id, run in _active_runs.items():
+        if run["status"] == "in_progress":
+            result = {**run}
+            result["logs"] = list(run["logs"])
+            active.append(result)
+    return active
 
 
 def cleanup_run_status(run_id: str):
+    """Remove a run from active tracking."""
     _active_runs.pop(run_id, None)
 
 
@@ -241,18 +359,14 @@ async def execute_single_task(
     db: Session,
     scenario: Scenario,
     task: Dict,
+    task_index: int,
     report_id: str,
     run_id: str,
     system_config: SystemConfig
 ) -> str:
-    # Initialize status tracking if not already initialized
-    if run_id not in _active_runs:
-        init_run_status(
-            run_id=run_id,
-            scenario_id=scenario.id,
-            report_id=report_id,
-            task_count=1
-        )
+    """Execute a single persona task with progress tracking."""
+    # Mark task as running
+    update_task_progress(run_id, task_index, status="running")
 
     try:
         journey_task = UserJourneyTask(**task)
@@ -269,7 +383,27 @@ async def execute_single_task(
             steps=journey_task.steps
         )
         max_steps = system_config.max_steps
-        history: AgentHistoryList = await run_browser_use_agent(task=task_description, system_config=system_config, max_steps=max_steps)
+
+        # Create progress callback for browser-use hooks
+        def on_step_progress(step: int, action: Optional[str], url: Optional[str]):
+            update_task_progress(
+                run_id=run_id,
+                task_index=task_index,
+                current_step=step,
+                current_action=action,
+                current_url=url
+            )
+
+        # Update max_steps in task progress
+        if run_id in _active_runs and task_index < len(_active_runs[run_id]["task_progress"]):
+            _active_runs[run_id]["task_progress"][task_index]["max_steps"] = max_steps
+
+        history: AgentHistoryList = await run_browser_use_agent_with_hooks(
+            task=task_description,
+            system_config=system_config,
+            max_steps=max_steps,
+            on_step_callback=on_step_progress
+        )
 
         events = extract_agent_events(history)
 
@@ -281,7 +415,7 @@ async def execute_single_task(
             timestamp=start_time,
             duration_seconds=history.total_duration_seconds(),
             platform="web",
-            error_type="",#TODO add error
+            error_type="",
             steps_completed=history.number_of_steps(),
             total_steps=max_steps,
             final_result=history.final_result(),
@@ -295,12 +429,14 @@ async def execute_single_task(
 
         persona_run = create_persona_run(db, persona_run_data)
 
-        update_run_status(run_id, completed=1, agent_run_id=persona_run.id)
-
+        update_run_status(run_id, completed=1, agent_run_id=persona_run.id, task_index=task_index)
 
         return persona_run.id
 
     except Exception as e:
+        # Update task with error
+        update_task_progress(run_id, task_index, error=str(e))
+
         # Extract task fields properly from the task dict
         persona_run_data = PersonaRunCreate(
             config_id=scenario.id,
@@ -323,11 +459,11 @@ async def execute_single_task(
         )
 
         persona_run = create_persona_run(db, persona_run_data)
-        update_run_status(run_id, failed=1, agent_run_id=persona_run.id)
+        update_run_status(run_id, failed=1, agent_run_id=persona_run.id, task_index=task_index)
         return persona_run.id
 
 
-def _run_task_in_thread(db_session_factory, scenario_id: str, task: Dict, report_id: str, run_id: str):
+def _run_task_in_thread(db_session_factory, scenario_id: str, task: Dict, task_index: int, report_id: str, run_id: str):
     """
     Run a single task in a thread with its own event loop and DB session.
     This allows parallel execution of browser tasks.
@@ -337,22 +473,22 @@ def _run_task_in_thread(db_session_factory, scenario_id: str, task: Dict, report
         scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
         if not scenario:
             raise ValueError(f"Scenario {scenario_id} not found")
-        
+
         # Recreate SystemConfig from dict (can't pass SQLAlchemy objects across threads)
         sys_config = db.query(SystemConfig).filter(SystemConfig.id == 1).first()
         if not sys_config:
             raise ValueError("System configuration not found")
-        
+
         # Create new event loop for this thread
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(execute_single_task(db, scenario, task, report_id, run_id, sys_config))
+            loop.run_until_complete(execute_single_task(db, scenario, task, task_index, report_id, run_id, sys_config))
         finally:
             loop.close()
     except Exception as e:
         print(f"Error in browser task thread: {e}")
-        update_run_status(run_id, failed=1)
+        update_run_status(run_id, failed=1, task_index=task_index)
     finally:
         db.close()
 
@@ -393,17 +529,27 @@ async def run_persona_tasks(db_session_factory, scenario_id: str, report_id: str
         if not tasks_to_run:
             raise ValueError("No tasks to run")
 
-        init_run_status(run_id, scenario_id, report_id, len(tasks_to_run))
+        # Initialize with full task list for per-task progress tracking
+        init_run_status(
+            run_id=run_id,
+            scenario_id=scenario_id,
+            scenario_name=scenario.name,
+            report_id=report_id,
+            task_count=len(tasks_to_run),
+            tasks=tasks_to_run,
+            run_type="persona_run"
+        )
 
         loop = asyncio.get_event_loop()
         futures = []
-        for task in tasks_to_run:
+        for task_index, task in enumerate(tasks_to_run):
             future = loop.run_in_executor(
                 _browser_executor,
                 _run_task_in_thread,
                 db_session_factory,
                 scenario.id,
                 task,
+                task_index,
                 report_id,
                 run_id
             )
@@ -416,6 +562,7 @@ async def run_persona_tasks(db_session_factory, scenario_id: str, report_id: str
         if run_id in _active_runs:
             _active_runs[run_id]["status"] = "failed"
             _active_runs[run_id]["error"] = str(e)
+            _add_log(run_id, f"Fatal error: {str(e)}")
     finally:
         db.close()
 
