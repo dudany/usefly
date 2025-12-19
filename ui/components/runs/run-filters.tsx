@@ -118,11 +118,13 @@ export function RunFilters({
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Reports</SelectItem>
-                                {filteredReports.map((report) => (
-                                    <SelectItem key={report.report_id} value={report.report_id}>
-                                        {new Date(report.first_run).toLocaleDateString()} ({report.run_count} runs)
-                                    </SelectItem>
-                                ))}
+                                {filteredReports
+                                    .sort((a, b) => new Date(b.first_run).getTime() - new Date(a.first_run).getTime())
+                                    .map((report) => (
+                                        <SelectItem key={report.report_id} value={report.report_id}>
+                                            {new Date(report.first_run).toLocaleString()} ({report.run_count} runs)
+                                        </SelectItem>
+                                    ))}
                             </SelectContent>
                         </Select>
                     </div>
