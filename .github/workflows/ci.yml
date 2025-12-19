@@ -38,7 +38,8 @@ jobs:
           pnpm install
           pnpm build
           cd ..
-          rm -rf src/static/*
+          rm -rf src/static
+          mkdir -p src/static
           cp -r ui/out/* src/static/
 
       - name: Run tests
