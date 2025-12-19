@@ -15,17 +15,19 @@ WORKDIR /app
 ENV IN_DOCKER=true
 
 # Copy package files
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md MANIFEST.in ./
 COPY src/ src/
 # Copy static files from builder
 COPY --from=frontend-builder /app/ui/out src/static
 
 # Inject version from build args so setuptools-scm works without .git
-ARG VERSION
+ARG VERSION=0.1.0
 ENV SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
 
 # Install the package
-RUN pip install --no-cache-dir .
+RUN pip install --upgrade pip && \
+    pip install build && \
+    pip install --no-cache-dir .
 
 EXPOSE 8080
 
