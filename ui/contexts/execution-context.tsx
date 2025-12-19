@@ -8,8 +8,12 @@ import { toast } from "sonner"
 interface ExecutionContextType {
   activeExecutions: RunStatusResponse[]
   isPolling: boolean
+  isStatusBarExpanded: boolean
+  expandedExecutionIds: string[]
   startExecution: (scenarioId: string) => Promise<void>
   refreshExecutions: () => Promise<void>
+  toggleStatusBar: () => void
+  toggleExecutionExpanded: (runId: string) => void
 }
 
 const ExecutionContext = createContext<ExecutionContextType | undefined>(undefined)
@@ -19,6 +23,8 @@ const POLL_INTERVAL = 3000 // 3 seconds for real-time feeling
 export function ExecutionProvider({ children }: { children: React.ReactNode }) {
   const [activeExecutions, setActiveExecutions] = useState<RunStatusResponse[]>([])
   const [isPolling, setIsPolling] = useState(false)
+  const [isStatusBarExpanded, setIsStatusBarExpanded] = useState(false)
+  const [expandedExecutionIds, setExpandedExecutionIds] = useState<string[]>([])
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const mountedRef = useRef(true)
 
@@ -111,6 +117,12 @@ export function ExecutionProvider({ children }: { children: React.ReactNode }) {
 
       // Immediately fetch to get the new execution in the list
       await fetchActiveExecutions()
+
+      // Auto-expand status bar when starting new execution
+      setIsStatusBarExpanded(true)
+      if (response?.run_id) {
+        setExpandedExecutionIds(prev => [...prev, response.run_id])
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to start execution"
       toast.error(errorMessage)
@@ -118,11 +130,27 @@ export function ExecutionProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fetchActiveExecutions])
 
+  const toggleStatusBar = useCallback(() => {
+    setIsStatusBarExpanded(prev => !prev)
+  }, [])
+
+  const toggleExecutionExpanded = useCallback((runId: string) => {
+    setExpandedExecutionIds(prev =>
+      prev.includes(runId)
+        ? prev.filter(id => id !== runId)
+        : [...prev, runId]
+    )
+  }, [])
+
   const value: ExecutionContextType = {
     activeExecutions,
     isPolling,
+    isStatusBarExpanded,
+    expandedExecutionIds,
     startExecution,
-    refreshExecutions: fetchActiveExecutions
+    refreshExecutions: async () => { await fetchActiveExecutions() },
+    toggleStatusBar,
+    toggleExecutionExpanded
   }
 
   return (

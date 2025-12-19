@@ -41,8 +41,7 @@ function TaskProgressItem({ task }: { task: TaskProgressStatus }) {
   )
 }
 
-function ExecutionItem({ execution }: { execution: RunStatusResponse }) {
-  const [expanded, setExpanded] = useState(false)
+function ExecutionItem({ execution, isExpanded, onToggle }: { execution: RunStatusResponse, isExpanded: boolean, onToggle: () => void }) {
 
   const runningTasks = execution.task_progress.filter(t => t.status === "running")
   const completedTasks = execution.task_progress.filter(t => t.status === "completed")
@@ -54,7 +53,7 @@ function ExecutionItem({ execution }: { execution: RunStatusResponse }) {
     <div className="border-l-2 border-blue-500 pl-3 py-1">
       <div
         className="flex items-center gap-2 cursor-pointer hover:bg-accent/50 rounded px-1 -ml-1"
-        onClick={() => setExpanded(!expanded)}
+        onClick={onToggle}
       >
         <Loader2 className="w-3 h-3 animate-spin text-blue-500 flex-shrink-0" />
         <span className="font-medium text-sm truncate max-w-[150px]">
@@ -69,14 +68,14 @@ function ExecutionItem({ execution }: { execution: RunStatusResponse }) {
             style={{ width: `${progress}%` }}
           />
         </div>
-        {expanded ? (
+        {isExpanded ? (
           <ChevronDown className="w-3 h-3 text-muted-foreground" />
         ) : (
           <ChevronUp className="w-3 h-3 text-muted-foreground" />
         )}
       </div>
 
-      {expanded && (
+      {isExpanded && (
         <div className="mt-2 pl-5 space-y-0.5 max-h-[200px] overflow-y-auto">
           {execution.task_progress.map((task) => (
             <TaskProgressItem key={task.task_index} task={task} />
@@ -98,8 +97,7 @@ function ExecutionItem({ execution }: { execution: RunStatusResponse }) {
 }
 
 export function ExecutionStatusBar() {
-  const { activeExecutions } = useExecutions()
-  const [expanded, setExpanded] = useState(false)
+  const { activeExecutions, isStatusBarExpanded, toggleStatusBar, expandedExecutionIds, toggleExecutionExpanded } = useExecutions()
 
   // Only show active (in_progress) executions
   const inProgressExecutions = activeExecutions.filter(e => e.status === "in_progress")
@@ -123,9 +121,9 @@ export function ExecutionStatusBar() {
       <div
         className={cn(
           "flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-accent/50 transition-colors",
-          expanded && "border-b"
+          isStatusBarExpanded && "border-b"
         )}
-        onClick={() => setExpanded(!expanded)}
+        onClick={toggleStatusBar}
       >
         <div className="flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
@@ -162,7 +160,7 @@ export function ExecutionStatusBar() {
         )}
 
         <div className="flex items-center gap-1 text-muted-foreground">
-          {expanded ? (
+          {isStatusBarExpanded ? (
             <ChevronDown className="w-4 h-4" />
           ) : (
             <ChevronUp className="w-4 h-4" />
@@ -171,10 +169,15 @@ export function ExecutionStatusBar() {
       </div>
 
       {/* Expanded panel */}
-      {expanded && (
+      {isStatusBarExpanded && (
         <div className="max-h-[300px] overflow-y-auto p-4 space-y-3">
           {inProgressExecutions.map(execution => (
-            <ExecutionItem key={execution.run_id} execution={execution} />
+            <ExecutionItem
+              key={execution.run_id}
+              execution={execution}
+              isExpanded={expandedExecutionIds.includes(execution.run_id)}
+              onToggle={() => toggleExecutionExpanded(execution.run_id)}
+            />
           ))}
         </div>
       )}
