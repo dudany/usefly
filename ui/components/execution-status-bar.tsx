@@ -1,14 +1,18 @@
 "use client"
 
-import { useState } from "react"
 import { useExecutions } from "@/contexts/execution-context"
 import { RunStatusResponse, TaskProgressStatus } from "@/types/api"
-import { ChevronUp, ChevronDown, Loader2, CheckCircle2, XCircle, Clock } from "lucide-react"
+import { ChevronUp, ChevronDown, Loader2, CheckCircle2, XCircle, Clock, Globe, Sparkles, Save } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function formatAction(action: string | undefined): string {
   if (!action) return ""
   return action.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())
+}
+
+// Extended task progress with optional phase field for analysis runs
+interface ExtendedTaskProgress extends TaskProgressStatus {
+  phase?: string;
 }
 
 function TaskProgressItem({ task }: { task: TaskProgressStatus }) {
@@ -41,30 +45,107 @@ function TaskProgressItem({ task }: { task: TaskProgressStatus }) {
   )
 }
 
-function ExecutionItem({ execution, isExpanded, onToggle }: { execution: RunStatusResponse, isExpanded: boolean, onToggle: () => void }) {
+// Phase indicators for scenario analysis
+function AnalysisPhaseIndicator({ phase, currentStep, maxSteps }: { phase: string, currentStep: number, maxSteps: number }) {
+  const phases = [
+    { key: "crawling", label: "Exploring Website", icon: Globe },
+    { key: "generating_tasks", label: "Generating Tasks", icon: Sparkles },
+    { key: "saving", label: "Saving Scenario", icon: Save },
+  ]
 
-  const runningTasks = execution.task_progress.filter(t => t.status === "running")
-  const completedTasks = execution.task_progress.filter(t => t.status === "completed")
-  const progress = execution.total_tasks > 0
-    ? Math.round(((execution.completed_tasks + execution.failed_tasks) / execution.total_tasks) * 100)
-    : 0
+  const currentPhaseIndex = phases.findIndex(p => p.key === phase)
 
   return (
-    <div className="border-l-2 border-blue-500 pl-3 py-1">
+    <div className="space-y-2">
+      {phases.map((p, idx) => {
+        const Icon = p.icon
+        const isActive = p.key === phase
+        const isCompleted = idx < currentPhaseIndex
+        const isPending = idx > currentPhaseIndex
+
+        return (
+          <div key={p.key} className="flex items-center gap-2 text-xs">
+            {isCompleted ? (
+              <CheckCircle2 className="w-3 h-3 text-green-500" />
+            ) : isActive ? (
+              <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+            ) : (
+              <Clock className="w-3 h-3 text-muted-foreground" />
+            )}
+            <Icon className={cn("w-3 h-3", isActive ? "text-blue-500" : isCompleted ? "text-green-500" : "text-muted-foreground")} />
+            <span className={cn("font-medium", isPending && "text-muted-foreground")}>{p.label}</span>
+            {isActive && phase === "crawling" && (
+              <span className="text-muted-foreground">
+                Step {currentStep}/{maxSteps}
+              </span>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function ExecutionItem({ execution, isExpanded, onToggle }: { execution: RunStatusResponse, isExpanded: boolean, onToggle: () => void }) {
+  const isAnalysis = execution.run_type === "scenario_analysis"
+  const runningTasks = execution.task_progress.filter(t => t.status === "running")
+
+  // For analysis, get phase from first task progress
+  const analysisPhase = isAnalysis && execution.task_progress[0]
+    ? (execution.task_progress[0] as ExtendedTaskProgress).phase || "crawling"
+    : null
+  const analysisStep = isAnalysis && execution.task_progress[0]
+    ? execution.task_progress[0].current_step
+    : 0
+  const analysisMaxSteps = isAnalysis && execution.task_progress[0]
+    ? execution.task_progress[0].max_steps
+    : 30
+
+  // Calculate progress based on type
+  let progress = 0
+  let progressLabel = ""
+
+  if (isAnalysis) {
+    // For analysis, progress is based on phases
+    const phaseProgress: Record<string, number> = {
+      "crawling": 33,
+      "generating_tasks": 66,
+      "saving": 90,
+      "completed": 100
+    }
+    progress = phaseProgress[analysisPhase || "crawling"] || 0
+    progressLabel = formatAction(analysisPhase || "crawling")
+  } else {
+    // For persona runs, progress is based on tasks
+    progress = execution.total_tasks > 0
+      ? Math.round(((execution.completed_tasks + execution.failed_tasks) / execution.total_tasks) * 100)
+      : 0
+    progressLabel = `${execution.completed_tasks + execution.failed_tasks}/${execution.total_tasks}`
+  }
+
+  return (
+    <div className={cn("border-l-2 pl-3 py-1", isAnalysis ? "border-purple-500" : "border-blue-500")}>
       <div
         className="flex items-center gap-2 cursor-pointer hover:bg-accent/50 rounded px-1 -ml-1"
         onClick={onToggle}
       >
-        <Loader2 className="w-3 h-3 animate-spin text-blue-500 flex-shrink-0" />
+        <Loader2 className={cn("w-3 h-3 animate-spin flex-shrink-0", isAnalysis ? "text-purple-500" : "text-blue-500")} />
         <span className="font-medium text-sm truncate max-w-[150px]">
           {execution.scenario_name || "Running"}
         </span>
-        <span className="text-xs text-muted-foreground">
-          {execution.completed_tasks + execution.failed_tasks}/{execution.total_tasks}
-        </span>
+        {isAnalysis ? (
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Globe className="w-3 h-3" />
+            {progressLabel}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {progressLabel}
+          </span>
+        )}
         <div className="flex-1 h-1.5 bg-secondary rounded-full min-w-[60px] max-w-[100px]">
           <div
-            className="h-full bg-blue-500 rounded-full transition-all"
+            className={cn("h-full rounded-full transition-all", isAnalysis ? "bg-purple-500" : "bg-blue-500")}
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -77,9 +158,17 @@ function ExecutionItem({ execution, isExpanded, onToggle }: { execution: RunStat
 
       {isExpanded && (
         <div className="mt-2 pl-5 space-y-0.5 max-h-[200px] overflow-y-auto">
-          {execution.task_progress.map((task) => (
-            <TaskProgressItem key={task.task_index} task={task} />
-          ))}
+          {isAnalysis ? (
+            <AnalysisPhaseIndicator
+              phase={analysisPhase || "crawling"}
+              currentStep={analysisStep}
+              maxSteps={analysisMaxSteps}
+            />
+          ) : (
+            execution.task_progress.map((task) => (
+              <TaskProgressItem key={task.task_index} task={task} />
+            ))
+          )}
           {execution.logs.length > 0 && (
             <div className="mt-2 pt-2 border-t border-border">
               <div className="text-xs text-muted-foreground font-medium mb-1">Recent Activity</div>
@@ -136,12 +225,24 @@ export function ExecutionStatusBar() {
 
         {/* Summary of running executions */}
         <div className="flex-1 flex items-center gap-4 overflow-x-auto text-sm">
-          {inProgressExecutions.slice(0, 3).map(execution => (
-            <div key={execution.run_id} className="flex items-center gap-2 whitespace-nowrap">
-              <span className="text-muted-foreground">{execution.scenario_name}:</span>
-              <span>{execution.completed_tasks + execution.failed_tasks}/{execution.total_tasks}</span>
-            </div>
-          ))}
+          {inProgressExecutions.slice(0, 3).map(execution => {
+            const isAnalysis = execution.run_type === "scenario_analysis"
+            const phase = isAnalysis && execution.task_progress[0]
+              ? (execution.task_progress[0] as ExtendedTaskProgress).phase || "crawling"
+              : null
+
+            return (
+              <div key={execution.run_id} className="flex items-center gap-2 whitespace-nowrap">
+                {isAnalysis && <Globe className="w-3 h-3 text-purple-500" />}
+                <span className="text-muted-foreground">{execution.scenario_name}:</span>
+                {isAnalysis ? (
+                  <span className="text-purple-600">{formatAction(phase || "crawling")}</span>
+                ) : (
+                  <span>{execution.completed_tasks + execution.failed_tasks}/{execution.total_tasks}</span>
+                )}
+              </div>
+            )
+          })}
           {inProgressExecutions.length > 3 && (
             <span className="text-muted-foreground">
               +{inProgressExecutions.length - 3} more

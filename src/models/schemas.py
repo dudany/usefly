@@ -91,3 +91,13 @@ class GenerateMoreTasksResponse(BaseModel):
     total_tasks: int
     tasks_metadata: Dict
     message: str
+
+
+# ==================== Async Analysis ====================
+
+class AsyncAnalysisResponse(BaseModel):
+    """Response from starting async crawler analysis."""
+    run_id: str
+    scenario_id: str
+    status: str  # "in_progress"
+    message: str
