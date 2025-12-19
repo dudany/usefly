@@ -20,6 +20,10 @@ COPY src/ src/
 # Copy static files from builder
 COPY --from=frontend-builder /app/ui/out src/static
 
+# Inject version from build args so setuptools-scm works without .git
+ARG VERSION
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
+
 # Install the package
 RUN pip install --no-cache-dir .
 
