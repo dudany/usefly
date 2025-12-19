@@ -80,6 +80,8 @@ usefly
 ```
 
 Open [http://localhost:8080](http://localhost:8080) in your browser.
+ 
+> **Note for Contributors:** If you are installing from source (e.g. cloning the repo), you must build the UI manually. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### First Run Setup
 

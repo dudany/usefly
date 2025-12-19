@@ -1,5 +1,13 @@
-FROM browseruse/browseruse:0.10.1
+# Build the frontend
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app/ui
+COPY ui/package.json ui/pnpm-lock.yaml ./
+RUN npm install -g pnpm && pnpm install --frozen-lockfile
+COPY ui/ ./
+# This builds to ../src/static relative to ui, so /app/src/static
+RUN pnpm build
 
+FROM browseruse/browseruse:0.10.1
 USER root
 
 WORKDIR /app
@@ -9,6 +17,8 @@ ENV IN_DOCKER=true
 # Copy package files
 COPY pyproject.toml README.md ./
 COPY src/ src/
+# Copy static files from builder
+COPY --from=frontend-builder /app/ui/out src/static
 
 # Install the package
 RUN pip install --no-cache-dir .

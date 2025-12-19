@@ -12,6 +12,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Build UI
+        run: |
+          cd ui
+          pnpm install
+          pnpm build
+          cd ..
+          rm -rf src/static/*
+          cp -r ui/out/* src/static/
+
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
