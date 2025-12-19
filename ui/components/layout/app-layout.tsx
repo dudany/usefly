@@ -2,6 +2,7 @@ import type React from "react"
 import { Sidebar } from "./sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { MissingSettingsBanner } from "@/components/banners/missing-settings-banner"
+import { ExecutionStatusBar } from "@/components/execution-status-bar"
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -12,8 +13,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="sticky top-0 z-50 flex justify-end px-6 py-4 bg-background/95 backdrop-blur border-b border-border">
           <ThemeToggle />
         </div>
-        <div className="bg-background flex-1">{children}</div>
+        <div className="bg-background flex-1 pb-14">{children}</div>
       </main>
+      <ExecutionStatusBar />
     </div>
   )
 }

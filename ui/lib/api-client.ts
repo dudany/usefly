@@ -17,6 +17,7 @@ import {
   CrawlerAnalysisResponse,
   PersonaExecutionResponse,
   RunStatusResponse,
+  ActiveExecutionsResponse,
   GenerateMoreTasksRequest,
   GenerateMoreTasksResponse,
   FrictionHotspotItem,
@@ -212,4 +213,7 @@ export const personaExecutionApi = {
     apiFetch<void>(`/api/persona/run/${runId}`, {
       method: "DELETE",
     }),
+
+  getActiveExecutions: () =>
+    apiFetch<ActiveExecutionsResponse>(`/api/executions/active`),
 };

@@ -296,13 +296,48 @@ export interface PersonaExecutionResponse {
   message: string;
 }
 
+/**
+ * Task Progress Status
+ * Progress status for a single task within a run
+ */
+export interface TaskProgressStatus {
+  task_index: number;
+  persona: string;
+  status: "pending" | "running" | "completed" | "failed";
+  current_step: number;
+  max_steps: number;
+  current_action?: string;
+  current_url?: string;
+  started_at?: string;
+  error?: string;
+}
+
+/**
+ * Run Status Response
+ * Enhanced run status with per-task progress
+ */
 export interface RunStatusResponse {
   run_id: string;
+  scenario_id: string;
+  scenario_name?: string;
+  run_type: "persona_run" | "scenario_analysis";
   status: "in_progress" | "completed" | "partial_failure" | "failed";
   total_tasks: number;
   completed_tasks: number;
   failed_tasks: number;
   agent_run_ids: string[];
+  task_progress: TaskProgressStatus[];
+  started_at?: string;
+  logs: string[];
+}
+
+/**
+ * Active Executions Response
+ * Response containing all active executions
+ */
+export interface ActiveExecutionsResponse {
+  executions: RunStatusResponse[];
+  total_count: number;
 }
 
 /**

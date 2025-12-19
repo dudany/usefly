@@ -18,6 +18,8 @@ from src.models.persona_run import (
     PersonaRunResponse,
     PersonaExecutionResponse,
     RunStatusResponse,
+    TaskProgressStatus,
+    ActiveExecutionsResponse,
 )
 
 # Crawler run models
@@ -63,6 +65,8 @@ __all__ = [
     "PersonaRunResponse",
     "PersonaExecutionResponse",
     "RunStatusResponse",
+    "TaskProgressStatus",
+    "ActiveExecutionsResponse",
     # Crawler run
     "CrawlerRun",
     "CrawlerRunCreate",
