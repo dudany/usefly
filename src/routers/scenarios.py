@@ -1,17 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 
-from src.database import get_db
+from src.database import get_db, SessionLocal
 from src.models import (
     ScenarioResponse,
     ScenarioCreate,
     CrawlerAnalysisRequest,
-    CrawlerAnalysisResponse,
+    AsyncAnalysisResponse,
     UpdateScenarioTasksRequest,
     UpdateScenarioTasksFullRequest,
     GenerateMoreTasksRequest,
     GenerateMoreTasksResponse,
+    SystemConfig,
 )
 from src.handlers import scenarios as scenarios_handler
 
@@ -48,18 +49,32 @@ def delete_scenario(scenario_id: str, db: Session = Depends(get_db)):
     return {"message": "Scenario deleted successfully"}
 
 
-@router.post("/analyze", response_model=CrawlerAnalysisResponse)
+@router.post("/analyze", response_model=AsyncAnalysisResponse)
 async def analyze_website(
     request: CrawlerAnalysisRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    """Run crawler analysis on a website."""
+    """
+    Start async crawler analysis on a website.
+    Returns immediately with run_id and scenario_id.
+    Progress can be tracked via GET /api/executions/active.
+    When complete, scenario appears in /api/scenarios list.
+    """
+    # Validate system config exists before starting
+    sys_config = db.query(SystemConfig).filter(SystemConfig.id == 1).first()
+    if not sys_config:
+        raise HTTPException(
+            status_code=400,
+            detail="System configuration not found. Please configure settings first at /settings"
+        )
+
     try:
-        return await scenarios_handler.analyze_website(db, request)
+        result = scenarios_handler.start_async_analysis(SessionLocal, request, background_tasks)
+        return AsyncAnalysisResponse(**result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        # Log error here if logging was set up
         raise HTTPException(status_code=500, detail=str(e))
 
 

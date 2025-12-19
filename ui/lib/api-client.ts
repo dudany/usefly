@@ -14,7 +14,7 @@ import {
   SystemConfigStatus,
   UpdateSystemConfigRequest,
   CrawlerAnalysisRequest,
-  CrawlerAnalysisResponse,
+  AsyncAnalysisResponse,
   PersonaExecutionResponse,
   RunStatusResponse,
   ActiveExecutionsResponse,
@@ -185,7 +185,7 @@ export const systemConfigApi = {
  */
 export const crawlerApi = {
   analyze: (data: CrawlerAnalysisRequest) =>
-    apiFetch<CrawlerAnalysisResponse>("/api/scenario/analyze", {
+    apiFetch<AsyncAnalysisResponse>("/api/scenario/analyze", {
       method: "POST",
       body: JSON.stringify(data),
     }),

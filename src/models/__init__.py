@@ -48,6 +48,7 @@ from src.models.common import (
 from src.models.schemas import (
     CrawlerAnalysisRequest,
     CrawlerAnalysisResponse,
+    AsyncAnalysisResponse,
     UpdateScenarioTasksRequest,
     UpdateScenarioTasksFullRequest,
     GenerateMoreTasksRequest,
@@ -83,6 +84,7 @@ __all__ = [
     # API schemas
     "CrawlerAnalysisRequest",
     "CrawlerAnalysisResponse",
+    "AsyncAnalysisResponse",
     "UpdateScenarioTasksRequest",
     "UpdateScenarioTasksFullRequest",
     "GenerateMoreTasksRequest",

@@ -369,6 +369,13 @@ export interface GenerateMoreTasksResponse {
   message: string;
 }
 
+export interface AsyncAnalysisResponse {
+  run_id: string;
+  scenario_id: string;
+  status: string;
+  message: string;
+}
+
 /**
  * Insights and Friction Data
  */

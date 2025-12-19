@@ -2,15 +2,13 @@
 
 import pytest
 from unittest.mock import patch, Mock, MagicMock
-from datetime import datetime
-from src.models import CrawlerAnalysisRequest
-
+from src.models import CrawlerAnalysisRequest, Scenario
 
 @pytest.mark.asyncio
 async def test_analyze_website_success(mock_system_config, mock_agent_history, test_db):
     """Test successful website analysis."""
 
-    with patch('src.handlers.scenarios.run_browser_use_agent') as mock_run_agent, \
+    with patch('src.handlers.scenarios.run_browser_use_agent_with_hooks') as mock_run_agent, \
          patch('src.handlers.scenarios.generate_tasks') as mock_task_gen, \
          patch('builtins.open', MagicMock()):
 
@@ -28,7 +26,8 @@ async def test_analyze_website_success(mock_system_config, mock_agent_history, t
 
         mock_task_list = MagicMock()
         mock_task_list.total_tasks = 2
-        mock_task_list.tasks = [mock_task, mock_task2]
+        mock_tasks = [mock_task, mock_task2]
+        mock_task_list.tasks = mock_tasks
         mock_task_gen.return_value = mock_task_list
 
         # Create request
@@ -40,21 +39,38 @@ async def test_analyze_website_success(mock_system_config, mock_agent_history, t
             email="test@example.com"
         )
 
-        # Call the endpoint
-        from src.handlers.scenarios import analyze_website
-        response = await analyze_website(db=test_db, request=request)
+        # Call the endpoint handler
+        # analyze_website_async requires a session factory. 
+        # We wrap test_db in a MagicMock to avoid issues with close() if needed, 
+        # or just pass a lambda. Using Mock allow us to track if it was called.
+        mock_session_factory = MagicMock(return_value=test_db)
+        
+        run_id = "test-run-id"
+        scenario_id = "test-scenario-id"
 
-        # Verify response structure
-        assert response["run_id"] is not None
-        assert response["status"] == "success"
-        assert response["duration"] == 120.5
-        assert response["steps"] == 9
-        assert response["crawler_summary"] == {
-            "title": "Example Site",
-            "pages_found": 3,
-            "status": "success"
-        }
-        assert len(response["tasks"]) == 2
-        assert response["tasks_metadata"]["total_tasks"] == 2
-        assert "user" in response["tasks_metadata"]["persona_distribution"]
-        assert "admin" in response["tasks_metadata"]["persona_distribution"]
+        from src.handlers.scenarios import analyze_website_async
+        await analyze_website_async(
+            db_session_factory=mock_session_factory, 
+            request=request,
+            run_id=run_id,
+            scenario_id=scenario_id
+        )
+
+        # Verify DB state
+        # The function commits to DB, so we should be able to query the created scenario
+        scenario = test_db.query(Scenario).filter(Scenario.id == scenario_id).first()
+        assert scenario is not None
+        assert scenario.website_url == "https://example.com"
+        assert scenario.name == "Test Site"
+        # Check that tasks were saved
+        assert len(scenario.tasks) == 2
+        assert scenario.tasks[0]["name"] == "Task 1"
+        assert scenario.tasks[1]["name"] == "Task 2"
+        
+        # Check metadata
+        assert scenario.tasks_metadata["total_tasks"] == 2
+        assert "user" in scenario.tasks_metadata["persona_distribution"]
+        
+        # Verify mocks were called
+        mock_run_agent.assert_called_once()
+        mock_task_gen.assert_called_once()

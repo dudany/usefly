@@ -27,10 +27,6 @@ jobs:
           cd ui
           pnpm install
           pnpm build
-          cd ..
-          rm -rf src/static
-          mkdir -p src/static
-          cp -r ui/out/* src/static/
 
 
       - name: Set up Python
