@@ -7,6 +7,7 @@ import { AlertTriangle, MapPin } from "lucide-react"
 import { useState } from "react"
 import { RunDetailsModal } from "./run-details-modal"
 import { personaRecordsApi } from "@/lib/api-client"
+import { formatUrl, getFullDecodedUrl } from "@/components/runs/run-utils"
 
 interface FrictionHotspotsProps {
     hotspots: FrictionHotspotItem[]
@@ -61,19 +62,18 @@ export function FrictionHotspots({ hotspots, loading }: FrictionHotspotsProps) {
                             <div
                                 key={index}
                                 onClick={() => item.example_run_ids.length > 0 && handleHotspotClick(item.example_run_ids[0])}
-                                className={`group relative p-4 rounded-lg border bg-card transition-all ${
-                                    item.example_run_ids.length > 0
-                                        ? "cursor-pointer hover:border-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 hover:shadow-sm"
-                                        : ""
-                                }`}
+                                className={`group relative p-4 rounded-lg border bg-card transition-all ${item.example_run_ids.length > 0
+                                    ? "cursor-pointer hover:border-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 hover:shadow-sm"
+                                    : ""
+                                    }`}
                             >
                                 <div className="flex justify-between items-start gap-4">
                                     <div className="flex-1 min-w-0">
                                         {/* Location */}
                                         <div className="flex items-start gap-2 mb-2">
                                             <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                                            <span className="text-sm font-medium text-foreground truncate" title={item.location}>
-                                                {item.location || "Unknown Location"}
+                                            <span className="text-sm font-medium text-foreground truncate" title={item.location ? getFullDecodedUrl(item.location) : ''}>
+                                                {item.location ? formatUrl(item.location) : "Unknown Location"}
                                             </span>
                                         </div>
 
