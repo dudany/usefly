@@ -97,6 +97,15 @@ export interface UpdateSystemConfigRequest {
 }
 
 /**
+ * System Configuration Status
+ * Lightweight check for config status
+ */
+export interface SystemConfigStatus {
+  configured: boolean;
+  missing_fields: string[];
+}
+
+/**
  * Crawler Analysis
  * Website crawling and analysis
  */

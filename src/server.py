@@ -70,6 +70,10 @@ if static_dir.exists():
         if full_path.startswith("_next"):
             raise HTTPException(status_code=404, detail="File not found")
 
+        # Don't handle API paths - those are handled by the API routers
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+
         # Handle root path
         if not full_path or full_path == "/":
             index_path = static_dir / "index.html"

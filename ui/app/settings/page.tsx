@@ -16,6 +16,7 @@ import { Settings as SettingsIcon, Loader, Save, ChevronLeft } from "lucide-reac
 import { systemConfigApi } from "@/lib/api-client"
 import { SystemConfig } from "@/types/api"
 import { AppLayout } from "@/components/layout/app-layout"
+import { useSettings } from "@/contexts/settings-context"
 
 const formSchema = z.object({
   provider: z.string().min(1, "Provider is required"),
@@ -39,6 +40,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [config, setConfig] = useState<SystemConfig | null>(null)
+  const { refreshStatus } = useSettings()
 
   const {
     register,
@@ -91,6 +93,8 @@ export default function SettingsPage() {
     try {
       const updated = await systemConfigApi.update(data)
       setConfig(updated)
+      // Refresh the settings context to update the banner
+      await refreshStatus()
       toast.success("Settings saved successfully!", {
         description: "System configuration has been updated.",
       })

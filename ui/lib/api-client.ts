@@ -11,6 +11,7 @@ import {
   ReportListItem,
   ReportAggregate,
   SystemConfig,
+  SystemConfigStatus,
   UpdateSystemConfigRequest,
   CrawlerAnalysisRequest,
   CrawlerAnalysisResponse,
@@ -174,6 +175,8 @@ export const systemConfigApi = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  getStatus: () => apiFetch<SystemConfigStatus>("/api/system-config/status"),
 };
 
 /**

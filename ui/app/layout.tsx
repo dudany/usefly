@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { WebsiteProvider } from "@/components/providers/website-provider"
 import { SegmentsProvider } from "@/components/providers/segments-provider"
 import { FilterProvider } from "@/contexts/filter-context"
+import { SettingsProvider } from "@/contexts/settings-context"
 import { Suspense } from "react"
 import "./globals.css"
 
@@ -35,15 +36,17 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <WebsiteProvider>
-            <SegmentsProvider>
-              <Suspense>
-                <FilterProvider>
-                  {children}
-                </FilterProvider>
-              </Suspense>
-            </SegmentsProvider>
-          </WebsiteProvider>
+          <SettingsProvider>
+            <WebsiteProvider>
+              <SegmentsProvider>
+                <Suspense>
+                  <FilterProvider>
+                    {children}
+                  </FilterProvider>
+                </Suspense>
+              </SegmentsProvider>
+            </WebsiteProvider>
+          </SettingsProvider>
         </ThemeProvider>
       </body>
     </html>
