@@ -1,6 +1,6 @@
 [project]
 name = "usefly"
-version = "0.1.1"
+dynamic = ["version"]
 description = "Agentic UX Analytics - Test your app with AI agents"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -51,8 +51,11 @@ dev = [
 usefly = "src.cli:main"
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+
 
 [tool.setuptools.packages.find]
 include = ["src*"]
