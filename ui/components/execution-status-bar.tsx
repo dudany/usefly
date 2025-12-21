@@ -10,7 +10,6 @@ function formatAction(action: string | undefined): string {
   return action.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())
 }
 
-// Extended task progress with optional phase field for analysis runs
 interface ExtendedTaskProgress extends TaskProgressStatus {
   phase?: string;
 }
