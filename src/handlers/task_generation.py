@@ -2,8 +2,27 @@ from typing import Dict, List, Optional, Tuple
 import json
 from datetime import datetime
 from langchain_openai import ChatOpenAI as LangchainChatOpenAI
+from langchain_anthropic import ChatAnthropic
+from browser_use import ChatGoogle, ChatGroq
 
-from src.models import TaskList
+from src.models import TaskList, SystemConfig
+
+
+def _get_llm_for_task_generation(system_config: SystemConfig):
+    """Initialize LLM based on provider configuration for task generation."""
+    provider = system_config.provider.lower()
+
+    if provider == "openai":
+        return LangchainChatOpenAI(model=system_config.model_name, api_key=system_config.api_key)
+    elif provider == "claude":
+        return ChatAnthropic(model=system_config.model_name, api_key=system_config.api_key)
+    elif provider == "groq":
+        return ChatGroq(model=system_config.model_name, api_key=system_config.api_key)
+    elif provider == "google":
+        return ChatGoogle(model=system_config.model_name, api_key=system_config.api_key)
+    else:
+        # Default to OpenAI if provider unknown
+        return LangchainChatOpenAI(model=system_config.model_name, api_key=system_config.api_key)
 
 
 def load_prompt_template(num_tasks: int, custom_prompt: Optional[str] = None) -> str:
@@ -52,8 +71,7 @@ def prepare_generation_context(
 def generate_tasks(
     crawler_result: any,
     existing_tasks: List[Dict],
-    model_name: str,
-    api_key: Optional[str],
+    system_config: SystemConfig,
     num_tasks: int = 10,
     custom_prompt: Optional[str] = None
 ) -> TaskList:
@@ -71,8 +89,7 @@ def generate_tasks(
         prompt_template=prompt_template,
         existing_tasks_summary=existing_summary,
         crawler_context=crawler_context,
-        model_name=model_name,
-        api_key=api_key
+        system_config=system_config
     )
 
     return task_list
@@ -82,10 +99,9 @@ def generate_tasks_with_llm(
     prompt_template: str,
     existing_tasks_summary: str,
     crawler_context: str,
-    model_name: str,
-    api_key: Optional[str] = None
+    system_config: SystemConfig
 ) -> TaskList:
-    llm = LangchainChatOpenAI(model=model_name, api_key=api_key)
+    llm = _get_llm_for_task_generation(system_config)
     agent = llm.with_structured_output(TaskList)
 
     if existing_tasks_summary:

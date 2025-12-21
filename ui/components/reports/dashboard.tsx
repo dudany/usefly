@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Loader } from "lucide-react"
 import { reportApi, scenarioApi } from "@/lib/api-client"
@@ -10,8 +11,10 @@ import { JourneySankey } from "./journey-sankey"
 import { RunFilters } from "@/components/runs/run-filters"
 import { useFilterContext } from "@/contexts/filter-context"
 import { FrictionDetailModal } from "./friction-detail-modal"
+import { EmptyState } from "@/components/ui/empty-state"
 
 export function ReportsDashboard() {
+  const router = useRouter()
   const {
     scenarioFilter,
     reportFilter,
@@ -93,9 +96,12 @@ export function ReportsDashboard() {
         setFriction(frictionData)
 
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch report data")
-        // Even if aggregate fails (e.g. 404 from empty filters?), we should handle gracefully
-        // The backend now returns a zero-struct if possible, or 404 if report missing.
+        // Handle 404 gracefully - likely stale filter, don't show error
+        // Just clear the report data which will show "no data" message
+        console.warn('[ReportsDashboard] Error fetching report data:', err)
+        setSelectedReportData(null)
+        setFriction([])
+        // Don't set global error for aggregate failures - the filter validation will handle it
       } finally {
         setLoadingAggregate(false)
         setFrictionLoading(false)
@@ -104,6 +110,47 @@ export function ReportsDashboard() {
 
     fetchReportData()
   }, [reportFilter, scenarioFilter, personaFilter, statusFilter, platformFilter])
+
+  // Determine empty state content based on context
+  const getEmptyStateContent = () => {
+    // No scenarios exist at all - user needs to create one first
+    if (scenarios.length === 0) {
+      return {
+        title: "No scenarios yet",
+        description: "Create a scenario to start testing personas on your website",
+        variant: "no-data" as const,
+        action: {
+          label: "Create Scenario",
+          onClick: () => router.push('/scenarios/new')
+        }
+      }
+    }
+
+    // Scenarios exist but no reports yet
+    if (reportList.length === 0) {
+      return {
+        title: "No reports yet",
+        description: "Run some persona tests to generate reports",
+        variant: "no-data" as const
+      }
+    }
+
+    // Reports exist but no scenario selected
+    if ((!reportFilter || reportFilter === "all") && scenarioFilter === "all") {
+      return {
+        title: "Select a scenario to view journey analysis",
+        description: `${scenarios.length} scenario${scenarios.length !== 1 ? 's' : ''} available`,
+        variant: "default" as const
+      }
+    }
+
+    // Scenario/report selected but no data returned
+    return {
+      title: "No data available",
+      description: "No data matches your current filters. Try selecting a different scenario or report.",
+      variant: "no-results" as const
+    }
+  }
 
   if (loading) {
     return (
@@ -122,21 +169,11 @@ export function ReportsDashboard() {
     )
   }
 
-  if (reportList.length === 0) {
-    return (
-      <Card className="p-12">
-        <div className="text-center text-muted-foreground">
-          <p className="text-lg mb-2">No reports found</p>
-          <p className="text-sm">Run some persona tests to generate reports</p>
-        </div>
-      </Card>
-    )
-  }
-
+  // Always show filters, even when no reports exist
   return (
     <div className="space-y-6">
 
-      {/* Unified Filters */}
+      {/* Unified Filters - ALWAYS visible */}
       <RunFilters
         scenarios={scenarios}
         reports={reportList}
@@ -145,17 +182,8 @@ export function ReportsDashboard() {
         showDateFilter={false}
       />
 
-      {/* Main Content */}
-      {(!reportFilter || reportFilter === "all") && scenarioFilter === "all" ? (
-        <Card className="p-12">
-          <div className="text-center text-muted-foreground">
-            <p className="text-lg mb-2">Select a scenario to view journey analysis</p>
-            <p className="text-sm">
-              {scenarios.length} scenarios available
-            </p>
-          </div>
-        </Card>
-      ) : loadingAggregate ? (
+      {/* Main Content - conditional based on state */}
+      {loadingAggregate ? (
         <div className="flex items-center justify-center py-12">
           <Loader className="w-6 h-6 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">Loading analysis...</span>
@@ -223,12 +251,8 @@ export function ReportsDashboard() {
           <FrictionHotspots hotspots={friction} loading={frictionLoading} />
         </>
       ) : (
-        <Card className="p-12">
-          <div className="text-center text-muted-foreground">
-            <p className="text-lg mb-2">Report not found</p>
-            <p className="text-sm">The selected report could not be loaded</p>
-          </div>
-        </Card>
+        // Show appropriate empty state based on context
+        <EmptyState {...getEmptyStateContent()} />
       )}
 
       {/* Friction Detail Modal */}
@@ -239,4 +263,5 @@ export function ReportsDashboard() {
     </div>
   )
 }
+
 

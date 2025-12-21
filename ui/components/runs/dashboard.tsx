@@ -1,15 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { RunFilters } from "./run-filters"
 import { Loader } from "lucide-react"
 import { RunTable } from "./run-table"
-import { Card } from "@/components/ui/card"
+import { EmptyState } from "@/components/ui/empty-state"
 import { personaRecordsApi, reportApi, scenarioApi } from "@/lib/api-client"
-import { Scenario, PersonaRun, ReportListItem, FrictionHotspotItem } from "@/types/api"
+import { Scenario, PersonaRun, ReportListItem } from "@/types/api"
 import { useFilterContext } from "@/contexts/filter-context"
 
 export function RunsDashboard() {
+  const router = useRouter()
   const {
     scenarioFilter,
     reportFilter,
@@ -112,9 +114,44 @@ export function RunsDashboard() {
     )
   }
 
+  // Determine empty state content based on context
+  const getEmptyStateContent = () => {
+    // No scenarios exist at all - user needs to create one first
+    if (scenarios.length === 0) {
+      return {
+        title: "No scenarios yet",
+        description: "Create a scenario to start testing personas on your website",
+        variant: "no-data" as const,
+        action: {
+          label: "Create Scenario",
+          onClick: () => router.push('/scenarios/new')
+        }
+      }
+    }
+
+    // Scenario selected but no runs exist for it
+    if (scenarioFilter !== "all" && agentRuns.length === 0) {
+      const selectedScenario = scenarios.find(s => s.id === scenarioFilter)
+      return {
+        title: "No runs found",
+        description: selectedScenario
+          ? `No persona runs exist for "${selectedScenario.name}" yet. Run the scenario to generate test data.`
+          : "No persona runs match your current filters. Try adjusting them.",
+        variant: "no-results" as const
+      }
+    }
+
+    // Default: prompt to select a scenario
+    return {
+      title: "Select a scenario to view runs",
+      description: `${scenarios.length} scenario${scenarios.length !== 1 ? 's' : ''} available`,
+      variant: "default" as const
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Filters Section */}
+      {/* Filters Section - always visible */}
       <RunFilters
         scenarios={scenarios}
         reports={reports}
@@ -123,16 +160,9 @@ export function RunsDashboard() {
         showDateFilter={false}
       />
 
-      {/* Show message when no scenario selected */}
+      {/* Main Content */}
       {scenarioFilter === "all" ? (
-        <Card className="p-12">
-          <div className="text-center text-muted-foreground">
-            <p className="text-lg mb-2">Select a scenario to view runs</p>
-            <p className="text-sm">
-              {scenarios.length} scenarios available
-            </p>
-          </div>
-        </Card>
+        <EmptyState {...getEmptyStateContent()} />
       ) : (
         <>
           {/* Analytics Section (Only when a specific report is selected) */}
@@ -146,16 +176,15 @@ export function RunsDashboard() {
             Showing {agentRuns.length} runs
           </div>
 
-          {/* Table */}
+          {/* Table or Empty State */}
           {agentRuns.length > 0 ? (
             <RunTable runs={agentRuns} />
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No agent runs found. Try adjusting your filters.
-            </div>
+            <EmptyState {...getEmptyStateContent()} />
           )}
         </>
       )}
     </div>
   )
 }
+

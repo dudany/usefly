@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -52,10 +53,44 @@ export function RunFilters({
 
     const platforms = ["web", "mobile", "desktop"]
 
+    // Validate and auto-reset stale filters
+    // This runs when scenarios/reports are loaded and checks if cached filter values are valid
+    useEffect(() => {
+        // Check if scenario filter is stale (not "all" and not in available scenarios)
+        if (showScenarioFilter && scenarioFilter !== "all" && scenarios.length > 0) {
+            const scenarioExists = scenarios.some(s => s.id === scenarioFilter)
+            if (!scenarioExists) {
+                console.log('[RunFilters] Resetting stale scenarioFilter:', scenarioFilter)
+                setScenarioFilter("all")
+            }
+        }
+    }, [scenarios, scenarioFilter, showScenarioFilter, setScenarioFilter])
+
+    useEffect(() => {
+        // Check if report filter is stale
+        if (showReportFilter && reportFilter !== "all" && reports.length > 0) {
+            const reportExists = reports.some(r => r.report_id === reportFilter)
+            if (!reportExists) {
+                console.log('[RunFilters] Resetting stale reportFilter:', reportFilter)
+                setReportFilter("all")
+            }
+        }
+    }, [reports, reportFilter, showReportFilter, setReportFilter])
+
+    // Compute effective filter values (use "all" if current value is invalid)
+    // This ensures the Select never shows blank even before useEffect runs
+    const effectiveScenarioFilter = scenarioFilter === "all" || scenarios.some(s => s.id === scenarioFilter)
+        ? scenarioFilter
+        : "all"
+
+    const effectiveReportFilter = reportFilter === "all" || reports.some(r => r.report_id === reportFilter)
+        ? reportFilter
+        : "all"
+
     // Derived state to check if any relevant filter is active for Reset button
     const hasActiveFilters =
-        (showScenarioFilter && scenarioFilter !== "all") ||
-        (showReportFilter && reportFilter !== "all") ||
+        (showScenarioFilter && effectiveScenarioFilter !== "all") ||
+        (showReportFilter && effectiveReportFilter !== "all") ||
         statusFilter !== "all" ||
         personaFilter !== "all" ||
         (showDateFilter && (dateFrom || dateTo)) ||
@@ -64,7 +99,7 @@ export function RunFilters({
 
     // Prepare reports options if filtered by scenario
     const filteredReports = showReportFilter
-        ? (scenarioFilter === "all" ? reports : reports.filter(r => r.scenario_id === scenarioFilter))
+        ? (effectiveScenarioFilter === "all" ? reports : reports.filter(r => r.scenario_id === effectiveScenarioFilter))
         : []
 
     const handleScenarioChange = (val: string) => {
@@ -73,6 +108,7 @@ export function RunFilters({
             setReportFilter("all") // Reset report when scenario changes
         }
     }
+
 
     return (
         <div className="flex flex-col gap-4 p-4 bg-muted/30 rounded-lg border">
@@ -92,7 +128,7 @@ export function RunFilters({
                 {showScenarioFilter && (
                     <div>
                         <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Scenario</label>
-                        <Select value={scenarioFilter} onValueChange={handleScenarioChange}>
+                        <Select value={effectiveScenarioFilter} onValueChange={handleScenarioChange}>
                             <SelectTrigger className="w-full h-9">
                                 <SelectValue placeholder="All" />
                             </SelectTrigger>
@@ -112,7 +148,7 @@ export function RunFilters({
                 {showReportFilter && (
                     <div>
                         <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Report</label>
-                        <Select value={reportFilter} onValueChange={setReportFilter}>
+                        <Select value={effectiveReportFilter} onValueChange={setReportFilter}>
                             <SelectTrigger className="w-full h-9">
                                 <SelectValue placeholder="All" />
                             </SelectTrigger>

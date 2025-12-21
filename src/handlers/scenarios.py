@@ -258,8 +258,7 @@ async def analyze_website_async(db_session_factory, request, run_id: str, scenar
         task_list = generate_tasks(
             crawler_result=final_result,
             existing_tasks=[],
-            model_name=sys_config.model_name,
-            api_key=sys_config.api_key
+            system_config=sys_config
         )
 
         task_list.website_url = request.website_url
@@ -458,8 +457,7 @@ def generate_more_tasks(db: Session, scenario_id: str, request) -> Dict:
     new_task_list = generate_tasks(
         crawler_result=scenario.crawler_final_result,
         existing_tasks=existing_tasks,
-        model_name=sys_config.model_name,
-        api_key=sys_config.api_key,
+        system_config=sys_config,
         num_tasks=request.num_tasks,
         custom_prompt=request.custom_prompt
     )
