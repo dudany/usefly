@@ -13,10 +13,10 @@ from pydantic import BaseModel, field_validator
 
 class CrawlerAnalysisRequest(BaseModel):
     """Request payload for crawler analysis."""
-    scenario_id: Optional[str] = None
+    scenario_id: str  # NOW REQUIRED - must be an existing scenario
     website_url: str
     description: str = ""
-    name: str  # Scenario name - required (frontend generates if empty)
+    name: str  # Scenario name (for logging purposes)
     metrics: List[str] = []  # Selected metrics
     email: str = ""  # User email
 

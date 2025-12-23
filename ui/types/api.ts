@@ -110,7 +110,7 @@ export interface SystemConfigStatus {
  * Website crawling and analysis
  */
 export interface CrawlerAnalysisRequest {
-  scenario_id?: string;
+  scenario_id: string;  // NOW REQUIRED - must be an existing scenario
   website_url: string;
   description?: string;
   name?: string;

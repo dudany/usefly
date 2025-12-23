@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/layout/app-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader, Plus, Trash2, Play } from "lucide-react"
+import { Loader, Plus, Trash2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
-import { scenarioApi } from "@/lib/api-client"
+import { scenarioApi, crawlerApi } from "@/lib/api-client"
 import { Scenario } from "@/types/api"
 import { ScenarioTasksModal } from "@/components/scenarios/scenario-tasks-modal"
 import { useExecutions } from "@/contexts/execution-context"
@@ -23,22 +23,14 @@ import {
 
 export default function ScenariosPage() {
   const router = useRouter()
-  const { activeExecutions, startExecution } = useExecutions()
+  const { activeExecutions, startExecution, refreshExecutions } = useExecutions()
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [editingScenario, setEditingScenario] = useState<Scenario | null>(null)
   const [showTasksModal, setShowTasksModal] = useState(false)
-
-  // Derive running scenarios from execution context
-  const runningScenarioIds = useMemo(() => {
-    return new Set(
-      activeExecutions
-        .filter(e => e.status === "in_progress")
-        .map(e => e.scenario_id)
-    )
-  }, [activeExecutions])
+  const [reindexingScenarioIds, setReindexingScenarioIds] = useState<Set<string>>(new Set())
 
   // Get status for a specific scenario
   const getScenarioStatus = (scenarioId: string) => {
@@ -122,6 +114,38 @@ export default function ScenariosPage() {
     }
   }
 
+  const handleReindex = async (scenario: Scenario) => {
+    try {
+      setReindexingScenarioIds(prev => new Set(prev).add(scenario.id))
+
+      await crawlerApi.analyze({
+        scenario_id: scenario.id,
+        website_url: scenario.website_url,
+        description: scenario.description || "",
+        name: scenario.name,
+        metrics: scenario.metrics || [],
+        email: scenario.email || "",
+      })
+
+      toast.success("Reindexing started", {
+        description: "Check the status bar below for progress"
+      })
+
+      await refreshExecutions()
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to start reindexing"
+      toast.error("Failed to start reindexing", {
+        description: errorMessage,
+      })
+    } finally {
+      setReindexingScenarioIds(prev => {
+        const next = new Set(prev)
+        next.delete(scenario.id)
+        return next
+      })
+    }
+  }
+
   if (loading) {
     return (
       <AppLayout>
@@ -178,26 +202,33 @@ export default function ScenariosPage() {
                       </p>
                     </div>
 
+                    {!scenario.tasks?.length && (
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Loader className="w-3 h-3 animate-spin" />
+                        Reindexing...
+                      </div>
+                    )}
+
                     <p className="text-xs text-muted-foreground">
                       Created {new Date(scenario.created_at).toLocaleDateString()}
                     </p>
 
                     <div className="flex gap-2 pt-2">
                       <Button
-                        variant="default"
+                        variant="outline"
                         size="sm"
-                        onClick={() => handleRunScenario(scenario)}
-                        disabled={runningScenarioIds.has(scenario.id) || !scenario.selected_task_indices?.length}
+                        onClick={() => handleReindex(scenario)}
+                        disabled={reindexingScenarioIds.has(scenario.id)}
                       >
-                        {runningScenarioIds.has(scenario.id) ? (
+                        {reindexingScenarioIds.has(scenario.id) ? (
                           <>
                             <Loader className="w-4 h-4 mr-2 animate-spin" />
-                            Running...
+                            Reindexing...
                           </>
                         ) : (
                           <>
-                            <Play className="w-4 h-4 mr-2" />
-                            Play
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Reindex
                           </>
                         )}
                       </Button>
