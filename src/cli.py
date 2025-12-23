@@ -1,3 +1,9 @@
+import os
+
+# Disable browser-use telemetry by default to avoid SSL errors behind VPNs
+# Users can override by setting ANONYMIZED_TELEMETRY=true
+os.environ.setdefault('ANONYMIZED_TELEMETRY', 'false')
+
 import click
 import uvicorn
 

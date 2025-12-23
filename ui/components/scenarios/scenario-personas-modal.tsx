@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { GenerateTasksDialog } from "./generate-tasks-dialog"
+import { GeneratePersonasDialog } from "./generate-personas-dialog"
 
 // Available personas for e-commerce and SaaS contexts
 const AVAILABLE_PERSONAS = [
@@ -34,7 +34,7 @@ const AVAILABLE_PERSONAS = [
   "Mobile Shopper",
   "Power User",
   "Free Trial User",
-  "Demo Requester",,
+  "Demo Requester",
   "Subscription Manager",
   "Support Seeker",
   "Feature Explorer",
@@ -49,7 +49,7 @@ interface Task {
   stop?: string
 }
 
-interface ScenarioTasksModalProps {
+interface ScenarioPersonasModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   mode: 'create' | 'edit'
@@ -68,7 +68,7 @@ interface ScenarioTasksModalProps {
   onRun?: (scenario: Scenario) => Promise<void>
 }
 
-export function ScenarioTasksModal({
+export function ScenarioPersonasModal({
   open,
   onOpenChange,
   mode,
@@ -79,7 +79,7 @@ export function ScenarioTasksModal({
   onUpdate,
   onDelete,
   onRun,
-}: ScenarioTasksModalProps) {
+}: ScenarioPersonasModalProps) {
   const router = useRouter()
 
   // State
@@ -227,7 +227,7 @@ export function ScenarioTasksModal({
         const response = await crawlerApi.save(createRequest)
 
         toast.success("Scenario saved successfully!", {
-          description: `Created scenario with ${selectedTasks.size} tasks`
+          description: `Created scenario with ${selectedTasks.size} personas`
         })
 
         onSave?.(response.id)
@@ -248,7 +248,7 @@ export function ScenarioTasksModal({
         }
 
         toast.success("Scenario updated successfully!", {
-          description: `Updated with ${selectedTasks.size} selected tasks`
+          description: `Updated with ${selectedTasks.size} selected personas`
         })
 
         onUpdate?.(scenario.id)
@@ -340,8 +340,8 @@ export function ScenarioTasksModal({
             </DialogTitle>
             <DialogDescription>
               {mode === 'create'
-                ? 'Review the generated tasks and select which ones to include in your scenario'
-                : 'Update task selection or add new tasks for this scenario'}
+                ? 'Review the generated personas and select which ones to include in your scenario'
+                : 'Update persona selection or add new personas for this scenario'}
             </DialogDescription>
           </DialogHeader>
 
@@ -349,7 +349,7 @@ export function ScenarioTasksModal({
             {!localTasks.length && (
               <Card className="border-amber-200 bg-amber-50">
                 <CardHeader>
-                  <CardTitle className="text-sm text-amber-900">No Tasks Available</CardTitle>
+                  <CardTitle className="text-sm text-amber-900">No Personas Available</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-amber-800">
                   This scenario doesn't have any personas yet. Click "Add Persona" to create one.
@@ -402,11 +402,27 @@ export function ScenarioTasksModal({
               ) : null
             })()}
 
-            {/* Persona Distribution - moved here, beneath Website Analysis */}
+            {/* Persona Distribution - Filter */}
             {tasksMetadata?.persona_distribution && Object.keys(tasksMetadata.persona_distribution).length > 0 && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Persona Distribution</CardTitle>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Filter by Persona Type</CardTitle>
+                      <CardDescription className="mt-1">
+                        Click to filter the personas list below
+                      </CardDescription>
+                    </div>
+                    {personaFilters.size > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setPersonaFilters(new Set())}
+                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -446,15 +462,6 @@ export function ScenarioTasksModal({
                       }
                     )}
                   </div>
-                  {personaFilters.size > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setPersonaFilters(new Set())}
-                      className="mt-3 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
-                    >
-                      Clear filters ({personaFilters.size} active)
-                    </button>
-                  )}
                 </CardContent>
               </Card>
             )}
@@ -480,7 +487,14 @@ export function ScenarioTasksModal({
                       Personas to Run ({localTasks.length})
                     </CardTitle>
                     <CardDescription>
-                      Selected: {selectedTasks.size} of {localTasks.length}
+                      {personaFilters.size > 0 ? (
+                        <>
+                          Showing {localTasks.filter(t => personaFilters.has(t.persona)).length} of {localTasks.length} personas
+                          <span className="ml-1 text-primary">(filtered)</span>
+                        </>
+                      ) : (
+                        <>Selected: {selectedTasks.size} of {localTasks.length}</>
+                      )}
                     </CardDescription>
                   </div>
                   <div className="flex gap-2">
@@ -491,7 +505,7 @@ export function ScenarioTasksModal({
                         variant="default"
                       >
                         <Sparkles className="w-4 h-4 mr-1" />
-                        Generate More Tasks
+                        Generate More Personas
                       </Button>
                     )}
                     <Button onClick={handleAddTask} size="sm" variant="outline">
@@ -761,7 +775,7 @@ export function ScenarioTasksModal({
 
       {/* Generate Tasks Dialog */}
       {mode === 'edit' && scenario && (
-        <GenerateTasksDialog
+        <GeneratePersonasDialog
           open={showGenerateDialog}
           onOpenChange={setShowGenerateDialog}
           scenarioId={scenario.id}

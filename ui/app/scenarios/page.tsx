@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/layout/app-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader, Plus, Trash2, Play } from "lucide-react"
+import { Loader, Plus, Trash2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
-import { scenarioApi } from "@/lib/api-client"
+import { scenarioApi, crawlerApi } from "@/lib/api-client"
 import { Scenario } from "@/types/api"
-import { ScenarioTasksModal } from "@/components/scenarios/scenario-tasks-modal"
+import { ScenarioPersonasModal } from "@/components/scenarios/scenario-personas-modal"
 import { useExecutions } from "@/contexts/execution-context"
 import {
   AlertDialog,
@@ -23,51 +23,58 @@ import {
 
 export default function ScenariosPage() {
   const router = useRouter()
-  const { activeExecutions, startExecution } = useExecutions()
+  const { activeExecutions, startExecution, refreshExecutions, onExecutionComplete } = useExecutions()
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [editingScenario, setEditingScenario] = useState<Scenario | null>(null)
   const [showTasksModal, setShowTasksModal] = useState(false)
-
-  // Derive running scenarios from execution context
-  const runningScenarioIds = useMemo(() => {
-    return new Set(
-      activeExecutions
-        .filter(e => e.status === "in_progress")
-        .map(e => e.scenario_id)
-    )
-  }, [activeExecutions])
+  const [reindexingScenarioIds, setReindexingScenarioIds] = useState<Set<string>>(new Set())
 
   // Get status for a specific scenario
   const getScenarioStatus = (scenarioId: string) => {
     return activeExecutions.find(e => e.scenario_id === scenarioId && e.status === "in_progress")
   }
 
+  // Fetch scenarios function (used on mount and after execution completes)
+  const fetchScenarios = useCallback(async () => {
+    try {
+      const data = await scenarioApi.list()
+      setScenarios(data)
+      return data
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch scenarios"
+      toast.error(errorMessage)
+      return []
+    }
+  }, [])
+
   // Fetch scenarios on mount
   useEffect(() => {
-    const fetchScenarios = async () => {
-      try {
-        setLoading(true)
-        const data = await scenarioApi.list()
-        setScenarios(data)
+    const loadScenarios = async () => {
+      setLoading(true)
+      const data = await fetchScenarios()
 
-        // Auto-redirect to new scenario page if empty
-        if (data.length === 0) {
-          router.push("/scenarios/new")
-          return
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to fetch scenarios"
-        toast.error(errorMessage)
-      } finally {
-        setLoading(false)
+      // Auto-redirect to new scenario page if empty
+      if (data.length === 0) {
+        router.push("/scenarios/new")
       }
+      setLoading(false)
     }
 
-    fetchScenarios()
-  }, [router])
+    loadScenarios()
+  }, [router, fetchScenarios])
+
+  // Auto-refresh scenarios when executions complete (e.g., reindexing finishes)
+  useEffect(() => {
+    const unsubscribe = onExecutionComplete(() => {
+      // Refresh scenarios to get updated task data after reindexing or execution completes
+      fetchScenarios()
+    })
+
+    return unsubscribe
+  }, [onExecutionComplete, fetchScenarios])
 
   const handleViewDetails = async (scenario: Scenario) => {
     console.log("handleViewDetails called with scenario:", scenario)
@@ -119,6 +126,38 @@ export default function ScenariosPage() {
       await startExecution(scenario.id)
     } catch (error) {
       // Error handling is done in the context
+    }
+  }
+
+  const handleReindex = async (scenario: Scenario) => {
+    try {
+      setReindexingScenarioIds(prev => new Set(prev).add(scenario.id))
+
+      await crawlerApi.analyze({
+        scenario_id: scenario.id,
+        website_url: scenario.website_url,
+        description: scenario.description || "",
+        name: scenario.name,
+        metrics: scenario.metrics || [],
+        email: scenario.email || "",
+      })
+
+      toast.success("Reindexing started", {
+        description: "Check the status bar below for progress"
+      })
+
+      await refreshExecutions()
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to start reindexing"
+      toast.error("Failed to start reindexing", {
+        description: errorMessage,
+      })
+    } finally {
+      setReindexingScenarioIds(prev => {
+        const next = new Set(prev)
+        next.delete(scenario.id)
+        return next
+      })
     }
   }
 
@@ -178,26 +217,33 @@ export default function ScenariosPage() {
                       </p>
                     </div>
 
+                    {!scenario.tasks?.length && (
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Loader className="w-3 h-3 animate-spin" />
+                        Reindexing...
+                      </div>
+                    )}
+
                     <p className="text-xs text-muted-foreground">
                       Created {new Date(scenario.created_at).toLocaleDateString()}
                     </p>
 
                     <div className="flex gap-2 pt-2">
                       <Button
-                        variant="default"
+                        variant="outline"
                         size="sm"
-                        onClick={() => handleRunScenario(scenario)}
-                        disabled={runningScenarioIds.has(scenario.id) || !scenario.selected_task_indices?.length}
+                        onClick={() => handleReindex(scenario)}
+                        disabled={reindexingScenarioIds.has(scenario.id)}
                       >
-                        {runningScenarioIds.has(scenario.id) ? (
+                        {reindexingScenarioIds.has(scenario.id) ? (
                           <>
                             <Loader className="w-4 h-4 mr-2 animate-spin" />
-                            Running...
+                            Reindexing...
                           </>
                         ) : (
                           <>
-                            <Play className="w-4 h-4 mr-2" />
-                            Play
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Reindex
                           </>
                         )}
                       </Button>
@@ -262,7 +308,7 @@ export default function ScenariosPage() {
       </AlertDialog>
 
       {/* Edit Scenario Modal */}
-      <ScenarioTasksModal
+      <ScenarioPersonasModal
         open={showTasksModal}
         onOpenChange={(open) => {
           setShowTasksModal(open)

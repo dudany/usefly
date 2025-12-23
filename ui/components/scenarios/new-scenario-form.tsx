@@ -8,15 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { crawlerApi } from "@/lib/api-client"
+import { crawlerApi, scenarioApi } from "@/lib/api-client"
 import { useExecutions } from "@/contexts/execution-context"
 import { Sparkles } from "lucide-react"
-
-// Fun adjectives for auto-generated scenario names
-const ADJECTIVES = [
-  "swift", "bright", "clever", "nimble", "eager", "bold", "keen",
-  "vivid", "zesty", "peppy", "spry", "brisk", "chipper", "zippy"
-]
+import { SCENARIO_ADJECTIVES } from "@/lib/constants"
 
 // Generate a random scenario name from URL
 const generateScenarioName = (url: string): string => {
@@ -26,10 +21,10 @@ const generateScenarioName = (url: string): string => {
       .replace(/^www\./, '')
       .replace(/\.[^.]+$/, '') // Remove TLD
 
-    const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
+    const adjective = SCENARIO_ADJECTIVES[Math.floor(Math.random() * SCENARIO_ADJECTIVES.length)]
     return `${hostname} - ${adjective}`
   } catch {
-    const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
+    const adjective = SCENARIO_ADJECTIVES[Math.floor(Math.random() * SCENARIO_ADJECTIVES.length)]
     return `test - ${adjective}`
   }
 }
@@ -60,16 +55,34 @@ export function NewScenarioForm() {
     setIsSubmitting(true)
 
     try {
-      // Start async analysis - returns immediately
-      await crawlerApi.analyze({
+      // STEP 1: Create empty scenario first
+      const createResponse = await scenarioApi.create({
+        name: scenarioName,
         website_url: formData.website_url,
         description: formData.description || "",
-        name: scenarioName,
-        metrics: [],
         email: formData.email || "",
+        personas: ["crawler"],
       })
 
-      toast.success("Scenario analysis started", {
+      const scenarioId = createResponse.id
+
+      try {
+        // STEP 2: Start async analysis on the created scenario
+        await crawlerApi.analyze({
+          scenario_id: scenarioId,
+          website_url: formData.website_url,
+          description: formData.description || "",
+          name: scenarioName,
+          metrics: [],
+          email: formData.email || "",
+        })
+      } catch (analyzeError) {
+        // Cleanup orphaned scenario if analyze fails
+        await scenarioApi.delete(scenarioId)
+        throw analyzeError
+      }
+
+      toast.success("Scenario created and analysis started", {
         description: "Check the status bar below for progress"
       })
 
@@ -79,8 +92,8 @@ export function NewScenarioForm() {
       // Navigate to scenarios page immediately
       router.push("/scenarios")
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to start analysis"
-      toast.error("Failed to start analysis", {
+      const errorMessage = error instanceof Error ? error.message : "Failed to create scenario"
+      toast.error("Failed to create scenario", {
         description: errorMessage,
       })
       setIsSubmitting(false)

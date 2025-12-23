@@ -206,12 +206,6 @@ async def analyze_website_async(db_session_factory, request, run_id: str, scenar
             complete_analysis(run_id, False, "System configuration not found")
             return
 
-        hostname = urlparse(request.website_url).netloc or request.website_url
-        scenario_name = request.name or f"Crawler - {hostname}"
-
-        # Initialize tracking
-        init_analysis_status(run_id, scenario_id, scenario_name, request.website_url)
-
         # Phase 1: Crawling
         update_analysis_phase(run_id, "crawling", current_action="Exploring website")
 
@@ -293,29 +287,25 @@ async def analyze_website_async(db_session_factory, request, run_id: str, scenar
         elif extracted_content is not None:
             extracted_content_str = str(extracted_content)
 
-        # Phase 3: Saving scenario
-        update_analysis_phase(run_id, "saving", current_action="Saving scenario")
-        _add_analysis_log(run_id, f"Saving scenario with {len(tasks_list)} tasks...")
+        # Phase 3: Update existing scenario with results
+        update_analysis_phase(run_id, "saving", current_action="Updating scenario")
+        _add_analysis_log(run_id, f"Updating scenario with {len(tasks_list)} tasks...")
 
-        # Create the scenario in DB
-        db_scenario = Scenario(
-            id=scenario_id,
-            name=scenario_name,
-            website_url=request.website_url,
-            personas=["crawler"],
-            description=request.description,
-            metrics=request.metrics,
-            email=request.email,
-            tasks=tasks_list,
-            tasks_metadata=tasks_metadata,
-            selected_task_indices=selected_indices,
-            discovered_urls=processed_urls,
-            crawler_final_result=str(final_result) if final_result else "",
-            crawler_extracted_content=extracted_content_str
-        )
-        db.add(db_scenario)
+        # Fetch existing scenario
+        scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
+        if not scenario:
+            complete_analysis(run_id, False, "Scenario not found")
+            return
 
-        # Create crawler run record
+        # Update scenario with crawler results
+        scenario.tasks = tasks_list
+        scenario.tasks_metadata = tasks_metadata
+        scenario.selected_task_indices = selected_indices
+        scenario.discovered_urls = processed_urls
+        scenario.crawler_final_result = str(final_result) if final_result else ""
+        scenario.crawler_extracted_content = extracted_content_str
+
+        # Create crawler run record (historical)
         crawler_run = CrawlerRun(
             id=str(uuid.uuid4()),
             scenario_id=scenario_id,
@@ -332,7 +322,7 @@ async def analyze_website_async(db_session_factory, request, run_id: str, scenar
 
         # Mark as completed
         complete_analysis(run_id, True)
-        _add_analysis_log(run_id, f"Scenario created with {len(tasks_list)} tasks")
+        _add_analysis_log(run_id, f"Scenario updated with {len(tasks_list)} tasks")
 
     except Exception as e:
         complete_analysis(run_id, False, str(e))
@@ -343,28 +333,33 @@ async def analyze_website_async(db_session_factory, request, run_id: str, scenar
 
 def start_async_analysis(db_session_factory, request, background_tasks: BackgroundTasks) -> Dict:
     """
-    Start async website analysis and return immediately with run_id and scenario_id.
-    The analysis runs in background via FastAPI BackgroundTasks.
-    Progress can be polled via /executions/active.
+    Start async website analysis on an EXISTING scenario.
+    The scenario must already exist in the database.
     """
-    run_id = str(uuid.uuid4())
-    scenario_id = str(uuid.uuid4())
+    db = db_session_factory()
+    try:
+        # Validate scenario exists
+        scenario = db.query(Scenario).filter(Scenario.id == request.scenario_id).first()
+        if not scenario:
+            raise ValueError(f"Scenario {request.scenario_id} not found")
 
-    hostname = urlparse(request.website_url).netloc or request.website_url
-    scenario_name = request.name or f"Crawler - {hostname}"
+        run_id = str(uuid.uuid4())
+        scenario_id = request.scenario_id  # Use provided scenario_id
 
-    # Initialize tracking immediately so it shows in status bar
-    init_analysis_status(run_id, scenario_id, scenario_name, request.website_url)
+        # Initialize tracking immediately so it shows in status bar
+        init_analysis_status(run_id, scenario_id, scenario.name, request.website_url)
 
-    # Schedule the async analysis task via FastAPI BackgroundTasks
-    background_tasks.add_task(analyze_website_async, db_session_factory, request, run_id, scenario_id)
+        # Schedule the async analysis task via FastAPI BackgroundTasks
+        background_tasks.add_task(analyze_website_async, db_session_factory, request, run_id, scenario_id)
 
-    return {
-        "run_id": run_id,
-        "scenario_id": scenario_id,
-        "status": "in_progress",
-        "message": f"Analysis started for {request.website_url}"
-    }
+        return {
+            "run_id": run_id,
+            "scenario_id": scenario_id,
+            "status": "in_progress",
+            "message": f"Analysis started for {request.website_url}"
+        }
+    finally:
+        db.close()
 
 
 def update_scenario_tasks(db: Session, scenario_id: str, request) -> Scenario:

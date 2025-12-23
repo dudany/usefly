@@ -5,6 +5,9 @@ import { personaExecutionApi } from "@/lib/api-client"
 import { RunStatusResponse, ActiveExecutionsResponse } from "@/types/api"
 import { toast } from "sonner"
 
+// Completion listener callback type
+type CompletionListener = (execution: RunStatusResponse) => void
+
 interface ExecutionContextType {
   activeExecutions: RunStatusResponse[]
   isPolling: boolean
@@ -14,6 +17,7 @@ interface ExecutionContextType {
   refreshExecutions: () => Promise<void>
   toggleStatusBar: () => void
   toggleExecutionExpanded: (runId: string) => void
+  onExecutionComplete: (listener: CompletionListener) => () => void
 }
 
 const ExecutionContext = createContext<ExecutionContextType | undefined>(undefined)
@@ -27,6 +31,7 @@ export function ExecutionProvider({ children }: { children: React.ReactNode }) {
   const [expandedExecutionIds, setExpandedExecutionIds] = useState<string[]>([])
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const mountedRef = useRef(true)
+  const completionListenersRef = useRef<Set<CompletionListener>>(new Set())
 
   // Fetch active executions from backend
   const fetchActiveExecutions = useCallback(async () => {
@@ -64,6 +69,15 @@ export function ExecutionProvider({ children }: { children: React.ReactNode }) {
             description: `${execution.failed_tasks} tasks failed`
           })
         }
+
+        // Notify completion listeners
+        completionListenersRef.current.forEach(listener => {
+          try {
+            listener(execution)
+          } catch (e) {
+            console.error("Error in completion listener:", e)
+          }
+        })
 
         // Acknowledge completion
         try {
@@ -142,6 +156,14 @@ export function ExecutionProvider({ children }: { children: React.ReactNode }) {
     )
   }, [])
 
+  // Register a completion listener and return unsubscribe function
+  const onExecutionComplete = useCallback((listener: CompletionListener) => {
+    completionListenersRef.current.add(listener)
+    return () => {
+      completionListenersRef.current.delete(listener)
+    }
+  }, [])
+
   const value: ExecutionContextType = {
     activeExecutions,
     isPolling,
@@ -150,7 +172,8 @@ export function ExecutionProvider({ children }: { children: React.ReactNode }) {
     startExecution,
     refreshExecutions: async () => { await fetchActiveExecutions() },
     toggleStatusBar,
-    toggleExecutionExpanded
+    toggleExecutionExpanded,
+    onExecutionComplete
   }
 
   return (

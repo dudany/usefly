@@ -20,9 +20,9 @@ Generate a numbered list of **{num_tasks}** simple, single-goal tasks.
 5. **One goal per task:** buy ONE item, subscribe to ONE thing, view ONE page.
 6. **Always end with "and stop":** make the endpoint explicit in steps.
 
-## Good Example (Dont use it exactly)
-Goal: SHOPPER – Buy La Sportiva Miura climbing Shoes size 43 EU, add to cart and stop
-Steps: 1. Navigate to website 2. Type miura in search box 3. Click La Sportiva Miura 4. Select size 43 EU 5. Add to cart and stop
+## Good Example (Use as template, replace placeholders with real data from the website)
+Goal: SHOPPER – Buy [Product Name] size [Size], add to cart and stop
+Steps: 1. Navigate to website 2. Type [product keyword] in search box 3. Click [Product Name] 4. Select size [Size] 5. Add to cart and stop
 Stop: Product in cart
 
 ## Task Types
@@ -33,5 +33,4 @@ Stop: Product in cart
 
 ## Bad Examples (DO NOT generate)
 - Vague goals like "explore products"
-- Multi-product purchases
 

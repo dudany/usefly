@@ -2,7 +2,8 @@
 
 import pytest
 from unittest.mock import patch, Mock, MagicMock
-from src.models import CrawlerAnalysisRequest, Scenario
+from src.models import CrawlerAnalysisRequest, Scenario, ScenarioCreate
+from src.handlers.scenarios import create_scenario
 
 @pytest.mark.asyncio
 async def test_analyze_website_success(mock_system_config, mock_agent_history, test_db):
@@ -30,8 +31,21 @@ async def test_analyze_website_success(mock_system_config, mock_agent_history, t
         mock_task_list.tasks = mock_tasks
         mock_task_gen.return_value = mock_task_list
 
+        # Create scenario in database first
+        scenario_id = "test-scenario-id"
+        scenario_create = ScenarioCreate(
+            name="Test Site",
+            website_url="https://example.com",
+            description="Test description",
+            metrics=["performance"],
+            email="test@example.com"
+        )
+        created_scenario = create_scenario(test_db, scenario_create)
+        scenario_id = created_scenario.id  # Use the created scenario's ID
+
         # Create request
         request = CrawlerAnalysisRequest(
+            scenario_id=scenario_id,
             website_url="https://example.com",
             name="Test Site",
             description="Test description",
@@ -40,13 +54,12 @@ async def test_analyze_website_success(mock_system_config, mock_agent_history, t
         )
 
         # Call the endpoint handler
-        # analyze_website_async requires a session factory. 
-        # We wrap test_db in a MagicMock to avoid issues with close() if needed, 
+        # analyze_website_async requires a session factory.
+        # We wrap test_db in a MagicMock to avoid issues with close() if needed,
         # or just pass a lambda. Using Mock allow us to track if it was called.
         mock_session_factory = MagicMock(return_value=test_db)
-        
+
         run_id = "test-run-id"
-        scenario_id = "test-scenario-id"
 
         from src.handlers.scenarios import analyze_website_async
         await analyze_website_async(

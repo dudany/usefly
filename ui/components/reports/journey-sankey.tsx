@@ -41,9 +41,9 @@ function JourneySankeyLegend({ isDark }: { isDark: boolean }) {
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon-sm"
-          className="absolute bottom-4 right-4 z-10 shadow-lg"
+          className="h-5 w-5 text-muted-foreground hover:text-foreground"
           aria-label="Show legend"
         >
           <Info className="h-4 w-4" />
@@ -190,36 +190,45 @@ export function JourneySankey({ data, onNodeClick }: JourneySankeyProps) {
   const labelColor = isDark ? "#d0d0d0" : "#333333"
 
   return (
-    <div className="h-[500px] w-full relative">
-      <style jsx global>{`
-        /* Enhanced friction node styling with multi-layer glow */
-        @keyframes pulse-glow {
-          0%, 100% {
-            filter:
-              drop-shadow(0 0 3px rgba(255, 0, 85, 0.3))
-              drop-shadow(0 0 2px rgba(255, 0, 85, 0.4));
+    <div className="w-full">
+      {/* Header with title, subheading, and legend */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold">User Journey Flow</h3>
+          <JourneySankeyLegend isDark={isDark} />
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">
+          See how personas navigate through your site. Hover for details, click friction points to investigate.
+        </p>
+      </div>
+
+      <div className="h-[500px] w-full relative">
+        <style jsx global>{`
+          /* Enhanced friction node styling with multi-layer glow */
+          @keyframes pulse-glow {
+            0%, 100% {
+              filter:
+                drop-shadow(0 0 3px rgba(255, 0, 85, 0.3))
+                drop-shadow(0 0 2px rgba(255, 0, 85, 0.4));
+            }
+            50% {
+              filter:
+                drop-shadow(0 0 10px rgba(255, 0, 85, 0.5))
+                drop-shadow(0 0 6px rgba(255, 0, 85, 0.4))
+                drop-shadow(0 0 15px rgba(255, 0, 85, 0.2));
+            }
           }
-          50% {
-            filter:
-              drop-shadow(0 0 10px rgba(255, 0, 85, 0.5))
-              drop-shadow(0 0 6px rgba(255, 0, 85, 0.4))
-              drop-shadow(0 0 15px rgba(255, 0, 85, 0.2));
+
+          /* Apply glow to friction nodes via SVG elements */
+          [data-testid="sankey.node"] rect[fill="#ff0055"],
+          [stroke="#ff0055"] {
+            animation: pulse-glow 1.5s ease-in-out infinite;
           }
-        }
 
-        /* Apply glow to friction nodes via SVG elements */
-        [data-testid="sankey.node"] rect[fill="#ff0055"],
-        [stroke="#ff0055"] {
-          animation: pulse-glow 1.5s ease-in-out infinite;
-        }
-
-        .sankey-friction-link {
-          opacity: 0.2 !important;
-        }
-      `}</style>
-
-      {/* Floating legend button */}
-      <JourneySankeyLegend isDark={isDark} />
+          .sankey-friction-link {
+            opacity: 0.2 !important;
+          }
+        `}</style>
 
       <ResponsiveSankey
         data={transformedData}
@@ -405,6 +414,7 @@ export function JourneySankey({ data, onNodeClick }: JourneySankeyProps) {
           }
         }}
       />
+      </div>
     </div>
   )
 }

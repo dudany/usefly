@@ -12,19 +12,19 @@ import { toast } from "sonner"
 import { scenarioApi } from "@/lib/api-client"
 import { GenerateMoreTasksRequest } from "@/types/api"
 
-interface GenerateTasksDialogProps {
+interface GeneratePersonasDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   scenarioId: string
   onSuccess: () => void
 }
 
-export function GenerateTasksDialog({
+export function GeneratePersonasDialog({
   open,
   onOpenChange,
   scenarioId,
   onSuccess
-}: GenerateTasksDialogProps) {
+}: GeneratePersonasDialogProps) {
   const [numTasks, setNumTasks] = useState(15)
   const [promptType, setPromptType] = useState<"original" | "friction">("friction")
   const [customPrompt, setCustomPrompt] = useState("")
@@ -35,7 +35,7 @@ export function GenerateTasksDialog({
 
     // Validation
     if (numTasks < 1) {
-      toast.error("Number of tasks must be at least 1")
+      toast.error("Number of personas must be at least 1")
       return
     }
 
@@ -49,8 +49,8 @@ export function GenerateTasksDialog({
 
       const response = await scenarioApi.generateMoreTasks(scenarioId, request)
 
-      toast.success("Tasks generated successfully!", {
-        description: `Generated ${response.new_tasks.length} new tasks`
+      toast.success("Personas generated successfully!", {
+        description: `Generated ${response.new_tasks.length} new personas`
       })
 
       onSuccess()
@@ -61,7 +61,7 @@ export function GenerateTasksDialog({
       setPromptType("friction")
       setCustomPrompt("")
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Task generation failed"
+      const errorMessage = error instanceof Error ? error.message : "Persona generation failed"
       toast.error("Generation failed", {
         description: errorMessage
       })
@@ -76,28 +76,28 @@ export function GenerateTasksDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
-            Generate More Tasks
+            Generate More Personas
           </DialogTitle>
           <DialogDescription>
-            Generate additional tasks for this scenario using AI. New tasks will be automatically selected.
+            Generate additional personas for this scenario using AI. New personas will be automatically selected.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Number of Tasks */}
+          {/* Number of Personas */}
           <div className="space-y-2">
-            <Label htmlFor="num-tasks">
-              Number of Tasks
+            <Label htmlFor="num-personas">
+              Number of Personas
             </Label>
             <Input
-              id="num-tasks"
+              id="num-personas"
               type="number"
               min={1}
               value={numTasks}
               onChange={(e) => setNumTasks(parseInt(e.target.value) || 5)}
             />
             <p className="text-sm text-muted-foreground">
-              Recommended: 3-8 tasks for focused testing
+              Recommended: 3-8 personas for focused testing
             </p>
           </div>
 
@@ -114,7 +114,7 @@ export function GenerateTasksDialog({
               onChange={(e) => setCustomPrompt(e.target.value)}
             />
             <p className="text-sm text-muted-foreground">
-              These instructions will be included in the prompt to tailor task generation
+              These instructions will be included in the prompt to tailor persona generation
             </p>
           </div>
         </div>
@@ -132,7 +132,7 @@ export function GenerateTasksDialog({
             ) : (
               <>
                 <Sparkles className="w-4 h-4 mr-2" />
-                Generate {numTasks} Tasks
+                Generate {numTasks} Personas
               </>
             )}
           </Button>
