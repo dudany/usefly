@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/layout/app-layout"
 import { Card, CardContent } from "@/components/ui/card"
@@ -9,7 +9,7 @@ import { Loader, Plus, Trash2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { scenarioApi, crawlerApi } from "@/lib/api-client"
 import { Scenario } from "@/types/api"
-import { ScenarioTasksModal } from "@/components/scenarios/scenario-tasks-modal"
+import { ScenarioPersonasModal } from "@/components/scenarios/scenario-personas-modal"
 import { useExecutions } from "@/contexts/execution-context"
 import {
   AlertDialog,
@@ -23,7 +23,7 @@ import {
 
 export default function ScenariosPage() {
   const router = useRouter()
-  const { activeExecutions, startExecution, refreshExecutions } = useExecutions()
+  const { activeExecutions, startExecution, refreshExecutions, onExecutionComplete } = useExecutions()
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -37,29 +37,44 @@ export default function ScenariosPage() {
     return activeExecutions.find(e => e.scenario_id === scenarioId && e.status === "in_progress")
   }
 
+  // Fetch scenarios function (used on mount and after execution completes)
+  const fetchScenarios = useCallback(async () => {
+    try {
+      const data = await scenarioApi.list()
+      setScenarios(data)
+      return data
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch scenarios"
+      toast.error(errorMessage)
+      return []
+    }
+  }, [])
+
   // Fetch scenarios on mount
   useEffect(() => {
-    const fetchScenarios = async () => {
-      try {
-        setLoading(true)
-        const data = await scenarioApi.list()
-        setScenarios(data)
+    const loadScenarios = async () => {
+      setLoading(true)
+      const data = await fetchScenarios()
 
-        // Auto-redirect to new scenario page if empty
-        if (data.length === 0) {
-          router.push("/scenarios/new")
-          return
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to fetch scenarios"
-        toast.error(errorMessage)
-      } finally {
-        setLoading(false)
+      // Auto-redirect to new scenario page if empty
+      if (data.length === 0) {
+        router.push("/scenarios/new")
       }
+      setLoading(false)
     }
 
-    fetchScenarios()
-  }, [router])
+    loadScenarios()
+  }, [router, fetchScenarios])
+
+  // Auto-refresh scenarios when executions complete (e.g., reindexing finishes)
+  useEffect(() => {
+    const unsubscribe = onExecutionComplete(() => {
+      // Refresh scenarios to get updated task data after reindexing or execution completes
+      fetchScenarios()
+    })
+
+    return unsubscribe
+  }, [onExecutionComplete, fetchScenarios])
 
   const handleViewDetails = async (scenario: Scenario) => {
     console.log("handleViewDetails called with scenario:", scenario)
@@ -293,7 +308,7 @@ export default function ScenariosPage() {
       </AlertDialog>
 
       {/* Edit Scenario Modal */}
-      <ScenarioTasksModal
+      <ScenarioPersonasModal
         open={showTasksModal}
         onOpenChange={(open) => {
           setShowTasksModal(open)

@@ -48,7 +48,7 @@ function TaskProgressItem({ task }: { task: TaskProgressStatus }) {
 function AnalysisPhaseIndicator({ phase, currentStep, maxSteps }: { phase: string, currentStep: number, maxSteps: number }) {
   const phases = [
     { key: "crawling", label: "Exploring Website", icon: Globe },
-    { key: "generating_tasks", label: "Generating Tasks", icon: Sparkles },
+    { key: "generating_tasks", label: "Generating Personas", icon: Sparkles },
     { key: "saving", label: "Saving Scenario", icon: Save },
   ]
 

@@ -11,12 +11,7 @@ import { toast } from "sonner"
 import { crawlerApi, scenarioApi } from "@/lib/api-client"
 import { useExecutions } from "@/contexts/execution-context"
 import { Sparkles } from "lucide-react"
-
-// Fun adjectives for auto-generated scenario names
-const ADJECTIVES = [
-  "swift", "bright", "clever", "nimble", "eager", "bold", "keen",
-  "vivid", "zesty", "peppy", "spry", "brisk", "chipper", "zippy"
-]
+import { SCENARIO_ADJECTIVES } from "@/lib/constants"
 
 // Generate a random scenario name from URL
 const generateScenarioName = (url: string): string => {
@@ -26,10 +21,10 @@ const generateScenarioName = (url: string): string => {
       .replace(/^www\./, '')
       .replace(/\.[^.]+$/, '') // Remove TLD
 
-    const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
+    const adjective = SCENARIO_ADJECTIVES[Math.floor(Math.random() * SCENARIO_ADJECTIVES.length)]
     return `${hostname} - ${adjective}`
   } catch {
-    const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
+    const adjective = SCENARIO_ADJECTIVES[Math.floor(Math.random() * SCENARIO_ADJECTIVES.length)]
     return `test - ${adjective}`
   }
 }

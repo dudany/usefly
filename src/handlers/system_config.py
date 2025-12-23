@@ -15,6 +15,9 @@ def update_system_config(db: Session, config_data: SystemConfigCreate) -> System
         config.model_name = config_data.model_name
         config.api_key = config_data.api_key
         config.use_thinking = config_data.use_thinking
+        config.provider = config_data.provider
+        config.max_steps = config_data.max_steps
+        config.max_browser_workers = config_data.max_browser_workers
     else:
         config = SystemConfig(**config_data.dict())
         db.add(config)

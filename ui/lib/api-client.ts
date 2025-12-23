@@ -70,7 +70,7 @@ export const scenarioApi = {
       body: JSON.stringify({ selected_task_numbers: selectedTaskNumbers }),
     }),
 
-  updateTasksFull: (id: string, tasks: Array<Record<string, unknown>>, selectedTaskNumbers: number[]) =>
+  updateTasksFull: (id: string, tasks: any[], selectedTaskNumbers: number[]) =>
     apiFetch<Scenario>(`/api/scenario/${id}/tasks`, {
       method: "PUT",
       body: JSON.stringify({ tasks, selected_task_numbers: selectedTaskNumbers }),
