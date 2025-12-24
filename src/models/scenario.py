@@ -23,10 +23,10 @@ class Scenario(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     description = Column(String, default="")
 
-    # Crawler results fields
+    # Indexer results fields
     discovered_urls = Column(JSON, default=[])  # List of {url, url_decoded} objects
-    crawler_final_result = Column(String, default="")  # String from crawler
-    crawler_extracted_content = Column(String, default="")  # String from crawler
+    indexer_final_result = Column(String, default="")  # String from indexer
+    indexer_extracted_content = Column(String, default="")  # String from indexer
 
     # Scenario metadata fields
     metrics = Column(JSON, default=[])  # List of selected metric strings
@@ -48,8 +48,8 @@ class ScenarioCreate(BaseModel):
     selected_task_indices: List[int] = []
     tasks_metadata: dict = {}
     discovered_urls: List[dict] = []
-    crawler_final_result: str = ""
-    crawler_extracted_content: str = ""
+    indexer_final_result: str = ""
+    indexer_extracted_content: str = ""
 
 
 class ScenarioResponse(BaseModel):
@@ -62,8 +62,8 @@ class ScenarioResponse(BaseModel):
     updated_at: datetime
     description: str = ""
     discovered_urls: List[dict] = []
-    crawler_final_result: str = ""
-    crawler_extracted_content: str = ""
+    indexer_final_result: str = ""
+    indexer_extracted_content: str = ""
     metrics: List[str] = []
     email: str = ""
     tasks: List[dict] = []

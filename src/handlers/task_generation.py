@@ -42,20 +42,20 @@ def load_prompt_template(num_tasks: int, custom_prompt: Optional[str] = None) ->
 
 def prepare_generation_context(
     existing_tasks: List[Dict],
-    crawler_result: any,
+    indexer_result: any,
     max_context_tasks: int = 10
 ) -> Tuple[str, str]:
-    if isinstance(crawler_result, str):
+    if isinstance(indexer_result, str):
         try:
-            crawler_result = json.loads(crawler_result)
+            indexer_result = json.loads(indexer_result)
         except json.JSONDecodeError:
             pass  # Keep as string if JSON parsing fails
 
-    # Convert crawler result to string
-    crawler_str = (
-        json.dumps(crawler_result, indent=2)
-        if isinstance(crawler_result, dict)
-        else str(crawler_result)
+    # Convert indexer result to string
+    indexer_str = (
+        json.dumps(indexer_result, indent=2)
+        if isinstance(indexer_result, dict)
+        else str(indexer_result)
     )
 
     # Build existing tasks summary
@@ -65,11 +65,11 @@ def prepare_generation_context(
         for t in tasks_for_context
     ])
 
-    return existing_summary, crawler_str
+    return existing_summary, indexer_str
 
 
 def generate_tasks(
-    crawler_result: any,
+    indexer_result: any,
     existing_tasks: List[Dict],
     system_config: SystemConfig,
     num_tasks: int = 10,
@@ -80,15 +80,15 @@ def generate_tasks(
         custom_prompt=custom_prompt
     )
 
-    existing_summary, crawler_context = prepare_generation_context(
+    existing_summary, indexer_context = prepare_generation_context(
         existing_tasks=existing_tasks,
-        crawler_result=crawler_result
+        indexer_result=indexer_result
     )
 
     task_list = generate_tasks_with_llm(
         prompt_template=prompt_template,
         existing_tasks_summary=existing_summary,
-        crawler_context=crawler_context,
+        indexer_context=indexer_context,
         system_config=system_config
     )
 
@@ -98,7 +98,7 @@ def generate_tasks(
 def generate_tasks_with_llm(
     prompt_template: str,
     existing_tasks_summary: str,
-    crawler_context: str,
+    indexer_context: str,
     system_config: SystemConfig
 ) -> TaskList:
     llm = _get_llm_for_task_generation(system_config)
@@ -108,13 +108,13 @@ def generate_tasks_with_llm(
         input_text = (
             f"{prompt_template}\n\n"
             f"### Existing Tasks (avoid duplication):\n{existing_tasks_summary}\n\n"
-            f"### Website Structure:\n{crawler_context}"
+            f"### Website Structure:\n{indexer_context}"
         )
     else:
         input_text = (
             f"{prompt_template}\n\n"
             f"Here's the website structure content, generate the response from it:\n"
-            f"{crawler_context}"
+            f"{indexer_context}"
         )
 
     try:

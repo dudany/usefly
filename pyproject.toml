@@ -1,6 +1,6 @@
 [project]
 name = "usefly"
-dynamic = ["version"]
+version = "0.1.7"
 description = "Agentic UX Analytics - Test your app with AI agents"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -30,7 +30,7 @@ dependencies = [
     "click>=8.1.0",
 
     # Agent dependencies
-    "browser-use>=0.10.1",
+    "browser-use==0.11.2",
     "python-dotenv==1.0.1",
     "pillow>=10.0.0",
     "imageio[ffmpeg]>=2.34.0",
@@ -38,6 +38,7 @@ dependencies = [
     "langchain-openai>=1.0.3",
     "langchain-core>=1.0.5",
     "langchain-anthropic>=1.2.0",
+    "playwright>=1.40.0",
 ]
 
 [project.optional-dependencies]
@@ -51,10 +52,8 @@ dev = [
 usefly = "src.cli:main"
 
 [build-system]
-requires = ["setuptools>=61.0", "setuptools-scm>=8.0"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools_scm]
 
 
 [tool.setuptools.packages.find]

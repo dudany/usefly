@@ -38,7 +38,6 @@ const providerModels = {
     // GPT-5.1 series
     "gpt-5.1",
     "gpt-5.1-codex",
-    "gpt-5.1-mini",
     // GPT-5 series
     "gpt-5",
     "gpt-5-mini",
@@ -109,11 +108,12 @@ export default function SettingsPage() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isValid },
     setValue,
     watch,
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
+    mode: "onChange",
     defaultValues: {
       provider: "openai",
       model_name: "gpt-5",
@@ -196,7 +196,7 @@ export default function SettingsPage() {
             <h1 className="text-3xl font-bold">System Settings</h1>
           </div>
           <p className="text-muted-foreground">
-            Configure the AI model and API settings for the crawler agent.
+            Configure the AI model and API settings for the browsing agent.
           </p>
         </div>
 
@@ -204,7 +204,7 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle>AI Model Configuration</CardTitle>
             <CardDescription>
-              Set the OpenAI model and API key for running website crawls.
+              Set the OpenAI model and API key for running the AI Personas.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -234,7 +234,7 @@ export default function SettingsPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Choose the AI provider for your crawler agent
+                  Choose the AI provider for the browsing agent
                 </p>
               </div>
 
@@ -264,7 +264,7 @@ export default function SettingsPage() {
                   <p className="text-sm text-destructive">{errors.model_name.message}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  The model to use for the crawler agent
+                  The model to use for the browsing agent
                 </p>
               </div>
 
@@ -358,7 +358,7 @@ export default function SettingsPage() {
                 )}
                 <Button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || !isValid}
                   className="min-w-[120px]"
                 >
                   {saving ? (
@@ -384,10 +384,10 @@ export default function SettingsPage() {
             <CardTitle className="text-sm font-semibold">Important Notes</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>• The API key is stored securely and used only for crawler operations</p>
-            <p>• Changes take effect immediately for new crawler runs</p>
+            <p>• The API key is stored securely and used only for persona runs</p>
+            <p>• Changes take effect immediately for new runs</p>
             <p>• Thinking mode may increase API costs but improve analysis quality</p>
-            <p>• Make sure your API key has sufficient credits for crawler operations</p>
+            <p>• Make sure your API key has sufficient credits for running personas</p>
           </CardContent>
         </Card>
       </div>

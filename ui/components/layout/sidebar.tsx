@@ -3,8 +3,10 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 import { BarChart3, FileText, Sparkles, Settings, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { systemConfigApi } from "@/lib/api-client"
 
 const navItems = [
   { href: "/scenarios", label: "Scenarios", icon: Sparkles },
@@ -20,6 +22,13 @@ const wipItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const [version, setVersion] = useState<string | null>(null)
+
+  useEffect(() => {
+    systemConfigApi.getVersion()
+      .then((data) => setVersion(data.version))
+      .catch(() => setVersion(null))
+  }, [])
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 border-r border-border bg-sidebar pt-6 flex flex-col">
@@ -64,7 +73,7 @@ export function Sidebar() {
         <div className="pt-6">
           <div className="px-4 pb-2">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Work in Progress
+              Experimental
             </span>
           </div>
           {wipItems.map((item) => {
@@ -74,19 +83,42 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium",
-                  "text-muted-foreground/50 hover:text-muted-foreground hover:bg-sidebar-accent/30"
+                  "flex items-center justify-between px-4 py-2 rounded-md text-sm font-medium",
+                  "text-muted-foreground/60 hover:text-muted-foreground hover:bg-sidebar-accent/30"
                 )}
               >
-                <Icon className="w-5 h-5" />
-                {item.label}
+                <div className="flex items-center gap-3">
+                  <Icon className="w-5 h-5" />
+                  {item.label}
+                </div>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold uppercase tracking-wider">
+                  Beta
+                </span>
               </Link>
             )
           })}
         </div>
       </nav>
 
+      {/* Docs Link */}
+      <div className="px-4 pb-4">
+        <a
+          href="https://github.com/dudany/usefly"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <FileText className="w-5 h-5" />
+          Documentation
+        </a>
+      </div>
 
+      {/* Version */}
+      {version && (
+        <div className="px-6 py-4 border-t border-border">
+          <span className="text-xs text-muted-foreground">v{version}</span>
+        </div>
+      )}
     </aside>
   )
 }

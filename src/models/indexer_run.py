@@ -1,5 +1,5 @@
 """
-Crawler run models for web crawling operations.
+Indexer run models for web indexing operations.
 """
 
 from datetime import datetime
@@ -11,9 +11,9 @@ from pydantic import BaseModel
 from src.database import Base
 
 
-class CrawlerRun(Base):
-    """Crawler agent execution record."""
-    __tablename__ = "crawler_runs"
+class IndexerRun(Base):
+    """Indexer agent execution record."""
+    __tablename__ = "indexer_runs"
 
     id = Column(String, primary_key=True)
     scenario_id = Column(String, ForeignKey("scenarios.id"), nullable=True, index=True)
@@ -21,8 +21,8 @@ class CrawlerRun(Base):
     timestamp = Column(DateTime, nullable=False, index=True)
     duration = Column(Float)  # seconds
     extracted_content = Column(String)
-    final_result = Column(String)  # Stringified final result from crawler
-    # Crawler-specific fields
+    final_result = Column(String)  # Stringified final result from indexer
+    # Indexer-specific fields
     steps_completed = Column(Integer, default=0)
     total_steps = Column(Integer, default=0)
 
@@ -30,11 +30,11 @@ class CrawlerRun(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationship
-    scenario = relationship("Scenario", backref="crawler_runs")
+    scenario = relationship("Scenario", backref="indexer_runs")
 
 
-class CrawlerRunCreate(BaseModel):
-    """Schema for creating a new crawler run."""
+class IndexerRunCreate(BaseModel):
+    """Schema for creating a new indexer run."""
     scenario_id: Optional[str] = None
     status: str
     timestamp: datetime
@@ -45,8 +45,8 @@ class CrawlerRunCreate(BaseModel):
     extracted_content: Optional[str] = None
 
 
-class CrawlerRunResponse(BaseModel):
-    """Schema for returning crawler run data."""
+class IndexerRunResponse(BaseModel):
+    """Schema for returning indexer run data."""
     id: str
     scenario_id: Optional[str]
     status: str

@@ -9,10 +9,10 @@ from typing import List, Optional, Dict
 from pydantic import BaseModel, field_validator
 
 
-# ==================== Crawler Analysis ====================
+# ==================== Indexer Analysis ====================
 
-class CrawlerAnalysisRequest(BaseModel):
-    """Request payload for crawler analysis."""
+class IndexerAnalysisRequest(BaseModel):
+    """Request payload for indexer analysis."""
     scenario_id: str  # NOW REQUIRED - must be an existing scenario
     website_url: str
     description: str = ""
@@ -21,23 +21,23 @@ class CrawlerAnalysisRequest(BaseModel):
     email: str = ""  # User email
 
 
-class CrawlerAnalysisResponse(BaseModel):
-    """Response from crawler analysis."""
+class IndexerAnalysisResponse(BaseModel):
+    """Response from indexer analysis."""
     run_id: str
     scenario_id: str
     status: str
     duration: Optional[float] = None
     steps: Optional[int] = None
     error: Optional[str] = None
-    crawler_summary: Optional[str] = None  # Crawler final_result
-    crawler_extracted_content: str = ""  # Crawler extracted_content (always a string)
+    indexer_summary: Optional[str] = None  # Indexer final_result
+    indexer_extracted_content: str = ""  # Indexer extracted_content (always a string)
     tasks: List[Dict] = []  # Generated UserJourneyTask objects
     tasks_metadata: Optional[Dict] = None  # Task generation metadata
 
-    @field_validator('crawler_extracted_content', mode='before')
+    @field_validator('indexer_extracted_content', mode='before')
     @classmethod
     def ensure_string(cls, v):
-        """Ensure crawler_extracted_content is always a string, never a dict"""
+        """Ensure indexer_extracted_content is always a string, never a dict"""
         if isinstance(v, str):
             return v
         elif isinstance(v, (dict, list)):
@@ -96,7 +96,7 @@ class GenerateMoreTasksResponse(BaseModel):
 # ==================== Async Analysis ====================
 
 class AsyncAnalysisResponse(BaseModel):
-    """Response from starting async crawler analysis."""
+    """Response from starting async indexer analysis."""
     run_id: str
     scenario_id: str
     status: str  # "in_progress"

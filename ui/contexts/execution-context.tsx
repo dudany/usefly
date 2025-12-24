@@ -43,6 +43,10 @@ export function ExecutionProvider({ children }: { children: React.ReactNode }) {
       return response.executions
     } catch (error) {
       console.error("Error fetching active executions:", error)
+      // Server unreachable - clear active executions to avoid stale UI
+      if (mountedRef.current) {
+        setActiveExecutions([])
+      }
       return []
     }
   }, [])

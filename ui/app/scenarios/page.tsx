@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader, Plus, Trash2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
-import { scenarioApi, crawlerApi } from "@/lib/api-client"
+import { scenarioApi, indexerApi } from "@/lib/api-client"
 import { Scenario } from "@/types/api"
 import { ScenarioPersonasModal } from "@/components/scenarios/scenario-personas-modal"
 import { useExecutions } from "@/contexts/execution-context"
@@ -133,7 +133,7 @@ export default function ScenariosPage() {
     try {
       setReindexingScenarioIds(prev => new Set(prev).add(scenario.id))
 
-      await crawlerApi.analyze({
+      await indexerApi.analyze({
         scenario_id: scenario.id,
         website_url: scenario.website_url,
         description: scenario.description || "",
@@ -142,14 +142,14 @@ export default function ScenariosPage() {
         email: scenario.email || "",
       })
 
-      toast.success("Reindexing started", {
+      toast.success("Re-indexing started", {
         description: "Check the status bar below for progress"
       })
 
       await refreshExecutions()
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to start reindexing"
-      toast.error("Failed to start reindexing", {
+      const errorMessage = error instanceof Error ? error.message : "Failed to start re-indexing"
+      toast.error("Failed to start re-indexing", {
         description: errorMessage,
       })
     } finally {
@@ -217,10 +217,10 @@ export default function ScenariosPage() {
                       </p>
                     </div>
 
-                    {!scenario.tasks?.length && (
+                    {!scenario.tasks?.length && getScenarioStatus(scenario.id) && (
                       <div className="text-xs text-muted-foreground flex items-center gap-1">
                         <Loader className="w-3 h-3 animate-spin" />
-                        Reindexing...
+                        Indexing...
                       </div>
                     )}
 
@@ -238,12 +238,12 @@ export default function ScenariosPage() {
                         {reindexingScenarioIds.has(scenario.id) ? (
                           <>
                             <Loader className="w-4 h-4 mr-2 animate-spin" />
-                            Reindexing...
+                            Re-indexing...
                           </>
                         ) : (
                           <>
                             <RefreshCw className="w-4 h-4 mr-2" />
-                            Reindex
+                            Re-index
                           </>
                         )}
                       </Button>

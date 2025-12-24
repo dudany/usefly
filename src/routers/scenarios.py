@@ -6,7 +6,7 @@ from src.database import get_db, SessionLocal
 from src.models import (
     ScenarioResponse,
     ScenarioCreate,
-    CrawlerAnalysisRequest,
+    IndexerAnalysisRequest,
     AsyncAnalysisResponse,
     UpdateScenarioTasksRequest,
     UpdateScenarioTasksFullRequest,
@@ -51,12 +51,12 @@ def delete_scenario(scenario_id: str, db: Session = Depends(get_db)):
 
 @router.post("/analyze", response_model=AsyncAnalysisResponse)
 async def analyze_website(
-    request: CrawlerAnalysisRequest,
+    request: IndexerAnalysisRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """
-    Start async crawler analysis on a website.
+    Start async indexer analysis on a website.
     Returns immediately with run_id and scenario_id.
     Progress can be tracked via GET /api/executions/active.
     When complete, scenario appears in /api/scenarios list.

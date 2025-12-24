@@ -1,13 +1,29 @@
 "use client"
 
+import { useState } from "react"
 import { useExecutions } from "@/contexts/execution-context"
+import { personaExecutionApi } from "@/lib/api-client"
 import { RunStatusResponse, TaskProgressStatus } from "@/types/api"
-import { ChevronUp, ChevronDown, Loader2, CheckCircle2, XCircle, Clock, Globe, Sparkles, Save } from "lucide-react"
+import { ChevronUp, ChevronDown, Loader2, CheckCircle2, XCircle, Clock, Globe, Sparkles, Save, Square, StopCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 function formatAction(action: string | undefined): string {
   if (!action) return ""
   return action.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())
+}
+
+// Map phase keys to user-friendly labels
+const PHASE_LABELS: Record<string, string> = {
+  indexing: "Indexing",
+  generating_tasks: "Generating Personas",
+  saving: "Saving",
+  completed: "Completed"
+}
+
+function formatPhase(phase: string | undefined): string {
+  if (!phase) return "Indexing"
+  return PHASE_LABELS[phase] || formatAction(phase)
 }
 
 interface ExtendedTaskProgress extends TaskProgressStatus {
@@ -15,11 +31,12 @@ interface ExtendedTaskProgress extends TaskProgressStatus {
 }
 
 function TaskProgressItem({ task }: { task: TaskProgressStatus }) {
-  const statusIcons = {
+  const statusIcons: Record<string, React.ReactNode> = {
     pending: <Clock className="w-3 h-3 text-muted-foreground" />,
     running: <Loader2 className="w-3 h-3 animate-spin text-blue-500" />,
     completed: <CheckCircle2 className="w-3 h-3 text-green-500" />,
-    failed: <XCircle className="w-3 h-3 text-red-500" />
+    failed: <XCircle className="w-3 h-3 text-red-500" />,
+    stopped: <StopCircle className="w-3 h-3 text-orange-500" />
   }
 
   return (
@@ -40,6 +57,9 @@ function TaskProgressItem({ task }: { task: TaskProgressStatus }) {
           {task.error || "Failed"}
         </span>
       )}
+      {task.status === "stopped" && (
+        <span className="text-orange-600">Stopped</span>
+      )}
     </div>
   )
 }
@@ -47,7 +67,7 @@ function TaskProgressItem({ task }: { task: TaskProgressStatus }) {
 // Phase indicators for scenario analysis
 function AnalysisPhaseIndicator({ phase, currentStep, maxSteps }: { phase: string, currentStep: number, maxSteps: number }) {
   const phases = [
-    { key: "crawling", label: "Exploring Website", icon: Globe },
+    { key: "indexing", label: "Indexing Website", icon: Globe },
     { key: "generating_tasks", label: "Generating Personas", icon: Sparkles },
     { key: "saving", label: "Saving Scenario", icon: Save },
   ]
@@ -73,7 +93,7 @@ function AnalysisPhaseIndicator({ phase, currentStep, maxSteps }: { phase: strin
             )}
             <Icon className={cn("w-3 h-3", isActive ? "text-blue-500" : isCompleted ? "text-green-500" : "text-muted-foreground")} />
             <span className={cn("font-medium", isPending && "text-muted-foreground")}>{p.label}</span>
-            {isActive && phase === "crawling" && (
+            {isActive && phase === "indexing" && (
               <span className="text-muted-foreground">
                 Step {currentStep}/{maxSteps}
               </span>
@@ -86,12 +106,30 @@ function AnalysisPhaseIndicator({ phase, currentStep, maxSteps }: { phase: strin
 }
 
 function ExecutionItem({ execution, isExpanded, onToggle }: { execution: RunStatusResponse, isExpanded: boolean, onToggle: () => void }) {
+  const [isStopping, setIsStopping] = useState(false)
   const isAnalysis = execution.run_type === "scenario_analysis"
   const runningTasks = execution.task_progress.filter(t => t.status === "running")
+  const stopRequested = execution.stop_requested || isStopping
+
+  const handleStop = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (stopRequested) return
+
+    setIsStopping(true)
+    try {
+      await personaExecutionApi.stop(execution.run_id)
+      toast.success("Stop requested", {
+        description: "Pending tasks will not start. Running tasks will complete their current step."
+      })
+    } catch (error) {
+      toast.error("Failed to stop execution")
+      setIsStopping(false)
+    }
+  }
 
   // For analysis, get phase from first task progress
   const analysisPhase = isAnalysis && execution.task_progress[0]
-    ? (execution.task_progress[0] as ExtendedTaskProgress).phase || "crawling"
+    ? (execution.task_progress[0] as ExtendedTaskProgress).phase || "indexing"
     : null
   const analysisStep = isAnalysis && execution.task_progress[0]
     ? execution.task_progress[0].current_step
@@ -107,13 +145,13 @@ function ExecutionItem({ execution, isExpanded, onToggle }: { execution: RunStat
   if (isAnalysis) {
     // For analysis, progress is based on phases
     const phaseProgress: Record<string, number> = {
-      "crawling": 33,
+      "indexing": 33,
       "generating_tasks": 66,
       "saving": 90,
       "completed": 100
     }
-    progress = phaseProgress[analysisPhase || "crawling"] || 0
-    progressLabel = formatAction(analysisPhase || "crawling")
+    progress = phaseProgress[analysisPhase || "indexing"] || 0
+    progressLabel = formatPhase(analysisPhase || undefined)
   } else {
     // For persona runs, progress is based on tasks
     progress = execution.total_tasks > 0
@@ -148,18 +186,35 @@ function ExecutionItem({ execution, isExpanded, onToggle }: { execution: RunStat
             style={{ width: `${progress}%` }}
           />
         </div>
+        {/* Stop button */}
+        <button
+          onClick={handleStop}
+          disabled={stopRequested}
+          className={cn(
+            "p-1 rounded hover:bg-destructive/10 transition-colors",
+            stopRequested ? "opacity-50 cursor-not-allowed" : "hover:text-destructive"
+          )}
+          title={stopRequested ? "Stopping..." : "Stop execution"}
+        >
+          <Square className="w-3 h-3" />
+        </button>
         {isExpanded ? (
           <ChevronDown className="w-3 h-3 text-muted-foreground" />
         ) : (
           <ChevronUp className="w-3 h-3 text-muted-foreground" />
         )}
       </div>
+      {stopRequested && (
+        <div className="text-xs text-orange-600 ml-5 mt-1">
+          Stopping... (pending tasks will not start)
+        </div>
+      )}
 
       {isExpanded && (
         <div className="mt-2 pl-5 space-y-0.5 max-h-[200px] overflow-y-auto">
           {isAnalysis ? (
             <AnalysisPhaseIndicator
-              phase={analysisPhase || "crawling"}
+              phase={analysisPhase || "indexing"}
               currentStep={analysisStep}
               maxSteps={analysisMaxSteps}
             />
@@ -227,7 +282,7 @@ export function ExecutionStatusBar() {
           {inProgressExecutions.slice(0, 3).map(execution => {
             const isAnalysis = execution.run_type === "scenario_analysis"
             const phase = isAnalysis && execution.task_progress[0]
-              ? (execution.task_progress[0] as ExtendedTaskProgress).phase || "crawling"
+              ? (execution.task_progress[0] as ExtendedTaskProgress).phase || "indexing"
               : null
 
             return (
@@ -235,7 +290,7 @@ export function ExecutionStatusBar() {
                 {isAnalysis && <Globe className="w-3 h-3 text-purple-500" />}
                 <span className="text-muted-foreground">{execution.scenario_name}:</span>
                 {isAnalysis ? (
-                  <span className="text-purple-600">{formatAction(phase || "crawling")}</span>
+                  <span className="text-purple-600">{formatPhase(phase || undefined)}</span>
                 ) : (
                   <span>{execution.completed_tasks + execution.failed_tasks}/{execution.total_tasks}</span>
                 )}

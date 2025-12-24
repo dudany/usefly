@@ -51,8 +51,8 @@ export interface Scenario {
   tasks?: UserJourneyTask[];
   tasks_metadata?: TasksMetadata;
   discovered_urls?: DiscoveredUrl[];
-  crawler_final_result?: any;
-  crawler_extracted_content?: any;
+  indexer_final_result?: any;
+  indexer_extracted_content?: any;
   selected_task_indices?: number[];
 }
 
@@ -67,8 +67,8 @@ export interface CreateScenarioRequest {
   selected_task_indices?: number[];
   tasks_metadata?: TasksMetadata;
   discovered_urls?: DiscoveredUrl[];
-  crawler_final_result?: string;
-  crawler_extracted_content?: string;
+  indexer_final_result?: string;
+  indexer_extracted_content?: string;
 }
 
 /**
@@ -105,11 +105,7 @@ export interface SystemConfigStatus {
   missing_fields: string[];
 }
 
-/**
- * Crawler Analysis
- * Website crawling and analysis
- */
-export interface CrawlerAnalysisRequest {
+export interface IndexerAnalysisRequest {
   scenario_id: string;  // NOW REQUIRED - must be an existing scenario
   website_url: string;
   description?: string;
@@ -118,7 +114,7 @@ export interface CrawlerAnalysisRequest {
   email?: string;
 }
 
-export interface CrawlerAnalysisResponse {
+export interface IndexerAnalysisResponse {
   run_id: string;
   scenario_id: string;
   output_path?: string;
@@ -126,8 +122,8 @@ export interface CrawlerAnalysisResponse {
   duration?: number;
   steps?: number;
   error?: string;
-  crawler_summary?: string;
-  crawler_extracted_content: string;
+  indexer_summary?: string;
+  indexer_extracted_content: string;
   tasks?: UserJourneyTask[];
   tasks_metadata?: TasksMetadata;
 }
@@ -303,7 +299,7 @@ export interface PersonaExecutionResponse {
 export interface TaskProgressStatus {
   task_index: number;
   persona: string;
-  status: "pending" | "running" | "completed" | "failed";
+  status: "pending" | "running" | "completed" | "failed" | "stopped";
   current_step: number;
   max_steps: number;
   current_action?: string;
@@ -321,14 +317,16 @@ export interface RunStatusResponse {
   scenario_id: string;
   scenario_name?: string;
   run_type: "persona_run" | "scenario_analysis";
-  status: "in_progress" | "completed" | "partial_failure" | "failed";
+  status: "in_progress" | "completed" | "partial_failure" | "failed" | "stopped";
   total_tasks: number;
   completed_tasks: number;
   failed_tasks: number;
+  stopped_tasks?: number;
   agent_run_ids: string[];
   task_progress: TaskProgressStatus[];
   started_at?: string;
   logs: string[];
+  stop_requested?: boolean;
 }
 
 /**

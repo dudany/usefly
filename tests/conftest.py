@@ -6,7 +6,7 @@ from unittest.mock import Mock, MagicMock, AsyncMock, patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from src.database import Base
-from src.models import SystemConfig, CrawlerRun
+from src.models import SystemConfig, IndexerRun
 
 
 @pytest.fixture
