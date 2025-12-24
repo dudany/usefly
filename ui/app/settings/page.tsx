@@ -205,7 +205,7 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle>AI Model Configuration</CardTitle>
             <CardDescription>
-              Set the OpenAI model and API key for running wthe AI Personas.
+              Set the OpenAI model and API key for running the AI Personas.
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -12,17 +12,19 @@
   <img src="https://raw.githubusercontent.com/dudany/usefly/main/ui/public/usefly-logo.png" alt="Usefly Logo" width="120">
 </p>
 
-## What It Does
+## Quick Start
 
-Usefly uses AI browser agents to test your application like a real user would. Instead of writing manual test scripts, you describe what your app does and Usefly generates realistic user tasks, executes them with AI-controlled browsers, and reports back with detailed analytics on where users struggle.
+1.  **Configure API Key**: Go to **Settings** and add your OpenAI/Anthropic/Google API key.
+2.  **Create Scenario**: Go to **Scenarios** → **New Scenario**, enter your URL, and click **Analyze Website**.
+3.  **Run & Report**: Click **Run** on your scenario to start the AI agents. View the results in **Reports**.
 
 ### Key Features
 
-- **Automated Website Analysis** - AI indexes your site to understand its structure, navigation, and available features
-- **Smart Task Generation** - Automatically generates realistic user journey tasks based on your site's capabilities
-- **AI Browser Agents** - Executes tasks using vision-enabled AI agents that interact with your app like real users
-- **Friction Detection** - Identifies UX issues, confusing flows, and broken functionality
-- **Detailed Reports** - View step-by-step agent interactions, screenshots, and success/failure analysis
+- 🤖 **Automated Website Analysis** - AI indexes your site to understand its structure and navigation.
+- 🎯 **Smart Task Generation** - Automatically generates realistic user journey tasks.
+- 👁️ **AI Browser Agents** - Vision-enabled agents that interact with your app like real users.
+- 🔍 **Friction Detection** - Identifies UX issues, confusing flows, and broken functionality.
+- 📊 **Detailed Reports** - Step-by-step interactions, screenshots, and success/failure analysis.
 
 ## Installation
 

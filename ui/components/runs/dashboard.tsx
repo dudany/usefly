@@ -143,9 +143,15 @@ export function RunsDashboard() {
 
     // Default: prompt to select a scenario
     return {
-      title: "Select a scenario to view runs",
-      description: `${scenarios.length} scenario${scenarios.length !== 1 ? 's' : ''} available`,
-      variant: "default" as const
+      title: "Welcome to Usefly",
+      description: scenarios.length > 0
+        ? `Select one of your ${scenarios.length} scenario${scenarios.length !== 1 ? 's' : ''} to view agent runs and friction reports.`
+        : "Automated UX testing with AI agents. Create your first scenario to get started.",
+      variant: "default" as const,
+      action: scenarios.length === 0 ? {
+        label: "Create First Scenario",
+        onClick: () => router.push('/scenarios/new')
+      } : undefined
     }
   }
 

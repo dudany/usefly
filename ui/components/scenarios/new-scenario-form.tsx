@@ -180,7 +180,7 @@ export function NewScenarioForm() {
 
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-semibold">
-                Email Address <span className="text-destructive">*</span>
+                Email Address <span className="text-muted-foreground font-normal">(Optional)</span>
               </Label>
               <Input
                 id="email"
@@ -188,10 +188,9 @@ export function NewScenarioForm() {
                 placeholder="your.email@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
               />
               <p className="text-xs text-muted-foreground">
-                We'll send the completed report to this email address.
+                Optional: We'll send the completed report to this email address.
               </p>
             </div>
 
