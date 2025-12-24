@@ -38,6 +38,7 @@ dependencies = [
     "langchain-openai>=1.0.3",
     "langchain-core>=1.0.5",
     "langchain-anthropic>=1.2.0",
+    "playwright>=1.40.0",
 ]
 
 [project.optional-dependencies]
