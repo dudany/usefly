@@ -49,7 +49,7 @@ COPY --from=frontend-builder /app/ui/out src/static
 RUN uv pip install --no-cache-dir .
 
 # Install Playwright browser using the installed playwright
-RUN python -m playwright install chromium --with-deps
+RUN uv run python -m playwright install chromium --with-deps
 
 EXPOSE 8080
 ENTRYPOINT []
