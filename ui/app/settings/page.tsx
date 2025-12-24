@@ -38,7 +38,6 @@ const providerModels = {
     // GPT-5.1 series
     "gpt-5.1",
     "gpt-5.1-codex",
-    "gpt-5.1-mini",
     // GPT-5 series
     "gpt-5",
     "gpt-5-mini",
