@@ -1,3 +1,5 @@
+from importlib.metadata import version, PackageNotFoundError
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -6,6 +8,16 @@ from src.models import SystemConfigResponse, SystemConfigCreate
 from src.handlers import system_config as system_config_handler
 
 router = APIRouter(prefix="/api/system-config", tags=["System Config"])
+
+
+@router.get("/version")
+def get_version():
+    """Get the current application version."""
+    try:
+        app_version = version("usefly")
+    except PackageNotFoundError:
+        app_version = "dev"
+    return {"version": app_version}
 
 @router.get("", response_model=SystemConfigResponse)
 def get_system_config(db: Session = Depends(get_db)):

@@ -13,7 +13,7 @@ import {
   SystemConfig,
   SystemConfigStatus,
   UpdateSystemConfigRequest,
-  CrawlerAnalysisRequest,
+  IndexerAnalysisRequest,
   AsyncAnalysisResponse,
   PersonaExecutionResponse,
   RunStatusResponse,
@@ -179,13 +179,13 @@ export const systemConfigApi = {
     }),
 
   getStatus: () => apiFetch<SystemConfigStatus>("/api/system-config/status"),
+
+  getVersion: () => apiFetch<{ version: string }>("/api/system-config/version"),
 };
 
-/**
- * Crawler API methods
- */
-export const crawlerApi = {
-  analyze: (data: CrawlerAnalysisRequest) =>
+
+export const indexerApi = {
+  analyze: (data: IndexerAnalysisRequest) =>
     apiFetch<AsyncAnalysisResponse>("/api/scenario/analyze", {
       method: "POST",
       body: JSON.stringify(data),
@@ -217,4 +217,9 @@ export const personaExecutionApi = {
 
   getActiveExecutions: () =>
     apiFetch<ActiveExecutionsResponse>(`/api/executions/active`),
+
+  stop: (runId: string) =>
+    apiFetch<{ status: string; message: string }>(`/api/persona/run/${runId}/stop`, {
+      method: "POST",
+    }),
 };

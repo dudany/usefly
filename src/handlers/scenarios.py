@@ -8,7 +8,7 @@ from fastapi import BackgroundTasks
 
 from src.models import (
     Scenario, SystemConfig, ScenarioCreate,
-    CrawlerRun, TaskList
+    IndexerRun, TaskList
 )
 from src.common.browser_use_common import run_browser_use_agent_with_hooks
 from src.handlers.task_generation import (
@@ -34,7 +34,7 @@ def create_scenario(db: Session, scenario: ScenarioCreate) -> Scenario:
         id=str(uuid.uuid4()),
         name=scenario.name,
         website_url=scenario.website_url,
-        personas=scenario.personas or ["crawler"],
+        personas=scenario.personas or ["indexer"],
         description=scenario.description,
         metrics=scenario.metrics,
         email=scenario.email,
@@ -42,8 +42,8 @@ def create_scenario(db: Session, scenario: ScenarioCreate) -> Scenario:
         selected_task_indices=scenario.selected_task_indices,
         tasks_metadata=scenario.tasks_metadata,
         discovered_urls=scenario.discovered_urls,
-        crawler_final_result=scenario.crawler_final_result,
-        crawler_extracted_content=scenario.crawler_extracted_content
+        indexer_final_result=scenario.indexer_final_result,
+        indexer_extracted_content=scenario.indexer_extracted_content
     )
     db.add(db_scenario)
     db.commit()
@@ -56,7 +56,7 @@ def get_scenario(db: Session, scenario_id: str) -> Optional[Scenario]:
 
 def delete_scenario(db: Session, scenario_id: str) -> bool:
     """Delete a test scenario and all related records."""
-    from src.models import PersonaRun, CrawlerRun
+    from src.models import PersonaRun, IndexerRun
 
     scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
     if not scenario:
@@ -64,7 +64,7 @@ def delete_scenario(db: Session, scenario_id: str) -> bool:
 
     # Delete related records first to avoid foreign key constraint violations
     db.query(PersonaRun).filter(PersonaRun.config_id == scenario_id).delete()
-    db.query(CrawlerRun).filter(CrawlerRun.scenario_id == scenario_id).delete()
+    db.query(IndexerRun).filter(IndexerRun.scenario_id == scenario_id).delete()
 
     # Now delete the scenario
     db.delete(scenario)
@@ -108,6 +108,7 @@ def init_analysis_status(
     website_url: str
 ):
     """Initialize analysis run status for tracking in the status bar."""
+    import threading
     persona_runner._active_runs[run_id] = {
         "run_id": run_id,
         "scenario_id": scenario_id,
@@ -118,21 +119,23 @@ def init_analysis_status(
         "total_tasks": 1,  # Analysis counts as 1 "task" with phases
         "completed_tasks": 0,
         "failed_tasks": 0,
+        "stopped_tasks": 0,
         "agent_run_ids": [],
         "task_progress": [{
             "task_index": 0,
-            "persona": "Crawler",
+            "persona": "Indexer",
             "status": "running",
             "current_step": 0,
             "max_steps": 30,
-            "current_action": "crawling",
+            "current_action": "indexing",
             "current_url": website_url,
             "started_at": datetime.now().isoformat(),
             "error": None,
-            "phase": "crawling"  # Custom field for analysis phases
+            "phase": "indexing"  # Custom field for analysis phases
         }],
         "started_at": datetime.now().isoformat(),
-        "logs": deque(maxlen=MAX_LOG_ENTRIES)
+        "logs": deque(maxlen=MAX_LOG_ENTRIES),
+        "stop_event": threading.Event()  # For graceful cancellation
     }
     _add_analysis_log(run_id, f"Starting website analysis: {website_url}")
 
@@ -194,6 +197,20 @@ def complete_analysis(run_id: str, success: bool, error: Optional[str] = None):
     run["completed_at"] = datetime.now().isoformat()
 
 
+def stop_analysis(run_id: str):
+    """Mark the analysis as stopped."""
+    if run_id not in persona_runner._active_runs:
+        return
+
+    run = persona_runner._active_runs[run_id]
+    run["status"] = "stopped"
+    run["stopped_tasks"] = 1
+    if len(run["task_progress"]) > 0:
+        run["task_progress"][0]["status"] = "stopped"
+    _add_analysis_log(run_id, "Analysis stopped by user")
+    run["completed_at"] = datetime.now().isoformat()
+
+
 async def analyze_website_async(db_session_factory, request, run_id: str, scenario_id: str):
     """
     Run website analysis asynchronously in background.
@@ -206,19 +223,18 @@ async def analyze_website_async(db_session_factory, request, run_id: str, scenar
             complete_analysis(run_id, False, "System configuration not found")
             return
 
-        # Phase 1: Crawling
-        update_analysis_phase(run_id, "crawling", current_action="Exploring website")
+        update_analysis_phase(run_id, "indexing", current_action="Exploring website")
 
-        with open('src/prompts/website_crawler_prompt.txt', 'r') as f:
+        with open('src/prompts/website_indexer_prompt.txt', 'r') as f:
             task = f.read()
             task = task.replace('{website}', request.website_url)
             task = task.replace('{description}', request.description or "")
 
-        # Create progress callback for crawler
+        # Create progress callback for indexer
         def on_step_progress(step: int, action: Optional[str], url: Optional[str]):
             update_analysis_phase(
                 run_id=run_id,
-                phase="crawling",
+                phase="indexing",
                 current_step=step,
                 current_action=action,
                 current_url=url
@@ -242,7 +258,12 @@ async def analyze_website_async(db_session_factory, request, run_id: str, scenar
         error_str = str(error_list[0]) if error_list else None
 
         if not is_successful:
-            complete_analysis(run_id, False, error_str or "Crawler failed")
+            complete_analysis(run_id, False, error_str or "Indexer failed")
+            return
+
+        # Check for stop signal before phase 2
+        if persona_runner.is_run_stopped(run_id):
+            stop_analysis(run_id)
             return
 
         # Phase 2: Generating tasks
@@ -250,7 +271,7 @@ async def analyze_website_async(db_session_factory, request, run_id: str, scenar
         _add_analysis_log(run_id, "Generating user journey tasks...")
 
         task_list = generate_tasks(
-            crawler_result=final_result,
+            indexer_result=final_result,
             existing_tasks=[],
             system_config=sys_config
         )
@@ -287,6 +308,11 @@ async def analyze_website_async(db_session_factory, request, run_id: str, scenar
         elif extracted_content is not None:
             extracted_content_str = str(extracted_content)
 
+        # Check for stop signal before phase 3
+        if persona_runner.is_run_stopped(run_id):
+            stop_analysis(run_id)
+            return
+
         # Phase 3: Update existing scenario with results
         update_analysis_phase(run_id, "saving", current_action="Updating scenario")
         _add_analysis_log(run_id, f"Updating scenario with {len(tasks_list)} tasks...")
@@ -297,16 +323,15 @@ async def analyze_website_async(db_session_factory, request, run_id: str, scenar
             complete_analysis(run_id, False, "Scenario not found")
             return
 
-        # Update scenario with crawler results
+        # Update scenario with indexer results
         scenario.tasks = tasks_list
         scenario.tasks_metadata = tasks_metadata
         scenario.selected_task_indices = selected_indices
         scenario.discovered_urls = processed_urls
-        scenario.crawler_final_result = str(final_result) if final_result else ""
-        scenario.crawler_extracted_content = extracted_content_str
+        scenario.indexer_final_result = str(final_result) if final_result else ""
+        scenario.indexer_extracted_content = extracted_content_str
 
-        # Create crawler run record (historical)
-        crawler_run = CrawlerRun(
+        indexer_run = IndexerRun(
             id=str(uuid.uuid4()),
             scenario_id=scenario_id,
             status="success" if is_successful else "error",
@@ -317,7 +342,7 @@ async def analyze_website_async(db_session_factory, request, run_id: str, scenar
             final_result=str(final_result) if final_result else "",
             extracted_content=extracted_content_str
         )
-        db.add(crawler_run)
+        db.add(indexer_run)
         db.commit()
 
         # Mark as completed
@@ -450,7 +475,7 @@ def generate_more_tasks(db: Session, scenario_id: str, request) -> Dict:
 
     # Generate new tasks using unified task generation (always use friction prompt)
     new_task_list = generate_tasks(
-        crawler_result=scenario.crawler_final_result,
+        indexer_result=scenario.indexer_final_result,
         existing_tasks=existing_tasks,
         system_config=sys_config,
         num_tasks=request.num_tasks,

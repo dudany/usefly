@@ -3,8 +3,10 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 import { BarChart3, FileText, Sparkles, Settings, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { systemConfigApi } from "@/lib/api-client"
 
 const navItems = [
   { href: "/scenarios", label: "Scenarios", icon: Sparkles },
@@ -20,6 +22,13 @@ const wipItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const [version, setVersion] = useState<string | null>(null)
+
+  useEffect(() => {
+    systemConfigApi.getVersion()
+      .then((data) => setVersion(data.version))
+      .catch(() => setVersion(null))
+  }, [])
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 border-r border-border bg-sidebar pt-6 flex flex-col">
@@ -86,7 +95,12 @@ export function Sidebar() {
         </div>
       </nav>
 
-
+      {/* Version */}
+      {version && (
+        <div className="px-6 py-4 border-t border-border">
+          <span className="text-xs text-muted-foreground">v{version}</span>
+        </div>
+      )}
     </aside>
   )
 }

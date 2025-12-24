@@ -14,8 +14,8 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { Loader2, Play, Plus, Pencil, Trash2, Sparkles, X, Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { scenarioApi, crawlerApi } from "@/lib/api-client"
-import { Scenario, CrawlerAnalysisResponse, CreateScenarioRequest } from "@/types/api"
+import { scenarioApi, indexerApi } from "@/lib/api-client"
+import { Scenario, IndexerAnalysisResponse, CreateScenarioRequest } from "@/types/api"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,7 +54,7 @@ interface ScenarioPersonasModalProps {
   onOpenChange: (open: boolean) => void
   mode: 'create' | 'edit'
   scenario?: Scenario
-  analysisResult?: CrawlerAnalysisResponse
+  analysisResult?: IndexerAnalysisResponse
   createFormData?: {
     name: string
     website_url: string
@@ -118,9 +118,9 @@ export function ScenarioPersonasModal({
     ? analysisResult?.tasks_metadata
     : scenario?.tasks_metadata
 
-  const crawlerSummary = mode === 'create'
-    ? analysisResult?.crawler_summary
-    : scenario?.crawler_final_result
+  const indexerSummary = mode === 'create'
+    ? analysisResult?.indexer_summary
+    : scenario?.indexer_final_result
 
   const toggleTask = (taskNumber: number) => {
     setSelectedTasks(prev => {
@@ -211,7 +211,7 @@ export function ScenarioPersonasModal({
           name: createFormData.name,
           website_url: createFormData.website_url,
           description: createFormData.description || "",
-          personas: ["crawler"],
+          personas: ["indexer"],
           metrics: createFormData.metrics,
           email: createFormData.email,
           tasks: localTasks,
@@ -220,18 +220,17 @@ export function ScenarioPersonasModal({
           ),
           tasks_metadata: analysisResult.tasks_metadata || { total_tasks: 0, persona_distribution: {} },
           discovered_urls: [],
-          crawler_final_result: analysisResult.crawler_summary || "",
-          crawler_extracted_content: analysisResult.crawler_extracted_content || ""
+          indexer_final_result: analysisResult.indexer_summary || "",
+          indexer_extracted_content: analysisResult.indexer_extracted_content || ""
         }
 
-        const response = await crawlerApi.save(createRequest)
+        const response = await indexerApi.save(createRequest)
 
         toast.success("Scenario saved successfully!", {
           description: `Created scenario with ${selectedTasks.size} personas`
         })
 
         onSave?.(response.id)
-        onOpenChange(false)
       } else {
         // Update existing scenario
         if (!scenario) {
@@ -252,7 +251,7 @@ export function ScenarioPersonasModal({
         })
 
         onUpdate?.(scenario.id)
-        onOpenChange(false)
+        setTasksModified(false)  // Reset modified flag after successful save
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Operation failed"
@@ -357,11 +356,11 @@ export function ScenarioPersonasModal({
               </Card>
             )}
             {/* Website Analysis Summary */}
-            {crawlerSummary && (() => {
-              // Parse crawlerSummary to extract context
+            {indexerSummary && (() => {
+              // Parse indexerSummary to extract context
               let context: { summary?: string; target_audience?: string; value_proposition?: string; vertical?: string } | null = null
               try {
-                const parsed = typeof crawlerSummary === 'string' ? JSON.parse(crawlerSummary) : crawlerSummary
+                const parsed = typeof indexerSummary === 'string' ? JSON.parse(indexerSummary) : indexerSummary
                 context = parsed?.context || null
               } catch {
                 // If parsing fails, context remains null
@@ -680,23 +679,23 @@ export function ScenarioPersonasModal({
                           {AVAILABLE_PERSONAS
                             .filter((p) => p.toLowerCase().includes(editingTask.persona.toLowerCase()))
                             .map((p) => (
-                            <CommandItem
-                              key={p}
-                              value={p}
-                              onSelect={() => {
-                                setEditingTask({ ...editingTask, persona: p })
-                                setPersonaPopoverOpen(false)
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  editingTask.persona === p ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {p}
-                            </CommandItem>
-                          ))}
+                              <CommandItem
+                                key={p}
+                                value={p}
+                                onSelect={() => {
+                                  setEditingTask({ ...editingTask, persona: p })
+                                  setPersonaPopoverOpen(false)
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    editingTask.persona === p ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {p}
+                              </CommandItem>
+                            ))}
                         </CommandGroup>
                       </CommandList>
                     </Command>

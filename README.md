@@ -18,7 +18,7 @@ Usefly uses AI browser agents to test your application like a real user would. I
 
 ### Key Features
 
-- **Automated Website Analysis** - AI crawls your site to understand its structure, navigation, and available features
+- **Automated Website Analysis** - AI indexes your site to understand its structure, navigation, and available features
 - **Smart Task Generation** - Automatically generates realistic user journey tasks based on your site's capabilities
 - **AI Browser Agents** - Executes tasks using vision-enabled AI agents that interact with your app like real users
 - **Friction Detection** - Identifies UX issues, confusing flows, and broken functionality

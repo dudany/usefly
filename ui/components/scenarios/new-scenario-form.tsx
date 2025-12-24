@@ -8,10 +8,20 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { crawlerApi, scenarioApi } from "@/lib/api-client"
+import { indexerApi, scenarioApi } from "@/lib/api-client"
 import { useExecutions } from "@/contexts/execution-context"
 import { Sparkles } from "lucide-react"
 import { SCENARIO_ADJECTIVES } from "@/lib/constants"
+
+// Normalize URL by adding https:// if missing
+const normalizeUrl = (url: string): string => {
+  if (!url) return url
+  const trimmed = url.trim()
+  if (trimmed && !trimmed.match(/^https?:\/\//i)) {
+    return `https://${trimmed}`
+  }
+  return trimmed
+}
 
 // Generate a random scenario name from URL
 const generateScenarioName = (url: string): string => {
@@ -61,14 +71,14 @@ export function NewScenarioForm() {
         website_url: formData.website_url,
         description: formData.description || "",
         email: formData.email || "",
-        personas: ["crawler"],
+        personas: ["indexer"],
       })
 
       const scenarioId = createResponse.id
 
       try {
         // STEP 2: Start async analysis on the created scenario
-        await crawlerApi.analyze({
+        await indexerApi.analyze({
           scenario_id: scenarioId,
           website_url: formData.website_url,
           description: formData.description || "",
@@ -138,10 +148,16 @@ export function NewScenarioForm() {
               </Label>
               <Input
                 id="website_url"
-                type="url"
-                placeholder="https://example.com"
+                type="text"
+                placeholder="example.com or https://example.com"
                 value={formData.website_url}
                 onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
+                onBlur={(e) => {
+                  const normalized = normalizeUrl(e.target.value)
+                  if (normalized !== e.target.value) {
+                    setFormData({ ...formData, website_url: normalized })
+                  }
+                }}
                 required
               />
               <p className="text-sm text-muted-foreground">

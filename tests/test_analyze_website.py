@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import patch, Mock, MagicMock
-from src.models import CrawlerAnalysisRequest, Scenario, ScenarioCreate
+from src.models import IndexererAnalysisRequest, Scenario, ScenarioCreate
 from src.handlers.scenarios import create_scenario
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_analyze_website_success(mock_system_config, mock_agent_history, t
         scenario_id = created_scenario.id  # Use the created scenario's ID
 
         # Create request
-        request = CrawlerAnalysisRequest(
+        request = IndexererAnalysisRequest(
             scenario_id=scenario_id,
             website_url="https://example.com",
             name="Test Site",

@@ -1,6 +1,7 @@
 from pathlib import Path
 import uuid
 import asyncio
+import threading
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -56,10 +57,12 @@ def init_run_status(
         "total_tasks": task_count,
         "completed_tasks": 0,
         "failed_tasks": 0,
+        "stopped_tasks": 0,
         "agent_run_ids": [],
         "task_progress": task_progress,
         "started_at": datetime.now().isoformat(),
-        "logs": deque(maxlen=MAX_LOG_ENTRIES)
+        "logs": deque(maxlen=MAX_LOG_ENTRIES),
+        "stop_event": threading.Event()  # For graceful cancellation
     }
     _add_log(run_id, f"Started {run_type} with {task_count} tasks")
 
@@ -156,9 +159,10 @@ def get_run_status(run_id: str) -> Optional[Dict]:
     if not run:
         return None
 
-    # Convert deque to list for JSON serialization
-    result = {**run}
+    # Convert deque to list and exclude non-serializable fields
+    result = {k: v for k, v in run.items() if k != "stop_event"}
     result["logs"] = list(run["logs"])
+    result["stop_requested"] = run["stop_event"].is_set()
     return result
 
 
@@ -167,8 +171,9 @@ def get_all_active_runs() -> List[Dict]:
     active = []
     for run_id, run in _active_runs.items():
         if run["status"] == "in_progress":
-            result = {**run}
+            result = {k: v for k, v in run.items() if k != "stop_event"}
             result["logs"] = list(run["logs"])
+            result["stop_requested"] = run["stop_event"].is_set()
             active.append(result)
     return active
 
@@ -176,6 +181,28 @@ def get_all_active_runs() -> List[Dict]:
 def cleanup_run_status(run_id: str):
     """Remove a run from active tracking."""
     _active_runs.pop(run_id, None)
+
+
+def stop_run(run_id: str) -> bool:
+    """Request a run to stop. Returns True if run exists and stop was signaled."""
+    if run_id not in _active_runs:
+        return False
+
+    run = _active_runs[run_id]
+    if run["status"] != "in_progress":
+        return False
+
+    # Set the stop event to signal threads to stop
+    run["stop_event"].set()
+    _add_log(run_id, "Stop requested - waiting for tasks to finish current step")
+    return True
+
+
+def is_run_stopped(run_id: str) -> bool:
+    """Check if a run has been requested to stop."""
+    if run_id not in _active_runs:
+        return False
+    return _active_runs[run_id]["stop_event"].is_set()
 
 
 def validate_scenario_for_run(scenario: Scenario) -> tuple:
@@ -190,6 +217,55 @@ def validate_scenario_for_run(scenario: Scenario) -> tuple:
         return False, "Invalid task index in selection"
 
     return True, None
+
+
+def classify_failure(final_result: str, extracted_content: str = "", error_message: str = "") -> str:
+    """
+    Classify failure type based on agent output and page content.
+
+    Returns:
+        - "captcha_blocked": Detected captcha on page
+        - "auth_failed": Login/authentication failed
+        - "timeout": Task timed out
+        - "network_error": Network/connectivity issue
+        - "goal_not_met": Default - task completed but goal not achieved
+    """
+    # Combine all content for analysis
+    content = f"{final_result} {extracted_content} {error_message}".lower()
+
+    # Check for captcha indicators
+    captcha_patterns = [
+        "captcha", "recaptcha", "hcaptcha", "g-recaptcha",
+        "cf-turnstile", "captcha-container", "verify you are human",
+        "prove you're not a robot", "security check", "human verification"
+    ]
+    if any(pattern in content for pattern in captcha_patterns):
+        return "captcha_blocked"
+
+    # Check for login/auth failure indicators
+    auth_fail_patterns = [
+        "invalid password", "incorrect credentials", "login failed",
+        "authentication failed", "wrong password", "invalid username",
+        "account locked", "too many attempts", "credentials incorrect",
+        "password is incorrect", "email or password is wrong"
+    ]
+    if any(pattern in content for pattern in auth_fail_patterns):
+        return "auth_failed"
+
+    # Check for timeout indicators
+    if "timeout" in content or "timed out" in content:
+        return "timeout"
+
+    # Check for network error indicators
+    network_patterns = [
+        "network error", "connection refused", "dns error",
+        "unreachable", "connection failed", "no internet"
+    ]
+    if any(pattern in content for pattern in network_patterns):
+        return "network_error"
+
+    # Default: goal not met (UX issue)
+    return "goal_not_met"
 
 
 def extract_agent_events(history: AgentHistoryList) -> list:
@@ -407,18 +483,29 @@ async def execute_single_task(
 
         events = extract_agent_events(history)
 
+        # Determine error_type based on whether goal was achieved
+        final_result_str = history.final_result() or ""
+        extracted_content = str(history.extracted_content()) if history.extracted_content() else ""
+        is_done = history.is_done()
+
+        if is_done:
+            error_type = ""  # Success - no error
+        else:
+            # Goal not met - classify the failure type
+            error_type = classify_failure(final_result_str, extracted_content)
+
         persona_run_data = PersonaRunCreate(
             config_id=scenario.id,
             report_id=report_id,
             persona_type=journey_task.persona,
-            is_done=history.is_done(),
+            is_done=is_done,
             timestamp=start_time,
             duration_seconds=history.total_duration_seconds(),
             platform="web",
-            error_type="",
+            error_type=error_type,
             steps_completed=history.number_of_steps(),
             total_steps=max_steps,
-            final_result=history.final_result(),
+            final_result=final_result_str,
             judgement_data=history.judgement(),
             task_description=task_description,
             task_goal=journey_task.goal,
@@ -437,6 +524,9 @@ async def execute_single_task(
         # Update task with error
         update_task_progress(run_id, task_index, error=str(e))
 
+        # Classify the exception-based failure
+        error_type = classify_failure("", "", str(e))
+
         # Extract task fields properly from the task dict
         persona_run_data = PersonaRunCreate(
             config_id=scenario.id,
@@ -446,7 +536,7 @@ async def execute_single_task(
             timestamp=datetime.now(),
             duration_seconds=0,
             platform="web",
-            error_type=str(e),
+            error_type=error_type,
             steps_completed=0,
             total_steps=30,
             final_result=f"ERROR: {str(e)}",
@@ -468,6 +558,12 @@ def _run_task_in_thread(db_session_factory, scenario_id: str, task: Dict, task_i
     Run a single task in a thread with its own event loop and DB session.
     This allows parallel execution of browser tasks.
     """
+    # Check if run was stopped before starting
+    if is_run_stopped(run_id):
+        update_task_progress(run_id, task_index, status="stopped")
+        _mark_task_stopped(run_id, task_index)
+        return
+
     db = db_session_factory()
     try:
         scenario = db.query(Scenario).filter(Scenario.id == scenario_id).first()
@@ -491,6 +587,27 @@ def _run_task_in_thread(db_session_factory, scenario_id: str, task: Dict, task_i
         update_run_status(run_id, failed=1, task_index=task_index)
     finally:
         db.close()
+
+
+def _mark_task_stopped(run_id: str, task_index: int):
+    """Mark a task as stopped and update run counters."""
+    if run_id not in _active_runs:
+        return
+
+    run = _active_runs[run_id]
+    run["stopped_tasks"] = run.get("stopped_tasks", 0) + 1
+
+    if task_index < len(run["task_progress"]):
+        progress = run["task_progress"][task_index]
+        progress["status"] = "stopped"
+        _add_log(run_id, f"{progress['persona']}: Stopped")
+
+    # Check if all tasks are done (completed, failed, or stopped)
+    total_done = run["completed_tasks"] + run["failed_tasks"] + run["stopped_tasks"]
+    if total_done >= run["total_tasks"]:
+        run["status"] = "stopped"
+        run["completed_at"] = datetime.now().isoformat()
+        _add_log(run_id, f"Run stopped: {run['completed_tasks']} completed, {run['stopped_tasks']} stopped")
 
 
 async def run_persona_tasks(db_session_factory, scenario_id: str, report_id: str, run_id: str):

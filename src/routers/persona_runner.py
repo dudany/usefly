@@ -62,6 +62,18 @@ async def acknowledge_run_completion(run_id: str):
     return {"message": "Run status cleaned up"}
 
 
+@router.post("/persona/run/{run_id}/stop")
+async def stop_run(run_id: str):
+    """Request a run to stop. Pending tasks won't start, running tasks will complete current step."""
+    success = persona_runner.stop_run(run_id)
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail="Run not found or not in progress"
+        )
+    return {"status": "stopping", "message": "Stop requested - pending tasks will not start"}
+
+
 @router.get("/executions/active", response_model=ActiveExecutionsResponse)
 async def get_active_executions():
     """

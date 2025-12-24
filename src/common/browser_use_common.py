@@ -25,7 +25,6 @@ def _get_llm(system_config: SystemConfig):
 
 
 async def run_browser_use_agent(task: str, system_config: SystemConfig, max_steps: int | None = None):
-    """Run browser-use agent without progress tracking (for crawler analysis)."""
     try:
         steps = max_steps or system_config.max_steps
         llm = _get_llm(system_config)

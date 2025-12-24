@@ -246,8 +246,28 @@ export const STATUS_LABELS = {
   },
   GOAL_NOT_MET: {
     label: "Goal Not Met",
-    tooltip: "Agent completed but did not achieve its goal",
+    tooltip: "Agent completed but did not achieve its goal (UX issue)",
     className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  },
+  CAPTCHA_BLOCKED: {
+    label: "Captcha Blocked",
+    tooltip: "Agent was blocked by a captcha (technical blocker)",
+    className: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
+  },
+  AUTH_FAILED: {
+    label: "Auth Failed",
+    tooltip: "Login/authentication failed (credential or config issue)",
+    className: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+  },
+  TIMEOUT: {
+    label: "Timeout",
+    tooltip: "Task timed out before completion",
+    className: "bg-slate-500/10 text-slate-600 border-slate-500/20",
+  },
+  NETWORK_ERROR: {
+    label: "Network Error",
+    tooltip: "Network or connectivity issue occurred",
+    className: "bg-red-500/10 text-red-600 border-red-500/20",
   },
   ERROR: {
     label: "Error",
@@ -274,6 +294,22 @@ export function getStatusConfig(run: PersonaRun): {
   className: string
   type: StatusType
 } {
+  // Check for specific error types first
+  if (run.error_type) {
+    switch (run.error_type) {
+      case "captcha_blocked":
+        return { ...STATUS_LABELS.CAPTCHA_BLOCKED, type: "CAPTCHA_BLOCKED" }
+      case "auth_failed":
+        return { ...STATUS_LABELS.AUTH_FAILED, type: "AUTH_FAILED" }
+      case "timeout":
+        return { ...STATUS_LABELS.TIMEOUT, type: "TIMEOUT" }
+      case "network_error":
+        return { ...STATUS_LABELS.NETWORK_ERROR, type: "NETWORK_ERROR" }
+      case "goal_not_met":
+        return { ...STATUS_LABELS.GOAL_NOT_MET, type: "GOAL_NOT_MET" }
+    }
+  }
+
   // Error (purple): execution didn't complete (is_done = false)
   if (!run.is_done) {
     return { ...STATUS_LABELS.ERROR, type: "ERROR" }

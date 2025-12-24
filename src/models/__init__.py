@@ -22,11 +22,11 @@ from src.models.persona_run import (
     ActiveExecutionsResponse,
 )
 
-# Crawler run models
-from src.models.crawler_run import (
-    CrawlerRun,
-    CrawlerRunCreate,
-    CrawlerRunResponse,
+# Indexer run models
+from src.models.indexer_run import (
+    IndexerRun,
+    IndexerRunCreate,
+    IndexerRunResponse,
 )
 
 # System config models
@@ -46,8 +46,8 @@ from src.models.common import (
 
 # API schemas (request/response models)
 from src.models.schemas import (
-    CrawlerAnalysisRequest,
-    CrawlerAnalysisResponse,
+    IndexerAnalysisRequest,
+    IndexerAnalysisResponse,
     AsyncAnalysisResponse,
     UpdateScenarioTasksRequest,
     UpdateScenarioTasksFullRequest,
@@ -68,10 +68,10 @@ __all__ = [
     "RunStatusResponse",
     "TaskProgressStatus",
     "ActiveExecutionsResponse",
-    # Crawler run
-    "CrawlerRun",
-    "CrawlerRunCreate",
-    "CrawlerRunResponse",
+    # Indexer run
+    "IndexerRun",
+    "IndexerRunCreate",
+    "IndexerRunResponse",
     # System config
     "SystemConfig",
     "SystemConfigCreate",
@@ -82,8 +82,8 @@ __all__ = [
     "UserJourneyTask",
     "TaskList",
     # API schemas
-    "CrawlerAnalysisRequest",
-    "CrawlerAnalysisResponse",
+    "IndexerAnalysisRequest",
+    "IndexerAnalysisResponse",
     "AsyncAnalysisResponse",
     "UpdateScenarioTasksRequest",
     "UpdateScenarioTasksFullRequest",
